@@ -78,6 +78,56 @@ public:
     bool IsActive() override;
 };
 
+// ===== Cataclysm 4.3.4 Focus resource triggers =====
+// Hunters use FOCUS (POWER_FOCUS), not mana. FocusValue ("focus") is registered in the shared ValueContext,
+// so these read AI_VALUE2(uint8, "focus", "self target"). Mirrors Paladin's HolyPowerAvailableTrigger pattern.
+class FocusAvailableTrigger : public StatAvailable
+{
+public:
+    FocusAvailableTrigger(PlayerbotAI* botAI, int32 amount, std::string const name = "focus available")
+        : StatAvailable(botAI, amount, name) {}
+    bool IsActive() override;
+};
+
+// "bank" focus for the spec's main spender (Kill Command 40 / Explosive Shot ~50). Used to gate the
+// Arcane Shot focus-dump so the bot keeps enough focus for the priority spender.
+class FocusForArcaneShotTrigger : public FocusAvailableTrigger
+{
+public:
+    FocusForArcaneShotTrigger(PlayerbotAI* botAI) : FocusAvailableTrigger(botAI, 60, "focus for arcane shot") {}
+};
+
+// Cobra/Steady Shot builder: cast when focus is getting low so we have focus to spend again.
+class FocusLowTrigger : public StatAvailable
+{
+public:
+    FocusLowTrigger(PlayerbotAI* botAI) : StatAvailable(botAI, 80, "focus low") {}
+    bool IsActive() override;
+};
+
+// BM: pet has 5 Frenzy stacks -> Focus Fire to convert into a ranged-haste buff.
+class FocusFireTrigger : public HasAuraTrigger
+{
+public:
+    FocusFireTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "frenzy effect") {}
+    bool IsActive() override;
+};
+
+// MM: Master Marksman "Fire!" proc -> free instant Aimed Shot.
+class FireProcTrigger : public HasAuraTrigger
+{
+public:
+    FireProcTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "fire!") {}
+};
+
+// MM: Careful Aim window -- target above 80% HP, hardcast Aimed Shot for guaranteed crits.
+class CarefulAimTrigger : public Trigger
+{
+public:
+    CarefulAimTrigger(PlayerbotAI* botAI) : Trigger(botAI, "careful aim") {}
+    bool IsActive() override;
+};
+
 // Cooldown Triggers
 
 class RapidFireTrigger : public BoostTrigger
@@ -86,10 +136,24 @@ public:
     RapidFireTrigger(PlayerbotAI* botAI) : BoostTrigger(botAI, "rapid fire") {}
 };
 
+class FervorTrigger : public StatAvailable
+{
+public:
+    FervorTrigger(PlayerbotAI* botAI) : StatAvailable(botAI, 50, "fervor") {}
+    bool IsActive() override;
+};
+
 class BestialWrathTrigger : public BuffTrigger
 {
 public:
     BestialWrathTrigger(PlayerbotAI* botAI) : BuffTrigger(botAI, "bestial wrath") {}
+};
+
+// MM: Chimera Shot is ready (off cooldown). It also refreshes Serpent Sting.
+class ChimeraShotTrigger : public SpellNoCooldownTrigger
+{
+public:
+    ChimeraShotTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "chimera shot") {}
 };
 
 class IntimidationTrigger : public BuffTrigger

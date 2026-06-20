@@ -56,11 +56,11 @@ void GenericHunterStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     CombatStrategy::InitTriggers(triggers);
 
-    // Mark/Ammo/Mana Triggers
-    triggers.push_back(new TriggerNode("no ammo", { NextAction("equip upgrades packet action", 30.0f) }));
+    // Mark/Cooldown Triggers
+    // Cataclysm 4.3.4: ammo is gone and Aspect of the Viper was removed (focus regens passively), so those
+    // nodes are dropped. Hunter's Mark and Rapid Fire are still core maintenance/cooldowns for all specs.
     triggers.push_back(new TriggerNode("hunter's mark", { NextAction("hunter's mark", 29.5f) }));
     triggers.push_back(new TriggerNode("rapid fire", { NextAction("rapid fire", 29.0f) }));
-    triggers.push_back(new TriggerNode("aspect of the viper", { NextAction("aspect of the viper", 28.0f) }));
 
     // Aggro/Threat/Defensive Triggers
     triggers.push_back(new TriggerNode("has aggro", { NextAction("concussive shot", 20.0f) }));

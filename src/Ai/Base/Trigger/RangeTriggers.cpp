@@ -10,12 +10,13 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "SharedDefines.h"
+#include "SpellHistory.h"
 
 bool EnemyTooCloseForSpellTrigger::IsActive()
 {
     Unit* target = AI_VALUE(Unit*, "current target");
-    return target && (target->GetVictim() != bot || target->isFrozen() || target->HasRootAura()) &&
-           target->GetObjectSize() <= 10.0f && target->IsWithinCombatRange(bot, MIN_MELEE_REACH);
+    return target && (target->GetVictim() != bot || target->isFrozen() || target->HasAuraType(SPELL_AURA_MOD_ROOT)) &&
+           target->GetCombatReach() <= 10.0f && target->IsWithinCombatRange(bot, MIN_MELEE_REACH);
     //     Unit* target = AI_VALUE(Unit*, "current target");
     //     if (!target)
     //     {
@@ -62,10 +63,10 @@ bool EnemyTooCloseForAutoShotTrigger::IsActive()
     if (!spellId)
         trapToCast = false;
 
-    if (spellId && bot->HasSpellCooldown(spellId))
+    if (spellId && bot->GetSpellHistory()->HasCooldown(spellId))
         trapToCast = false;
 
-    return !trapToCast && (target->GetVictim() != bot || target->isFrozen() || target->HasRootAura()) &&
+    return !trapToCast && (target->GetVictim() != bot || target->isFrozen() || target->HasAuraType(SPELL_AURA_MOD_ROOT)) &&
            bot->IsWithinMeleeRange(target);
 
     // if (target->GetTarget() == bot->GetGUID() && !bot->GetGroup() && !target->HasUnitState(UNIT_STATE_ROOT) &&
@@ -96,7 +97,7 @@ bool EnemyTooCloseForShootTrigger::IsActive()
     Unit* target = AI_VALUE(Unit*, "current target");
     // target->IsWithinCombatRange()
 
-    return target && (target->GetVictim() != bot || target->isFrozen() || target->HasRootAura()) &&
+    return target && (target->GetVictim() != bot || target->isFrozen() || target->HasAuraType(SPELL_AURA_MOD_ROOT)) &&
            target->IsWithinCombatRange(bot, MIN_MELEE_REACH);
 
     //     Unit* target = AI_VALUE(Unit*, "current target");

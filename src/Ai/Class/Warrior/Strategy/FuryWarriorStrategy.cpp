@@ -76,11 +76,12 @@ FuryWarriorStrategy::FuryWarriorStrategy(PlayerbotAI* botAI) : GenericWarriorStr
 
 std::vector<NextAction> FuryWarriorStrategy::getDefaultActions()
 {
+    // ShatterCore 4.3.4 Fury single-target filler priority (used when no higher-priority trigger fires):
+    // Bloodthirst is the on-CD generator/Enrage source; Raging Blow when Enraged; Slam as low filler.
     return {
-        NextAction("bloodthirst", ACTION_DEFAULT + 0.5f),
-        NextAction("whirlwind", ACTION_DEFAULT + 0.4f),
-        NextAction("sunder armor", ACTION_DEFAULT + 0.3f),
-        NextAction("execute", ACTION_DEFAULT + 0.2f),
+        NextAction("bloodthirst", ACTION_DEFAULT + 0.4f),  // on-CD strike, Enrage source
+        NextAction("raging blow", ACTION_DEFAULT + 0.3f),  // usable only while Enraged (engine CanCast gates it)
+        NextAction("slam", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
 }
@@ -136,43 +137,99 @@ void FuryWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             }
         )
     );
+
+    // ShatterCore 4.3.4 Fury single-target priority (class reference doc 3.2):
+    // 1) Colossus Smash on CD 2) Execute (<20%) 3) Bloodthirst on CD 4) Raging Blow while Enraged
+    // 5) Slam on Bloodsurge proc 6) Heroic Strike rage dump.
+
+    // Colossus Smash on cooldown -- armor-ignore window.
+    triggers.push_back(
+        new TriggerNode(
+            "colossus smash",
+            {
+                NextAction("colossus smash", ACTION_HIGH + 7)
+            }
+        )
+    );
+
+    // Execute when target below 20%.
+    triggers.push_back(
+        new TriggerNode(
+            "target critical health",
+            {
+                NextAction("execute", ACTION_HIGH + 7)
+            }
+        )
+    );
+
+    // Bloodthirst on cooldown -- primary strike + Enrage source.
     triggers.push_back(
         new TriggerNode(
             "bloodthirst",
             {
-                NextAction("bloodthirst", ACTION_HIGH + 7)
+                NextAction("bloodthirst", ACTION_HIGH + 6)
             }
         )
     );
+
+    // Raging Blow -- only usable while Enraged. The Enrage trigger gates it; CanCast also enforces the requirement.
     triggers.push_back(
         new TriggerNode(
-            "whirlwind",
+            "enrage",
             {
-                NextAction("whirlwind", ACTION_HIGH + 6)
+                NextAction("raging blow", ACTION_HIGH + 5)
             }
         )
     );
+
+    // Slam becomes instant + free on a Bloodsurge proc. In 4.3.4 the Bloodsurge talent is a passive that
+    // procs the "Slam!" buff (there is no player aura literally named "bloodsurge"), so gate on the "instant
+    // slam" trigger (HasAura "slam!") -- the real proc aura -- instead of the never-firing "bloodsurge" name.
     triggers.push_back(
         new TriggerNode(
             "instant slam",
             {
-                NextAction("slam", ACTION_HIGH + 5)
+                NextAction("slam", ACTION_HIGH + 4)
             }
         )
     );
+
+    // AoE: Whirlwind + Cleave.
+    triggers.push_back(
+        new TriggerNode(
+            "light aoe",
+            {
+                NextAction("whirlwind", ACTION_HIGH + 3),
+                NextAction("cleave", ACTION_HIGH + 2)
+            }
+        )
+    );
+
     triggers.push_back(
         new TriggerNode(
             "bloodrage",
             {
-                NextAction("bloodrage", ACTION_HIGH + 2)
+                NextAction("bloodrage", ACTION_HIGH + 1)
             }
         )
     );
+
+    // Heroic Strike rage dump at high rage; Inner Rage windows lower the effective threshold.
     triggers.push_back(
         new TriggerNode(
-            "medium rage available",
+            "high rage available",
             {
-                NextAction("heroic strike", ACTION_DEFAULT + 0.1f)
+                NextAction("heroic strike", ACTION_HIGH)
+            }
+        )
+    );
+
+    // Berserker Rage to force Enrage (keeps Raging Blow usable) + fear break.
+    triggers.push_back(
+        new TriggerNode(
+            "berserker rage",
+            {
+                NextAction("berserker rage", ACTION_HIGH)
             }
         )
     );

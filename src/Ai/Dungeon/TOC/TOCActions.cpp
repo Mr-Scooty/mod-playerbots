@@ -184,7 +184,7 @@ bool ToCMountAction::Execute(Event /*event*/)
         if (!vehicleBase)
             continue;
 
-        if (vehicleBase->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
+        if (vehicleBase->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
             continue;
 
         if (!vehicleBase->IsFriendlyTo(bot))

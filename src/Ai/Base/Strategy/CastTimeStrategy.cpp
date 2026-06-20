@@ -28,7 +28,7 @@ float CastTimeMultiplier::GetValue(Action* action)
             (spellInfo->Targets & TARGET_FLAG_SOURCE_LOCATION) != 0)
             return 1.0f;
 
-        uint32 castTime = spellInfo->CalcCastTime(bot);
+        uint32 castTime = spellInfo->CalcCastTime(bot->getLevel());
 
         if (spellInfo->IsChanneled())
         {

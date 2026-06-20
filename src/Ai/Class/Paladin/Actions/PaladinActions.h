@@ -17,6 +17,7 @@ BUFF_ACTION(CastSealOfWisdomAction, "seal of wisdom");
 BUFF_ACTION(CastSealOfCommandAction, "seal of command");
 BUFF_ACTION(CastSealOfVengeanceAction, "seal of vengeance");
 BUFF_ACTION(CastSealOfCorruptionAction, "seal of corruption");
+BUFF_ACTION(CastSealOfTruthAction, "seal of truth");  // ShatterCore: 4.3.4 Ret/Prot primary seal
 
 // judgements
 SPELL_ACTION(CastJudgementAction, "judgement");
@@ -66,6 +67,91 @@ class CastCrusaderStrikeAction : public CastMeleeSpellAction
 {
 public:
     CastCrusaderStrikeAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "crusader strike") {}
+};
+
+// ShatterCore (4.3.4 Retribution): Holy Power spenders.
+class CastTemplarsVerdictAction : public CastMeleeSpellAction
+{
+public:
+    CastTemplarsVerdictAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "templar's verdict") {}
+};
+
+// Inquisition: self-cast Holy Power buff (+30% Holy damage); maintain it up.
+BUFF_ACTION(CastInquisitionAction, "inquisition");
+
+// ShatterCore (4.3.4 Protection): Shield of the Righteous is the Prot Holy Power spender (single-target strike).
+class CastShieldOfTheRighteousAction : public CastMeleeSpellAction
+{
+public:
+    CastShieldOfTheRighteousAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "shield of the righteous") {}
+};
+
+// Word of Glory: the free Holy Power heal (self for tank/ret emergency, on party for healer).
+class CastWordOfGloryAction : public CastHealingSpellAction
+{
+public:
+    CastWordOfGloryAction(PlayerbotAI* botAI) : CastHealingSpellAction(botAI, "word of glory") {}
+};
+
+class CastWordOfGloryOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastWordOfGloryOnPartyAction(PlayerbotAI* botAI) : HealPartyMemberAction(botAI, "word of glory") {}
+};
+
+// ShatterCore (4.3.4 Holy): Holy Power cone heal + targeted AoE HoT-burst + big/efficient heals.
+class CastLightOfDawnAction : public CastHealingSpellAction
+{
+public:
+    CastLightOfDawnAction(PlayerbotAI* botAI) : CastHealingSpellAction(botAI, "light of dawn") {}
+};
+
+class CastLightOfDawnOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastLightOfDawnOnPartyAction(PlayerbotAI* botAI) : HealPartyMemberAction(botAI, "light of dawn") {}
+};
+
+class CastHolyRadianceAction : public CastHealingSpellAction
+{
+public:
+    CastHolyRadianceAction(PlayerbotAI* botAI) : CastHealingSpellAction(botAI, "holy radiance") {}
+};
+
+class CastHolyRadianceOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastHolyRadianceOnPartyAction(PlayerbotAI* botAI) : HealPartyMemberAction(botAI, "holy radiance") {}
+};
+
+class CastDivineLightAction : public CastHealingSpellAction
+{
+public:
+    CastDivineLightAction(PlayerbotAI* botAI) : CastHealingSpellAction(botAI, "divine light") {}
+};
+
+class CastDivineLightOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastDivineLightOnPartyAction(PlayerbotAI* botAI)
+        : HealPartyMemberAction(botAI, "divine light", 60.0f, HealingManaEfficiency::MEDIUM) {}
+};
+
+// Seal of Insight: the Holy/survival seal (mana + self-heal on melee/judgement).
+BUFF_ACTION(CastSealOfInsightAction, "seal of insight");
+
+// Rebuke: the new baseline 4.3.4 paladin melee interrupt (replaces relying on Hammer of Justice for kicks).
+class CastRebukeAction : public CastSpellAction
+{
+public:
+    CastRebukeAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "rebuke") {}
+};
+
+// Guardian of Ancient Kings: major cooldown (tank DR / healer copy / dps AP depending on spec).
+class CastGuardianOfAncientKingsAction : public CastBuffSpellAction
+{
+public:
+    CastGuardianOfAncientKingsAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "guardian of ancient kings") {}
 };
 
 class CastSealSpellAction : public CastBuffSpellAction

@@ -11,6 +11,7 @@
 #include "PlayerbotMgr.h"
 #include "GameTime.h"
 #include "PlayerbotCommandServer.h"
+#include "DatabaseEnv.h"
 
 struct BattlegroundInfo
 {
@@ -255,7 +256,7 @@ private:
     std::vector<uint32> addClassTypeAccounts;           // Accounts marked as AddClass (type 2)
 
     //void ScaleBotActivity();      // Deprecated function
-    static inline uint32 NowSeconds() { return static_cast<uint32>(GameTime::GetGameTime().count()); }
+    static inline uint32 NowSeconds() { return static_cast<uint32>(GameTime::GetGameTime()); }
 };
 
 #define sRandomPlayerbotMgr RandomPlayerbotMgr::instance()

@@ -97,7 +97,7 @@ static inline bool IsTankRole(Player* player)
     if (!player)
         return false;
 
-    if (player->HasTankSpec())
+    if (PlayerbotAI::IsTank(player, true))
         return true;
 
     if (PlayerbotAI* otherAI = GET_PLAYERBOT_AI(player))
@@ -214,7 +214,7 @@ inline std::string const GetActualBlessingOfSanctuary(Unit* target, Player* bot)
         }
     }
 
-    if (targetPlayer->HasTankSpec())
+    if (PlayerbotAI::IsTank(targetPlayer, true))
         return "blessing of sanctuary";
 
     return "";

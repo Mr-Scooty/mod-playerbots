@@ -8,6 +8,7 @@
 #include "CustomStrategy.h"
 #include "Event.h"
 #include "Playerbots.h"
+#include "DatabaseEnv.h"
 
 bool CustomStrategyEditAction::Execute(Event event)
 {

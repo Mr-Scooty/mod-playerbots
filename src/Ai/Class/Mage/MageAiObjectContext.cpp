@@ -121,6 +121,7 @@ public:
         creators["no mana gem"] = &MageTriggerFactoryInternal::NoManaGem;
         creators["blizzard channel check"] = &MageTriggerFactoryInternal::blizzard_channel_check;
         creators["blast wave off cd"] = &MageTriggerFactoryInternal::blast_wave_off_cd;
+        creators["flame orb off cd"] = &MageTriggerFactoryInternal::flame_orb_off_cd;
         creators["blast wave off cd and medium aoe"] = &MageTriggerFactoryInternal::blast_wave_off_cd_and_medium_aoe;
         creators["no firestarter strategy"] = &MageTriggerFactoryInternal::no_firestarter_strategy;
         creators["enemy is close and no firestarter strategy"] = &MageTriggerFactoryInternal::enemy_is_close_and_no_firestarter_strategy;
@@ -171,6 +172,7 @@ private:
     static Trigger* NoManaGem(PlayerbotAI* botAI) { return new NoManaGemTrigger(botAI); }
     static Trigger* blizzard_channel_check(PlayerbotAI* botAI) { return new BlizzardChannelCheckTrigger(botAI); }
     static Trigger* blast_wave_off_cd(PlayerbotAI* botAI) { return new BlastWaveOffCdTrigger(botAI); }
+    static Trigger* flame_orb_off_cd(PlayerbotAI* botAI) { return new FlameOrbOffCdTrigger(botAI); }
     static Trigger* blast_wave_off_cd_and_medium_aoe(PlayerbotAI* botAI) { return new BlastWaveOffCdTriggerAndMediumAoeTrigger(botAI); }
     static Trigger* no_firestarter_strategy(PlayerbotAI* botAI) { return new NoFirestarterStrategyTrigger(botAI); }
     static Trigger* enemy_is_close_and_no_firestarter_strategy(PlayerbotAI* botAI) { return new EnemyIsCloseAndNoFirestarterStrategyTrigger(botAI); }
@@ -240,6 +242,8 @@ public:
         creators["use mana jade"] = &MageAiObjectContextInternal::use_mana_jade;
         creators["use mana agate"] = &MageAiObjectContextInternal::use_mana_agate;
         creators["mana shield"] = &MageAiObjectContextInternal::mana_shield;
+        creators["flame orb"] = &MageAiObjectContextInternal::flame_orb;
+        creators["frostfire orb"] = &MageAiObjectContextInternal::frostfire_orb;
     }
 
 private:
@@ -301,6 +305,8 @@ private:
     static Action* use_mana_jade(PlayerbotAI* botAI) { return new UseManaJadeAction(botAI); }
     static Action* use_mana_agate(PlayerbotAI* botAI) { return new UseManaAgateAction(botAI); }
     static Action* mana_shield(PlayerbotAI* botAI) { return new CastManaShieldAction(botAI); }
+    static Action* flame_orb(PlayerbotAI* botAI) { return new CastFlameOrbAction(botAI); }
+    static Action* frostfire_orb(PlayerbotAI* botAI) { return new CastFrostfireOrbAction(botAI); }
 };
 
 SharedNamedObjectContextList<Strategy> MageAiObjectContext::sharedStrategyContexts;

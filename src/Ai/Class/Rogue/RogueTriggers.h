@@ -48,6 +48,27 @@ public:
     RuptureTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "rupture", 1, true) {}
 };
 
+// Recuperate self-HoT upkeep (Sub: feeds Energetic Recovery; all specs: solo sustain).
+class RecuperateTrigger : public BuffTrigger
+{
+public:
+    RecuperateTrigger(PlayerbotAI* botAI) : BuffTrigger(botAI, "recuperate") {}
+};
+
+// Revealing Strike debuff upkeep (Combat: +35% finisher damage on the target).
+class RevealingStrikeTrigger : public DebuffTrigger
+{
+public:
+    RevealingStrikeTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "revealing strike", 1, true) {}
+};
+
+// Vendetta damage-amp cooldown (Assassination).
+class VendettaTrigger : public DebuffTrigger
+{
+public:
+    VendettaTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "vendetta", 1, true) {}
+};
+
 class ExposeArmorTrigger : public DebuffTrigger
 {
 public:

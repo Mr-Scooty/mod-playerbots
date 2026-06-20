@@ -82,6 +82,7 @@ public:
         creators["thorns"] = &DruidTriggerFactoryInternal::thorns;
         creators["thorns on party"] = &DruidTriggerFactoryInternal::thorns_on_party;
         creators["thorns on main tank"] = &DruidTriggerFactoryInternal::thorns_on_main_tank;
+        creators["lifebloom on main tank"] = &DruidTriggerFactoryInternal::lifebloom_on_main_tank;
         creators["bash"] = &DruidTriggerFactoryInternal::bash;
         creators["faerie fire (feral)"] = &DruidTriggerFactoryInternal::faerie_fire_feral;
         creators["faerie fire"] = &DruidTriggerFactoryInternal::faerie_fire;
@@ -119,6 +120,13 @@ public:
         creators["hurricane channel check"] = &DruidTriggerFactoryInternal::hurricane_channel_check;
         creators["no healer dps strategy"] = &DruidTriggerFactoryInternal::no_healer_dps_strategy;
         creators["starfall"] = &DruidTriggerFactoryInternal::starfall;
+        creators["starsurge"] = &DruidTriggerFactoryInternal::starsurge;
+        creators["sunfire"] = &DruidTriggerFactoryInternal::sunfire;
+        creators["sunfire on attacker"] = &DruidTriggerFactoryInternal::sunfire_on_attacker;
+        creators["thrash"] = &DruidTriggerFactoryInternal::thrash;
+        creators["pulverize"] = &DruidTriggerFactoryInternal::pulverize;
+        creators["skull bash (bear)"] = &DruidTriggerFactoryInternal::skull_bash_bear;
+        creators["skull bash (cat)"] = &DruidTriggerFactoryInternal::skull_bash_cat;
         creators["force of nature"] = &DruidTriggerFactoryInternal::force_of_nature;
         creators["cyclone"] = &DruidTriggerFactoryInternal::cyclone;
         creators["predator's swiftness"] = &DruidTriggerFactoryInternal::predators_swiftness;
@@ -142,6 +150,7 @@ private:
     static Trigger* thorns(PlayerbotAI* botAI) { return new ThornsTrigger(botAI); }
     static Trigger* thorns_on_party(PlayerbotAI* botAI) { return new ThornsOnPartyTrigger(botAI); }
     static Trigger* thorns_on_main_tank(PlayerbotAI* botAI) { return new ThornsOnMainTankTrigger(botAI); }
+    static Trigger* lifebloom_on_main_tank(PlayerbotAI* botAI) { return new LifebloomOnMainTankTrigger(botAI); }
     static Trigger* bash(PlayerbotAI* botAI) { return new BashInterruptSpellTrigger(botAI); }
     static Trigger* faerie_fire_feral(PlayerbotAI* botAI) { return new FaerieFireFeralTrigger(botAI); }
     static Trigger* insect_swarm(PlayerbotAI* botAI) { return new InsectSwarmTrigger(botAI); }
@@ -175,6 +184,13 @@ private:
     static Trigger* hurricane_channel_check(PlayerbotAI* ai) { return new HurricaneChannelCheckTrigger(ai); }
     static Trigger* no_healer_dps_strategy(PlayerbotAI* ai) { return new NoHealerDpsStrategyTrigger(ai); }
     static Trigger* starfall(PlayerbotAI* ai) { return new StarfallTrigger(ai); }
+    static Trigger* starsurge(PlayerbotAI* ai) { return new StarsurgeTrigger(ai); }
+    static Trigger* sunfire(PlayerbotAI* ai) { return new SunfireTrigger(ai); }
+    static Trigger* sunfire_on_attacker(PlayerbotAI* ai) { return new SunfireOnAttackerTrigger(ai); }
+    static Trigger* thrash(PlayerbotAI* ai) { return new ThrashTrigger(ai); }
+    static Trigger* pulverize(PlayerbotAI* ai) { return new PulverizeTrigger(ai); }
+    static Trigger* skull_bash_bear(PlayerbotAI* ai) { return new SkullBashBearInterruptTrigger(ai); }
+    static Trigger* skull_bash_cat(PlayerbotAI* ai) { return new SkullBashCatInterruptTrigger(ai); }
     static Trigger* force_of_nature(PlayerbotAI* ai) { return new ForceOfNatureTrigger(ai); }
     static Trigger* cyclone(PlayerbotAI* ai) { return new CycloneTrigger(ai); }
     static Trigger* predators_swiftness(PlayerbotAI* ai) { return new PredatorsSwiftnessTrigger(ai); }
@@ -228,8 +244,13 @@ public:
         creators["cyclone on cc"] = &DruidAiObjectContextInternal::cyclone_on_cc;
         creators["wrath"] = &DruidAiObjectContextInternal::wrath;
         creators["starfall"] = &DruidAiObjectContextInternal::starfall;
+        creators["starsurge"] = &DruidAiObjectContextInternal::starsurge;
         creators["insect swarm"] = &DruidAiObjectContextInternal::insect_swarm;
         creators["moonfire"] = &DruidAiObjectContextInternal::moonfire;
+        creators["sunfire"] = &DruidAiObjectContextInternal::sunfire;
+        creators["sunfire on attacker"] = &DruidAiObjectContextInternal::sunfire_on_attacker;
+        creators["wild mushroom"] = &DruidAiObjectContextInternal::wild_mushroom;
+        creators["wild mushroom: detonate"] = &DruidAiObjectContextInternal::wild_mushroom_detonate;
         creators["starfire"] = &DruidAiObjectContextInternal::starfire;
         creators["nature's grasp"] = &DruidAiObjectContextInternal::natures_grasp;
         creators["claw"] = &DruidAiObjectContextInternal::claw;
@@ -266,6 +287,12 @@ public:
         creators["revive"] = &DruidAiObjectContextInternal::revive;
         creators["barkskin"] = &DruidAiObjectContextInternal::barkskin;
         creators["lacerate"] = &DruidAiObjectContextInternal::lacerate;
+        creators["thrash"] = &DruidAiObjectContextInternal::thrash;
+        creators["thrash (cat)"] = &DruidAiObjectContextInternal::thrash_cat;
+        creators["pulverize"] = &DruidAiObjectContextInternal::pulverize;
+        creators["skull bash (bear)"] = &DruidAiObjectContextInternal::skull_bash_bear;
+        creators["skull bash (cat)"] = &DruidAiObjectContextInternal::skull_bash_cat;
+        creators["stampeding roar"] = &DruidAiObjectContextInternal::stampeding_roar;
         creators["hurricane"] = &DruidAiObjectContextInternal::hurricane;
         creators["innervate"] = &DruidAiObjectContextInternal::innervate;
         creators["innervate on healer"] = &DruidAiObjectContextInternal::innervate_on_healer;
@@ -327,8 +354,13 @@ private:
     static Action* cyclone_on_cc(PlayerbotAI* botAI) { return new CastCycloneCcAction(botAI); }
     static Action* wrath(PlayerbotAI* botAI) { return new CastWrathAction(botAI); }
     static Action* starfall(PlayerbotAI* botAI) { return new CastStarfallAction(botAI); }
+    static Action* starsurge(PlayerbotAI* botAI) { return new CastStarsurgeAction(botAI); }
     static Action* insect_swarm(PlayerbotAI* botAI) { return new CastInsectSwarmAction(botAI); }
     static Action* moonfire(PlayerbotAI* botAI) { return new CastMoonfireAction(botAI); }
+    static Action* sunfire(PlayerbotAI* botAI) { return new CastSunfireAction(botAI); }
+    static Action* sunfire_on_attacker(PlayerbotAI* botAI) { return new CastSunfireOnAttackerAction(botAI); }
+    static Action* wild_mushroom(PlayerbotAI* botAI) { return new CastWildMushroomAction(botAI); }
+    static Action* wild_mushroom_detonate(PlayerbotAI* botAI) { return new CastWildMushroomDetonateAction(botAI); }
     static Action* starfire(PlayerbotAI* botAI) { return new CastStarfireAction(botAI); }
     static Action* natures_grasp(PlayerbotAI* botAI) { return new CastNaturesGraspAction(botAI); }
     static Action* claw(PlayerbotAI* botAI) { return new CastClawAction(botAI); }
@@ -365,6 +397,12 @@ private:
     static Action* revive(PlayerbotAI* botAI) { return new CastReviveAction(botAI); }
     static Action* barkskin(PlayerbotAI* botAI) { return new CastBarkskinAction(botAI); }
     static Action* lacerate(PlayerbotAI* botAI) { return new CastLacerateAction(botAI); }
+    static Action* thrash(PlayerbotAI* botAI) { return new CastThrashAction(botAI); }
+    static Action* thrash_cat(PlayerbotAI* botAI) { return new CastThrashCatAction(botAI); }
+    static Action* pulverize(PlayerbotAI* botAI) { return new CastPulverizeAction(botAI); }
+    static Action* skull_bash_bear(PlayerbotAI* botAI) { return new CastSkullBashBearAction(botAI); }
+    static Action* skull_bash_cat(PlayerbotAI* botAI) { return new CastSkullBashCatAction(botAI); }
+    static Action* stampeding_roar(PlayerbotAI* botAI) { return new CastStampedingRoarAction(botAI); }
     static Action* hurricane(PlayerbotAI* botAI) { return new CastHurricaneAction(botAI); }
     static Action* innervate(PlayerbotAI* botAI) { return new CastInnervateAction(botAI); }
     static Action* innervate_on_healer(PlayerbotAI* botAI) { return new CastInnervateOnHealerAction(botAI); }
@@ -431,11 +469,14 @@ public:
     {
         creators["eclipse solar proc time"] = &DruidValueContextInternal::eclipse_solar_proc_time;
         creators["eclipse lunar proc time"] = &DruidValueContextInternal::eclipse_lunar_proc_time;
+        creators["eclipse"] = &DruidValueContextInternal::eclipse;
     }
 
 private:
     static UntypedValue* eclipse_solar_proc_time(PlayerbotAI* botAI) { return new EclipseSolarProcTimeValue(botAI); }
     static UntypedValue* eclipse_lunar_proc_time(PlayerbotAI* botAI) { return new EclipseLunarProcTimeValue(botAI); }
+    // ShatterCore (4.3.4 Balance): signed Eclipse meter resource value.
+    static UntypedValue* eclipse(PlayerbotAI* botAI) { return new EclipseValue(botAI); }
 };
 
 void DruidAiObjectContext::BuildSharedValueContexts(SharedNamedObjectContextList<UntypedValue>& valueContexts)

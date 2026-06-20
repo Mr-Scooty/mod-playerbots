@@ -12,11 +12,12 @@
 
 #include "Common.h"
 #include "DBCEnums.h"
+// ShatterCore: core's enum ArenaType (Battleground.h) has no fixed underlying
+// type, so it cannot be forward-declared - include its defining header instead.
+#include "Battleground.h"
 
 class Player;
 class WorldSession;
-
-enum ArenaType : uint8;
 
 class RandomPlayerbotFactory
 {

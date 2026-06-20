@@ -19,8 +19,7 @@ bool LootRollAction::Execute(Event /*event*/)
     if (!group)
         return false;
 
-    std::vector<Roll*> rolls = group->GetRolls();
-    for (Roll*& roll : rolls)
+    for (std::unique_ptr<Roll> const& roll : group->GetRolls())
     {
         auto voteItr = roll->playerVote.find(bot->GetGUID());
         if (voteItr == roll->playerVote.end() || voteItr->second != NOT_EMITED_YET)
@@ -29,8 +28,8 @@ bool LootRollAction::Execute(Event /*event*/)
         ObjectGuid guid = roll->itemGUID;
         uint32 itemId = roll->itemid;
         int32 randomProperty = 0;
-        if (roll->itemRandomPropId)
-            randomProperty = roll->itemRandomPropId;
+        if (roll->itemRandomPropId.Id && roll->itemRandomPropId.Type == ItemRandomEnchantmentType::Property)
+            randomProperty = int32(roll->itemRandomPropId.Id);
         else if (roll->itemRandomSuffix)
             randomProperty = -((int)roll->itemRandomSuffix);
 
@@ -48,7 +47,7 @@ bool LootRollAction::Execute(Event /*event*/)
         ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", itemUsageParam);
 
         // Armor Tokens are classed as MISC JUNK (Class 15, Subclass 0), luckily no other items I found have class bits and epic quality.
-        if (proto->Class == ITEM_CLASS_MISC && proto->SubClass == ITEM_SUBCLASS_JUNK && proto->Quality == ITEM_QUALITY_EPIC)
+        if (proto->GetClass() == ITEM_CLASS_MISCELLANEOUS && proto->GetSubClass() == ITEM_SUBCLASS_JUNK && proto->GetQuality() == ITEM_QUALITY_EPIC)
         {
             if (CanBotUseToken(proto, bot))
                 vote = NEED; // Eligible for "Need"
@@ -59,7 +58,7 @@ bool LootRollAction::Execute(Event /*event*/)
             vote = sPlayerbotAIConfig.lootRollDisenchant ? DISENCHANT : GREED;
         else
         {
-            switch (proto->Class)
+            switch (proto->GetClass())
             {
                 case ITEM_CLASS_WEAPON:
                 case ITEM_CLASS_ARMOR:
@@ -73,7 +72,7 @@ bool LootRollAction::Execute(Event /*event*/)
                         vote = PASS;
                     else if (usage == ITEM_USAGE_SKILL)
                         vote = NEED;  // Bot can learn this recipe
-                    else if (proto->Bonding != BIND_WHEN_PICKED_UP)
+                    else if (proto->GetBonding() != BIND_ON_ACQUIRE)
                         vote = GREED;  // BoE recipe bot can't learn - GREED for AH/trade
                     break;
                 default:
@@ -114,7 +113,7 @@ RollVote LootRollAction::CalculateRollVote(ItemTemplate const* proto, ItemUsage 
     if (usage == ITEM_USAGE_NONE)
     {
         std::ostringstream out;
-        out << proto->ItemId;
+        out << proto->GetId();
         usage = AI_VALUE2(ItemUsage, "item usage", out.str());
     }
 
@@ -140,7 +139,7 @@ RollVote LootRollAction::CalculateRollVote(ItemTemplate const* proto, ItemUsage 
             break;
     }
 
-    return StoreLootAction::IsLootAllowed(proto->ItemId, GET_PLAYERBOT_AI(bot)) ? needVote : PASS;
+    return StoreLootAction::IsLootAllowed(proto->GetId(), GET_PLAYERBOT_AI(bot)) ? needVote : PASS;
 }
 
 bool MasterLootRollAction::isUseful() { return !botAI->HasActivePlayerMaster(); }
@@ -188,7 +187,7 @@ bool CanBotUseToken(ItemTemplate const* proto, Player* bot)
     uint32 botClassMask = (1 << (bot->getClass() - 1));
 
     // Check if the bot's class is allowed to use the token
-    if (proto->AllowableClass & botClassMask)
+    if (proto->GetAllowableClass() & botClassMask)
         return true; // Bot's class is eligible to use this token
 
     return false; // Bot's class cannot use this token
@@ -197,10 +196,10 @@ bool CanBotUseToken(ItemTemplate const* proto, Player* bot)
 bool RollUniqueCheck(ItemTemplate const* proto, Player* bot)
 {
     // Count the total number of the item (equipped + in bags)
-    uint32 totalItemCount = bot->GetItemCount(proto->ItemId, true);
+    uint32 totalItemCount = bot->GetItemCount(proto->GetId(), true);
 
     // Count the number of the item in bags only
-    uint32 bagItemCount = bot->GetItemCount(proto->ItemId, false);
+    uint32 bagItemCount = bot->GetItemCount(proto->GetId(), false);
 
     // Determine if the unique item is already equipped
     bool isEquipped = (totalItemCount > bagItemCount);
@@ -233,7 +232,7 @@ bool RollAction::Execute(Event event)
     itemUsageParam = std::to_string(itemId);
 
     ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", itemUsageParam);
-    switch (proto->Class)
+    switch (proto->GetClass())
     {
         case ITEM_CLASS_WEAPON:
         case ITEM_CLASS_ARMOR:

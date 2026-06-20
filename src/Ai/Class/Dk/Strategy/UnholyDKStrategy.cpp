@@ -6,52 +6,67 @@
 
 #include "Playerbots.h"
 
+// 4.3.4 Unholy (melee DPS, 2H, permanent ghoul). Presence: Unholy Presence (haste + rune regen).
+// Priority: diseases via Outbreak (extended with Festering Strike, rarely recast) ->
+//           Dark Transformation at 5 Shadow Infusion -> Scourge Strike (Unholy/Death runes) ->
+//           Festering Strike (Blood+Frost) to extend diseases -> Death Coil (Sudden Doom / RP dump,
+//           builds Shadow Infusion) -> Horn of Winter filler.
+// Cooldowns: Summon Gargoyle (31-pt burst), Army of the Dead pre-pull.
 class UnholyDKStrategyActionNodeFactory : public NamedObjectFactory<ActionNode>
 {
 public:
     UnholyDKStrategyActionNodeFactory()
     {
-        creators["death strike"] = &death_strike;
+        creators["outbreak"] = &outbreak;
+        creators["festering strike"] = &festering_strike;
         creators["scourge strike"] = &scourge_strike;
-        creators["ghoul frenzy"] = &ghoul_frenzy;
-        creators["corpse explosion"] = &corpse_explosion;
+        creators["death coil"] = &death_coil;
+        creators["dark transformation"] = &dark_transformation;
         creators["icy touch"] = &icy_touch;
     }
 
 private:
-    static ActionNode* death_strike([[maybe_unused]] PlayerbotAI* botAI)
+    static ActionNode* outbreak([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode(
-            "death strike",
-            /*P*/ { NextAction("blood presence") },
-            /*A*/ {},
+            "outbreak",
+            /*P*/ { NextAction("unholy presence") },
+            /*A*/ { NextAction("icy touch") },
             /*C*/ {}
         );
     }
-    static ActionNode* ghoul_frenzy([[maybe_unused]] PlayerbotAI* botAI)
+    static ActionNode* festering_strike([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode(
-            "ghoul frenzy",
-            /*P*/ { NextAction("blood presence") },
-            /*A*/ {},
+            "festering strike",
+            /*P*/ { NextAction("unholy presence") },
+            /*A*/ { NextAction("blood strike") },
             /*C*/ {}
         );
     }
-    static ActionNode* corpse_explosion([[maybe_unused]] PlayerbotAI* botAI)
-    {
-        return new ActionNode(
-            "corpse explosion",
-            /*P*/ { NextAction("blood presence") },
-            /*A*/ {},
-            /*C*/ {}
-        );
-    }
-
     static ActionNode* scourge_strike([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode(
             "scourge strike",
-            /*P*/ { NextAction("blood presence") },
+            /*P*/ { NextAction("unholy presence") },
+            /*A*/ {},
+            /*C*/ {}
+        );
+    }
+    static ActionNode* death_coil([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "death coil",
+            /*P*/ { NextAction("unholy presence") },
+            /*A*/ {},
+            /*C*/ {}
+        );
+    }
+    static ActionNode* dark_transformation([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "dark transformation",
+            /*P*/ { NextAction("unholy presence") },
             /*A*/ {},
             /*C*/ {}
         );
@@ -60,7 +75,7 @@ private:
     {
         return new ActionNode(
             "icy touch",
-            /*P*/ { NextAction("blood presence") },
+            /*P*/ { NextAction("unholy presence") },
             /*A*/ {},
             /*C*/ {}
         );
@@ -75,10 +90,11 @@ UnholyDKStrategy::UnholyDKStrategy(PlayerbotAI* botAI) : GenericDKStrategy(botAI
 std::vector<NextAction> UnholyDKStrategy::getDefaultActions()
 {
     return {
-        NextAction("death and decay", ACTION_HIGH + 5),
+        NextAction("scourge strike", ACTION_DEFAULT + 0.6f),
+        NextAction("festering strike", ACTION_DEFAULT + 0.5f),
         NextAction("summon gargoyle", ACTION_DEFAULT + 0.4f),
-        NextAction("horn of winter", ACTION_DEFAULT + 0.2f),
-        NextAction("death coil", ACTION_DEFAULT + 0.1f),
+        NextAction("death coil", ACTION_DEFAULT + 0.3f),
+        NextAction("horn of winter", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
 }
@@ -87,6 +103,7 @@ void UnholyDKStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     GenericDKStrategy::InitTriggers(triggers);
 
+    // Permanent ghoul (Master of Ghouls): keep it up and managed.
     triggers.push_back(
         new TriggerNode("no pet", { NextAction("raise dead", ACTION_NORMAL + 5) }));
     triggers.push_back(
@@ -94,65 +111,83 @@ void UnholyDKStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(
         new TriggerNode("new pet", { NextAction("set pet stance", 60.0f) }));
 
+    // Diseases via Outbreak (no rune cost) -- applied once, then extended by Festering Strike.
     triggers.push_back(
         new TriggerNode(
-            "death and decay cooldown",
+            "outbreak",
             {
-                NextAction("ghoul frenzy", ACTION_DEFAULT + 0.9f),
-                NextAction("scourge strike", ACTION_DEFAULT + 0.8f),
-                NextAction("icy touch", ACTION_DEFAULT + 0.7f),
-                NextAction("blood strike", ACTION_DEFAULT + 0.6f),
-                NextAction("plague strike", ACTION_DEFAULT + 0.5f),
+                NextAction("outbreak", ACTION_HIGH + 4)
             }
         )
     );
-
+    // Fallback disease application if Outbreak on cooldown.
     triggers.push_back(
         new TriggerNode(
-            "dd cd and no desolation",
-            {
-                NextAction("blood strike", ACTION_DEFAULT + 0.75f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "high frost rune",
-            {
-                NextAction("icy touch", ACTION_NORMAL + 3)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "high blood rune",
-            {
-                NextAction("blood strike", ACTION_NORMAL + 2)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "high unholy rune",
-            {
-                NextAction("plague strike", ACTION_NORMAL + 1)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode("dd cd and plague strike 3s",
-            {
-                NextAction("plague strike", ACTION_HIGH + 1)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode("dd cd and icy touch 3s",
+            "icy touch",
             {
                 NextAction("icy touch", ACTION_HIGH + 2)
             }
         )
     );
+    triggers.push_back(
+        new TriggerNode(
+            "plague strike",
+            {
+                NextAction("plague strike", ACTION_HIGH + 1)
+            }
+        )
+    );
+
+    // Dark Transformation: empower ghoul once 5 Shadow Infusion stacks reached.
+    triggers.push_back(
+        new TriggerNode(
+            "dark transformation",
+            {
+                NextAction("dark transformation", ACTION_HIGH + 5)
+            }
+        )
+    );
+
+    // Sudden Doom proc: free Death Coil (also builds Shadow Infusion).
+    triggers.push_back(
+        new TriggerNode(
+            "sudden doom",
+            {
+                NextAction("death coil", ACTION_HIGH + 3)
+            }
+        )
+    );
+
+    // Festering Strike (Blood+Frost) to extend diseases before they fall off.
+    triggers.push_back(
+        new TriggerNode(
+            "festering strike",
+            {
+                NextAction("festering strike", ACTION_DEFAULT + 0.9f)
+            }
+        )
+    );
+
+    // Spend Unholy/Death runes on Scourge Strike.
+    triggers.push_back(
+        new TriggerNode(
+            "high unholy rune",
+            {
+                NextAction("scourge strike", ACTION_NORMAL + 3)
+            }
+        )
+    );
+    // Spend Blood+Frost runes on Festering Strike (Reaping returns them as Death runes).
+    triggers.push_back(
+        new TriggerNode(
+            "high blood rune",
+            {
+                NextAction("festering strike", ACTION_NORMAL + 2)
+            }
+        )
+    );
+
+    // Army of the Dead pre-pull / burst cooldown.
     triggers.push_back(
         new TriggerNode(
             "army of the dead",
@@ -161,31 +196,18 @@ void UnholyDKStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             }
         )
     );
-    triggers.push_back(
-        new TriggerNode("bone shield",
-            {
-                NextAction("bone shield", ACTION_HIGH + 3)
-            }
-        )
-    );
 }
 
 void UnholyDKAoeStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
-    triggers.push_back(
-        new TriggerNode(
-            "loot available",
-            {
-                NextAction("corpse explosion", ACTION_NORMAL + 1)
-            }
-        )
-    );
+    // AoE: Death and Decay + Pestilence disease spread + Blood Boil with Death runes.
     triggers.push_back(
         new TriggerNode(
             "medium aoe",
             {
-                NextAction("death and decay", ACTION_NORMAL + 3),
-                NextAction("corpse explosion", ACTION_NORMAL + 3)
+                NextAction("death and decay", ACTION_HIGH + 4),
+                NextAction("pestilence", ACTION_HIGH + 3),
+                NextAction("blood boil", ACTION_HIGH + 2)
             }
         )
     );

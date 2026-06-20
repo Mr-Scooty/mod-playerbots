@@ -11,6 +11,8 @@
 #include "Mail.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "DatabaseEnv.h"
 
 bool SendMailAction::Execute(Event event)
 {
@@ -148,7 +150,7 @@ bool SendMailAction::Execute(Event event)
 
             if (randomBot)
             {
-                uint32 price = item->GetCount() * proto->SellPrice;
+                uint32 price = item->GetCount() * proto->GetSellPrice();
                 if (!price)
                 {
                     std::ostringstream out;

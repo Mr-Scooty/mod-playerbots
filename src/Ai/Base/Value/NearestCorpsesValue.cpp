@@ -24,8 +24,8 @@ private:
 void NearestCorpsesValue::FindUnits(std::list<Unit*>& targets)
 {
     AnyDeadUnitInObjectRangeCheck u_check(bot, range);
-    Acore::UnitListSearcher<AnyDeadUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::UnitListSearcher<AnyDeadUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool NearestCorpsesValue::AcceptUnit(Unit* /*unit*/) { return true; }

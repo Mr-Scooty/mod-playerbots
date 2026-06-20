@@ -13,6 +13,7 @@
 #include "Playerbots.h"
 #include "StatsWeightCalculator.h"
 #include "World.h"
+#include "Log.h"
 
 bool TellLosAction::Execute(Event event)
 {
@@ -78,15 +79,15 @@ void TellLosAction::ListGameObjects(std::string const title, GuidVector gos)
 bool TellAuraAction::Execute(Event /*event*/)
 {
     botAI->TellMaster("--- Auras ---");
-    sLog->outMessage("playerbot", LOG_LEVEL_DEBUG, "--- Auras ---");
+    LOG_DEBUG("playerbots", "--- Auras ---");
     Unit::AuraApplicationMap& map = bot->GetAppliedAuras();
     for (Unit::AuraApplicationMap::iterator i = map.begin(); i != map.end(); ++i)
     {
         Aura* aura = i->second->GetBase();
         if (!aura)
             continue;
-        const std::string auraName = aura->GetSpellInfo()->SpellName[0];
-        sLog->outMessage("playerbot", LOG_LEVEL_DEBUG, "Info of Aura - name: " + auraName);
+        const std::string auraName = aura->GetSpellInfo()->SpellName;
+        LOG_DEBUG("playerbots", "Info of Aura - name: " + auraName);
         AuraObjectType type = aura->GetType();
         WorldObject* owner = aura->GetOwner();
         std::string owner_name = owner ? owner->GetName() : "unknown";
@@ -97,7 +98,7 @@ bool TellAuraAction::Execute(Event /*event*/)
         int32 duration = aura->GetDuration();
         int32 spellId = aura->GetSpellInfo()->Id;
         bool isPositive = aura->GetSpellInfo()->IsPositive();
-        sLog->outMessage("playerbot", LOG_LEVEL_DEBUG,
+        LOG_DEBUG("playerbots", "{}",
                          "Info of Aura - name: " + auraName + " caster: " + caster_name + " type: " +
                              std::to_string(type) + " owner: " + owner_name + " distance: " + std::to_string(distance) +
                              " isArea: " + std::to_string(is_area) + " duration: " + std::to_string(duration) +
@@ -114,7 +115,7 @@ bool TellAuraAction::Execute(Event /*event*/)
             float radius = dyn_owner->GetRadius();
             int32 spellId = dyn_owner->GetSpellId();
             int32 duration = dyn_owner->GetDuration();
-            sLog->outMessage("playerbot", LOG_LEVEL_DEBUG,
+            LOG_DEBUG("playerbots", "{}",
                              std::string("Info of DynamicObject -") + " name: " + dyn_owner->GetName() +
                                  " radius: " + std::to_string(radius) + " spell id: " + std::to_string(spellId) +
                                  " duration: " + std::to_string(duration));

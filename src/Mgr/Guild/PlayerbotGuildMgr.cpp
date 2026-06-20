@@ -5,6 +5,8 @@
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "ScriptMgr.h"
+#include "Log.h"
+#include "CharacterCache.h"  // ShatterCore: CharacterCacheEntry / sCharacterCache no longer pulled in transitively
 
 void PlayerbotGuildMgr::Init()
 {
@@ -219,7 +221,9 @@ void PlayerbotGuildMgr::ValidateGuildCache()
         CharacterCacheEntry const* leaderEntry = sCharacterCache->GetCharacterCacheByGuid(leaderGuid);
         uint32 leaderAccount = leaderEntry->AccountId;
         cache.hasRealPlayer = !(sPlayerbotAIConfig.IsInRandomAccountList(leaderAccount));
-        cache.faction = Player::TeamIdForRace(leaderEntry->Race);
+        // ShatterCore: no Player::TeamIdForRace; TeamForRace returns a Team (ALLIANCE/HORDE) ->
+        // normalize to a TeamId (0/1) so faction matches GetTeamId() used elsewhere.
+        cache.faction = (Player::TeamForRace(leaderEntry->Race) == ALLIANCE) ? TEAM_ALLIANCE : TEAM_HORDE;
         if (cache.memberCount == 0)
             cache.status = 0; // empty
         else if (cache.memberCount < cache.maxMembers)

@@ -24,6 +24,7 @@ public:
         creators["pounce"] = &pounce;
         creators["ravage"] = &ravage;
         creators["prowl"] = &prowl;
+        creators["skull bash (cat)"] = &skull_bash_cat;
     }
 
 private:
@@ -147,6 +148,17 @@ private:
         );
     }
 
+    // ShatterCore (4.3.4): Skull Bash is the new baseline Cat interrupt; fall back to Bash on older books.
+    static ActionNode* skull_bash_cat([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "skull bash (cat)",
+            /*P*/ {},
+            /*A*/ { NextAction("bash") },
+            /*C*/ {}
+        );
+    }
+
 };
 
 CatDruidStrategy::CatDruidStrategy(PlayerbotAI* botAI) : FeralDruidStrategy(botAI)
@@ -165,6 +177,14 @@ void CatDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     FeralDruidStrategy::InitTriggers(triggers);
 
+    // ShatterCore 4.3.4: Skull Bash (Cat) is the baseline interrupt (replaces Bash for kicks).
+    triggers.push_back(
+        new TriggerNode(
+            "skull bash (cat)", {
+                NextAction("skull bash (cat)", 42.0f)
+            }
+        )
+    );
     triggers.push_back(
         new TriggerNode(
             "healer low mana", {

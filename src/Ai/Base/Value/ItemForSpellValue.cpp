@@ -6,6 +6,7 @@
 #include "ItemForSpellValue.h"
 
 #include "Playerbots.h"
+#include "TradeData.h"
 
 #ifndef WIN32
 inline int strcmpi(char const* s1, char const* s2)
@@ -51,10 +52,10 @@ Item* ItemForSpellValue::Calculate()
     if (!(spellInfo->Targets & TARGET_FLAG_ITEM))
         return nullptr;
 
-    if (!strcmpi(spellInfo->SpellName[0], "disenchant"))
+    if (!strcmpi(spellInfo->SpellName, "disenchant"))
         return nullptr;
 
-    if (!strcmpi(spellInfo->SpellName[0], "pick lock"))
+    if (!strcmpi(spellInfo->SpellName, "pick lock"))
         return nullptr;
 
     for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; slot++)

@@ -28,6 +28,10 @@ public:
         creators["seed of corruption"] = &seed_of_corruption;
         creators["rain of fire"] = &rain_of_fire;
         creators["demon charge"] = &demon_charge;
+        creators["hand of gul'dan"] = &hand_of_guldan;
+        creators["bane of doom"] = &bane_of_doom;
+        creators["demon soul"] = &demon_soul;
+        creators["dark intent"] = &dark_intent;
     }
 
 private:
@@ -47,6 +51,10 @@ private:
     static ActionNode* seed_of_corruption(PlayerbotAI*) { return new ActionNode("seed of corruption", {}, {}, {}); }
     static ActionNode* rain_of_fire(PlayerbotAI*) { return new ActionNode("rain of fire", {}, {}, {}); }
     static ActionNode* demon_charge(PlayerbotAI*) { return new ActionNode("demon charge", {}, {}, {}); }
+    static ActionNode* hand_of_guldan(PlayerbotAI*) { return new ActionNode("hand of gul'dan", {}, {}, {}); }
+    static ActionNode* bane_of_doom(PlayerbotAI*) { return new ActionNode("bane of doom", {}, {}, {}); }
+    static ActionNode* demon_soul(PlayerbotAI*) { return new ActionNode("demon soul", {}, {}, {}); }
+    static ActionNode* dark_intent(PlayerbotAI*) { return new ActionNode("dark intent", {}, {}, {}); }
 };
 
 // ===== Single Target Strategy =====
@@ -55,15 +63,14 @@ DemonologyWarlockStrategy::DemonologyWarlockStrategy(PlayerbotAI* botAI) : Gener
     actionNodeFactories.Add(new DemonologyWarlockStrategyActionNodeFactory());
 }
 
-// ===== Default Actions =====
+// ===== Default Actions (fillers) =====
+// 4.3.4 Demonology filler: Shadow Bolt when no proc/maintenance step is due.
 std::vector<NextAction> DemonologyWarlockStrategy::getDefaultActions()
 {
     return {
-       NextAction("corruption", 5.5f),
-       NextAction("immolate", 5.4f),
-       NextAction("shadow bolt", 5.3f),
-       NextAction("incinerate", 5.2f),
-       NextAction("shoot", 5.0f) };
+        NextAction("shadow bolt", ACTION_DEFAULT + 0.2f),
+        NextAction("shoot", ACTION_DEFAULT)
+    };
 }
 
 // ===== Trigger Initialization ===
@@ -71,102 +78,39 @@ void DemonologyWarlockStrategy::InitTriggers(std::vector<TriggerNode*>& triggers
 {
     GenericWarlockStrategy::InitTriggers(triggers);
 
-    // High priority cooldowns
-    triggers.push_back(
-        new TriggerNode(
-            "metamorphosis",
-            {
-                NextAction("metamorphosis", 28.5f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "demonic empowerment",
-            {
-                NextAction("demonic empowerment", 28.0f)
-            }
-        )
-    );
+    // 4.3.4 Demonology single-target priority (class reference doc section 11.2):
+    // Hand of Gul'dan on CD > maintain Immolate/Corruption/Bane of Doom > Metamorphosis CD >
+    // Soul Fire during Decimation (<25%) > Incinerate during Molten Core procs > Shadow Bolt filler.
 
-    // Main DoT triggers for high uptime
-    triggers.push_back(
-        new TriggerNode(
-            "corruption on attacker",
-            {
-                NextAction("corruption on attacker", 19.5f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "immolate on attacker",
-            {
-                NextAction("immolate on attacker", 19.0f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "corruption",
-            {
-                NextAction("corruption", 18.0f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "immolate",
-            {
-                NextAction("immolate", 17.5f)
-            }
-        )
-    );
+    // Dark Intent self-buff.
+    triggers.push_back(new TriggerNode("dark intent", { NextAction("dark intent", ACTION_HIGH + 8) }));
 
-    // Procs
-    triggers.push_back(
-        new TriggerNode(
-            "decimation",
-            {
-                NextAction("soul fire", 17.0f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "molten core",
-            {
-                NextAction("incinerate", 16.5f)
-            }
-        )
-    );
+    // Metamorphosis burst cooldown (paired with Demon Soul).
+    triggers.push_back(new TriggerNode("metamorphosis", { NextAction("metamorphosis", ACTION_HIGH + 7) }));
+    triggers.push_back(new TriggerNode("demon soul", { NextAction("demon soul", ACTION_NORMAL + 4) }));
 
-    // Life Tap glyph buff, and Life Tap as filler
-    triggers.push_back(
-        new TriggerNode(
-            "life tap glyph buff",
-            {
-                NextAction("life tap", 29.5f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "life tap",
-            {
-                NextAction("life tap", 5.1f)
-            }
-        )
-    );
+    // Keep the Felguard empowered (Demonic Empowerment off cooldown).
+    triggers.push_back(new TriggerNode("demonic empowerment", { NextAction("demonic empowerment", ACTION_HIGH + 6) }));
 
-    triggers.push_back(
-        new TriggerNode(
-            "meta melee flee check",
-            {
-                NextAction("flee", 39.0f)
-            }
-        )
-    );
+    // Hand of Gul'dan on cooldown -- core nuke.
+    triggers.push_back(new TriggerNode("hand of gul'dan", { NextAction("hand of gul'dan", ACTION_HIGH + 5) }));
+
+    // Maintain Immolate / Corruption / Bane of Doom (recast only when missing/expiring).
+    triggers.push_back(new TriggerNode("immolate on attacker", { NextAction("immolate on attacker", ACTION_HIGH + 4) }));
+    triggers.push_back(new TriggerNode("immolate", { NextAction("immolate", ACTION_HIGH + 4) }));
+    triggers.push_back(new TriggerNode("corruption on attacker", { NextAction("corruption on attacker", ACTION_HIGH + 3) }));
+    triggers.push_back(new TriggerNode("corruption", { NextAction("corruption", ACTION_HIGH + 3) }));
+    triggers.push_back(new TriggerNode("bane of doom", { NextAction("bane of doom", ACTION_HIGH + 2) }));
+
+    // Procs: Soul Fire during Decimation (execute, target < 25%); Incinerate during Molten Core (3 charges).
+    triggers.push_back(new TriggerNode("decimation", { NextAction("soul fire", ACTION_HIGH + 2) }));
+    triggers.push_back(new TriggerNode("molten core", { NextAction("incinerate", ACTION_HIGH + 1) }));
+
+    // Life Tap glyph buff and mana filler.
+    triggers.push_back(new TriggerNode("life tap glyph buff", { NextAction("life tap", ACTION_HIGH + 1) }));
+    triggers.push_back(new TriggerNode("life tap", { NextAction("life tap", ACTION_DEFAULT + 0.1f) }));
+
+    triggers.push_back(new TriggerNode("meta melee flee check", { NextAction("flee", ACTION_EMERGENCY) }));
 }
 
 // Combat strategy to run to melee for Immolation Aura

@@ -16,6 +16,9 @@
 #include "Playerbots.h"
 #include "RandomPlayerbotMgr.h"
 #include "SetCraftAction.h"
+#include "WorldSession.h"
+#include "TradeData.h"
+#include "TradePackets.h"
 
 bool TradeStatusAction::Execute(Event event)
 {
@@ -48,10 +51,8 @@ bool TradeStatusAction::Execute(Event event)
         (trader != master || !botAI->GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_ALLOW_ALL, true, master)) &&
         !traderBotAI)
     {
-        WorldPacket p;
-        uint32 status = 0;
-        p << status;
-        bot->GetSession()->HandleCancelTradeOpcode(p);
+        WorldPackets::Trade::CancelTrade cancelPacket{WorldPacket(CMSG_CANCEL_TRADE)};
+        bot->GetSession()->HandleCancelTradeOpcode(cancelPacket);
         return false;
     }
 
@@ -60,7 +61,7 @@ bool TradeStatusAction::Execute(Event event)
     uint32 status;
     p >> status;
 
-    if (status == TRADE_STATUS_TRADE_ACCEPT || (status == TRADE_STATUS_BACK_TO_TRADE && trader->GetTradeData() && trader->GetTradeData()->IsAccepted()))
+    if (status == TRADE_STATUS_TRADE_ACCEPT || (status == TRADE_STATUS_UNACCEPTED /* 3.3.5 BACK_TO_TRADE */ && trader->GetTradeData() && trader->GetTradeData()->IsAccepted()))
     {
         WorldPacket p;
         uint32 status = 0;
@@ -74,14 +75,15 @@ bool TradeStatusAction::Execute(Event event)
             {
                 Item* item = trader->GetTradeData()->GetItem((TradeSlots)slot);
                 if (item)
-                    givenItemIds[item->GetTemplate()->ItemId] += item->GetCount();
+                    givenItemIds[item->GetTemplate()->GetId()] += item->GetCount();
 
                 item = bot->GetTradeData()->GetItem((TradeSlots)slot);
                 if (item)
-                    takenItemIds[item->GetTemplate()->ItemId] += item->GetCount();
+                    takenItemIds[item->GetTemplate()->GetId()] += item->GetCount();
             }
 
-            bot->GetSession()->HandleAcceptTradeOpcode(p);
+            WorldPackets::Trade::AcceptTrade acceptPacket{WorldPacket(CMSG_ACCEPT_TRADE)};
+            bot->GetSession()->HandleAcceptTradeOpcode(acceptPacket);
             if (bot->GetTradeData())
             {
                 sRandomPlayerbotMgr.SetTradeDiscount(bot, trader, discount);
@@ -135,8 +137,8 @@ void TradeStatusAction::BeginTrade()
     if (!trader || GET_PLAYERBOT_AI(bot->GetTrader()))
         return;
 
-    WorldPacket p;
-    bot->GetSession()->HandleBeginTradeOpcode(p);
+    WorldPackets::Trade::BeginTrade beginPacket{WorldPacket(CMSG_BEGIN_TRADE)};
+    bot->GetSession()->HandleBeginTradeOpcode(beginPacket);
 
     ListItemsVisitor visitor;
     IterateItems(&visitor);
@@ -236,7 +238,7 @@ bool TradeStatusAction::CheckTrade()
     for (uint32 slot = 0; slot < TRADE_SLOT_TRADED_COUNT; ++slot)
     {
         Item* item = bot->GetTradeData()->GetItem((TradeSlots)slot);
-        if (item && !item->GetTemplate()->SellPrice && !item->GetTemplate()->IsConjuredConsumable())
+        if (item && !item->GetTemplate()->GetSellPrice() && !item->GetTemplate()->IsConjuredConsumable())
         {
             std::ostringstream out;
             botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -251,9 +253,9 @@ bool TradeStatusAction::CheckTrade()
         if (item)
         {
             std::ostringstream out;
-            out << item->GetTemplate()->ItemId;
+            out << item->GetTemplate()->GetId();
             ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", out.str());
-            if ((botMoney && !item->GetTemplate()->BuyPrice) || usage == ITEM_USAGE_NONE)
+            if ((botMoney && !item->GetTemplate()->GetBuyPrice()) || usage == ITEM_USAGE_NONE)
             {
                 std::ostringstream out;
                 botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -351,16 +353,16 @@ int32 TradeStatusAction::CalculateCost(Player* player, bool sell)
         if (!proto)
             continue;
 
-        if (proto->Quality < ITEM_QUALITY_NORMAL)
+        if (proto->GetQuality() < ITEM_QUALITY_NORMAL)
             return 0;
 
         CraftData& craftData = AI_VALUE(CraftData&, "craft");
         if (!craftData.IsEmpty())
         {
-            if (player == trader && !sell && craftData.IsRequired(proto->ItemId))
+            if (player == trader && !sell && craftData.IsRequired(proto->GetId()))
                 continue;
 
-            if (player == bot && sell && craftData.itemId == proto->ItemId && craftData.IsFulfilled())
+            if (player == bot && sell && craftData.itemId == proto->GetId() && craftData.IsFulfilled())
             {
                 sum += item->GetCount() * SetCraftAction::GetCraftFee(craftData);
                 continue;
@@ -368,10 +370,10 @@ int32 TradeStatusAction::CalculateCost(Player* player, bool sell)
         }
 
         if (sell)
-            sum += item->GetCount() * proto->SellPrice * sRandomPlayerbotMgr.GetSellMultiplier(bot);
+            sum += item->GetCount() * proto->GetSellPrice() * sRandomPlayerbotMgr.GetSellMultiplier(bot);
 
         else
-            sum += item->GetCount() * proto->BuyPrice * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
+            sum += item->GetCount() * proto->GetBuyPrice() * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
 
     }
 

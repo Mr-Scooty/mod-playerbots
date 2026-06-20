@@ -67,8 +67,10 @@ bool CastFrostNovaAction::isUseful()
 {
     Unit* target = AI_VALUE(Unit*, "current target");
     if (!target || !target->IsInWorld() || target->isFrozen() ||
+        // ShatterCore: 3.3.5a Creature::HasMechanicTemplateImmunity(mask) -> Unit::GetMechanicImmunityMask().
+        // Core builds the mask as (1 << MECHANIC_x), so use that bit convention instead of (1 << (x-1)).
         (target->ToCreature() &&
-         target->ToCreature()->HasMechanicTemplateImmunity(1 << (MECHANIC_FREEZE - 1))))
+         (target->ToCreature()->GetMechanicImmunityMask() & (1 << MECHANIC_FREEZE))))
     {
         return false;
     }

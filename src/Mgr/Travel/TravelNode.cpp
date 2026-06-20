@@ -12,9 +12,12 @@
 #include "BudgetValues.h"
 #include "PathGenerator.h"
 #include "Playerbots.h"
-#include "RaceMgr.h"
 #include "ServerFacade.h"
 #include "TransportMgr.h"
+#include "DatabaseEnv.h"
+#include "DBCStores.h"
+#include "SpellHistory.h"
+#include "Log.h"
 
 // TravelNodePath(float distance = 0.1f, float extraCost = 0, TravelNodePathType pathType = TravelNodePathType::walk,
 // uint32 pathObject = 0, bool calculated = false, std::vector<uint8> maxLevelCreature = { 0,0,0 }, float swimDistance =
@@ -56,7 +59,7 @@ void TravelNodePath::calculateCost(bool distanceOnly)
         {
             for (CreatureData const* cData : point.getCreaturesNear(50))  // Agro radius + 5
             {
-                CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(cData->id1);
+                CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(cData->id);
                 if (cInfo)
                 {
                     FactionTemplateEntry const* factionEntry = sFactionTemplateStore.LookupEntry(cInfo->faction);
@@ -119,14 +122,14 @@ float TravelNodePath::getCost(Player* bot, uint32 cGold)
             if (!taxiPath)
                 return -1;
 
-            if (!bot->isTaxiCheater() && taxiPath->price > cGold)
+            if (!bot->isTaxiCheater() && taxiPath->Cost > cGold)
                 return -1;
 
-            if (!bot->isTaxiCheater() && !bot->m_taxi.IsTaximaskNodeKnown(taxiPath->to))
+            if (!bot->isTaxiCheater() && !bot->m_taxi.IsTaximaskNodeKnown(taxiPath->ToTaxiNode))
                 return -1;
 
-            TaxiNodesEntry const* startTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->from);
-            TaxiNodesEntry const* endTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->to);
+            TaxiNodesEntry const* startTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->FromTaxiNode);
+            TaxiNodesEntry const* endTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->ToTaxiNode);
             if (!startTaxiNode || !endTaxiNode ||
                 !startTaxiNode->MountCreatureID[bot->GetTeamId() == TEAM_ALLIANCE ? 1 : 0] ||
                 !endTaxiNode->MountCreatureID[bot->GetTeamId() == TEAM_ALLIANCE ? 1 : 0])
@@ -139,7 +142,7 @@ float TravelNodePath::getCost(Player* bot, uint32 cGold)
         if (bot->HasSpell(1066))
             swimSpeed *= 1.5;
 
-        uint32 level = bot->GetLevel();
+        uint32 level = bot->getLevel();
         bool isAlliance = Unit::GetFactionReactionTo(bot->GetFactionTemplateEntry(),
                                                      sFactionTemplateStore.LookupEntry(1)) > REP_NEUTRAL;
 
@@ -183,7 +186,7 @@ uint32 TravelNodePath::getPrice()
     if (!taxiPath)
         return 0;
 
-    return taxiPath->price;
+    return taxiPath->Cost;
 }
 
 // Creates or appends the path from one node to another. Returns if the path.
@@ -1203,7 +1206,7 @@ TravelNodeRoute TravelNodeMap::getRoute(TravelNode* start, TravelNode* goal, Pla
         else
             startStub->currentGold = bot->GetMoney();
 
-        if (!bot->HasSpellCooldown(8690) && bot->IsAlive())
+        if (!bot->GetSpellHistory()->HasCooldown(8690) && bot->IsAlive())
         {
             AiObjectContext* context = botAI->GetAiObjectContext();
 
@@ -1374,7 +1377,7 @@ TravelNodeRoute TravelNodeMap::getRoute(WorldPosition startPos, WorldPosition en
         }
     }
 
-    if (bot && !bot->HasSpellCooldown(8690))
+    if (bot && !bot->GetSpellHistory()->HasCooldown(8690))
     {
         startPath.clear();
         TravelNode* botNode = TravelNodeMap::instance().teleportNodes[bot->GetGUID()][0];
@@ -1594,10 +1597,10 @@ void TravelNodeMap::generateNpcNodes()
 
     for (auto& creatureData : WorldPosition().getCreaturesNear())
     {
-        WorldPosition guidP(creatureData->mapid, creatureData->posX, creatureData->posY, creatureData->posZ,
-                            creatureData->orientation);
+        WorldPosition guidP(creatureData->mapId, creatureData->spawnPoint.GetPositionX(), creatureData->spawnPoint.GetPositionY(), creatureData->spawnPoint.GetPositionZ(),
+                            creatureData->spawnPoint.GetOrientation());
 
-        CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(creatureData->id1);
+        CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(creatureData->id);
         if (!cInfo)
             continue;
 
@@ -1662,7 +1665,7 @@ void TravelNodeMap::generateStartNodes()
     startNames[RACE_GNOME] = "Dwarf and Gnome";
     startNames[RACE_TROLL] = "Orc and Troll";
 
-    for (uint32 i = 0; i < sRaceMgr->GetMaxRaces(); i++)
+    for (uint32 i = 0; i < MAX_RACES; i++)
     {
         for (uint32 j = 0; j < MAX_CLASSES; j++)
         {
@@ -1688,13 +1691,13 @@ void TravelNodeMap::generateAreaTriggerNodes()
 
     for (auto const& itr : sObjectMgr->GetAllAreaTriggerTeleports())
     {
-        AreaTriggerTeleport const& atEntry = itr.second;
+        AreaTriggerStruct const& atEntry = itr.second;
 
-        AreaTrigger const* at = sObjectMgr->GetAreaTrigger(itr.first);
+        AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(itr.first);
         if (!at)
             continue;
 
-        WorldPosition inPos = WorldPosition(at->map, at->x, at->y, at->z, at->orientation);
+        WorldPosition inPos = WorldPosition(at->ContinentID, at->Pos.X, at->Pos.Y, at->Pos.Z, at->Box_yaw);
         WorldPosition outPos = WorldPosition(atEntry.target_mapId, atEntry.target_X, atEntry.target_Y, atEntry.target_Z,
                                              atEntry.target_Orientation);
 
@@ -1714,13 +1717,13 @@ void TravelNodeMap::generateAreaTriggerNodes()
 
     for (auto const& itr : sObjectMgr->GetAllAreaTriggerTeleports())
     {
-        AreaTriggerTeleport const& atEntry = itr.second;
+        AreaTriggerStruct const& atEntry = itr.second;
 
-        AreaTrigger const* at = sObjectMgr->GetAreaTrigger(itr.first);
+        AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(itr.first);
         if (!at)
             continue;
 
-        WorldPosition inPos = WorldPosition(at->map, at->x, at->y, at->z, at->orientation);
+        WorldPosition inPos = WorldPosition(at->ContinentID, at->Pos.X, at->Pos.Y, at->Pos.Z, at->Box_yaw);
         WorldPosition outPos = WorldPosition(atEntry.target_mapId, atEntry.target_X, atEntry.target_Y, atEntry.target_Z,
                                              atEntry.target_Orientation);
 
@@ -1757,7 +1760,7 @@ void TravelNodeMap::generateTransportNodes()
         if (!data || (data->type != GAMEOBJECT_TYPE_TRANSPORT && data->type != GAMEOBJECT_TYPE_MO_TRANSPORT))
             continue;
 
-        uint32 pathId = data->moTransport.taxiPathId;
+        uint32 pathId = data->moTransport.taxiPathID;  // ShatterCore: field renamed taxiPathId -> taxiPathID
         float moveSpeed = data->moTransport.moveSpeed;
         if (pathId >= sTaxiPathNodesByPath.size())
             continue;
@@ -1774,12 +1777,12 @@ void TravelNodeMap::generateTransportNodes()
         // Loop over the path and connect stop locations.
         for (auto& p : path)
         {
-            WorldPosition pos = WorldPosition(p->mapid, p->x, p->y, p->z, 0);
+            WorldPosition pos = WorldPosition(p->ContinentID, p->Loc.X, p->Loc.Y, p->Loc.Z, 0);
 
             if (prevNode)
                 ppath.push_back(pos);
 
-            if (p->delay > 0)
+            if (p->Delay > 0)
             {
                 TravelNode* node = TravelNodeMap::instance().addNode(pos, data->name, true, true, true, itr.first);
 
@@ -1806,10 +1809,10 @@ void TravelNodeMap::generateTransportNodes()
         // Continue from start until first stop and connect to end.
         for (auto& p : path)
         {
-            WorldPosition pos = WorldPosition(p->mapid, p->x, p->y, p->z, 0);
+            WorldPosition pos = WorldPosition(p->ContinentID, p->Loc.X, p->Loc.Y, p->Loc.Z, 0);
             ppath.push_back(pos);
 
-            if (p->delay > 0)
+            if (p->Delay > 0)
             {
                 TravelNode* node = TravelNodeMap::instance().getNode(pos, nullptr, 5.0f);
 
@@ -1909,12 +1912,12 @@ void TravelNodeMap::generateTaxiPaths()
         if (!taxiPath)
             continue;
 
-        TaxiNodesEntry const* startTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->from);
+        TaxiNodesEntry const* startTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->FromTaxiNode);
 
         if (!startTaxiNode)
             continue;
 
-        TaxiNodesEntry const* endTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->to);
+        TaxiNodesEntry const* endTaxiNode = sTaxiNodesStore.LookupEntry(taxiPath->ToTaxiNode);
 
         if (!endTaxiNode)
             continue;
@@ -1924,8 +1927,8 @@ void TravelNodeMap::generateTaxiPaths()
         if (nodes.empty())
             continue;
 
-        WorldPosition startPos(startTaxiNode->map_id, startTaxiNode->x, startTaxiNode->y, startTaxiNode->z);
-        WorldPosition endPos(endTaxiNode->map_id, endTaxiNode->x, endTaxiNode->y, endTaxiNode->z);
+        WorldPosition startPos(startTaxiNode->ContinentID, startTaxiNode->Pos.X, startTaxiNode->Pos.Y, startTaxiNode->Pos.Z);
+        WorldPosition endPos(endTaxiNode->ContinentID, endTaxiNode->Pos.X, endTaxiNode->Pos.Y, endTaxiNode->Pos.Z);
 
         TravelNode* startNode = TravelNodeMap::instance().getNode(startPos, nullptr, 15.0f);
         TravelNode* endNode = TravelNodeMap::instance().getNode(endPos, nullptr, 15.0f);
@@ -1935,8 +1938,9 @@ void TravelNodeMap::generateTaxiPaths()
 
         std::vector<WorldPosition> ppath;
 
+        // ShatterCore: TaxiPathNodeEntry coords moved into DBCPosition3D Loc (x/y/z -> Loc.X/Loc.Y/Loc.Z)
         for (auto& n : nodes)
-            ppath.push_back(WorldPosition(n->mapid, n->x, n->y, n->z, 0.0));
+            ppath.push_back(WorldPosition(n->ContinentID, n->Loc.X, n->Loc.Y, n->Loc.Z, 0.0));
 
         float totalTime = startPos.getPathLength(ppath) / (450 * 8.0f);
 
@@ -2491,11 +2495,11 @@ void TravelNodeMap::BuildTaxiGraph()
         if (!path)
             continue;
 
-        if (path->to == 0 || path->to == uint32(-1))
+        if (path->ToTaxiNode == 0 || path->ToTaxiNode == uint32(-1))
             continue;
 
-        tempGraph[path->from].insert(path->to);
-        tempGraph[path->to].insert(path->from);
+        tempGraph[path->FromTaxiNode].insert(path->ToTaxiNode);
+        tempGraph[path->ToTaxiNode].insert(path->FromTaxiNode);
     }
     for (auto const& [node, neighbors] : tempGraph)
         taxiGraph[node] = std::vector<uint32>(neighbors.begin(), neighbors.end());

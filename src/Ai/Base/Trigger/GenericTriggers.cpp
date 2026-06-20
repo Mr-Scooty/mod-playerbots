@@ -22,6 +22,8 @@
 #include "PlayerbotAI.h"
 #include "Player.h"
 #include "Corpse.h"
+#include "Map.h"
+#include "SpellHistory.h"
 
 bool LowManaTrigger::IsActive()
 {
@@ -125,7 +127,7 @@ bool OutNumberedTrigger::IsActive()
     if (bot->GetGroup() && bot->GetGroup()->isRaidGroup())
         return false;
 
-    int32 botLevel = bot->GetLevel();
+    int32 botLevel = bot->getLevel();
     uint32 friendPower = 200;
     uint32 foePower = 0;
     for (auto& attacker : botAI->GetAiObjectContext()->GetValue<GuidVector>("attackers")->Get())
@@ -134,7 +136,7 @@ bool OutNumberedTrigger::IsActive()
         if (!creature)
             continue;
 
-        int32 dLevel = creature->GetLevel() - botLevel;
+        int32 dLevel = creature->getLevel() - botLevel;
         if (dLevel > -10)
             foePower = std::max(100 + 10 * dLevel, dLevel * 200);
     }
@@ -148,7 +150,7 @@ bool OutNumberedTrigger::IsActive()
         if (!player || player == bot)
             continue;
 
-        int32 dLevel = player->GetLevel() - botLevel;
+        int32 dLevel = player->getLevel() - botLevel;
 
         if (dLevel > -10 && bot->GetDistance(player) < 10.0f)
             friendPower += std::max(200 + 20 * dLevel, dLevel * 200);
@@ -229,7 +231,7 @@ bool LowTankThreatTrigger::IsActive()
     if (!current_target)
         return false;
 
-    ThreatManager& mgr = current_target->GetThreatMgr();
+    ThreatManager& mgr = current_target->GetThreatManager();
     float threat = mgr.GetThreat(bot);
     float tankThreat = mgr.GetThreat(mainTank);
     return tankThreat == 0.0f || threat > tankThreat * 0.5f;
@@ -308,7 +310,7 @@ bool SpellNoCooldownTrigger::IsActive()
     if (!spellId)
         return false;
 
-    return !bot->HasSpellCooldown(spellId);
+    return !bot->GetSpellHistory()->HasCooldown(spellId);
 }
 
 bool SpellCooldownTrigger::IsActive()
@@ -317,7 +319,7 @@ bool SpellCooldownTrigger::IsActive()
     if (!spellId)
         return false;
 
-    return bot->HasSpellCooldown(spellId);
+    return bot->GetSpellHistory()->HasCooldown(spellId);
 }
 
 RandomTrigger::RandomTrigger(PlayerbotAI* botAI, std::string const name, int32 probability)
@@ -706,7 +708,7 @@ Value<Unit*>* BuffOnMainTankTrigger::GetTargetValue() { return context->GetValue
 
 bool AmmoCountTrigger::IsActive()
 {
-    if (bot->GetUInt32Value(PLAYER_AMMO_ID) != 0)
+    if (uint32(0) /* 4.3.4: ammo removed */ != 0)
         return ItemCountTrigger::IsActive();  // Ammo already equipped
 
     if (botAI->FindAmmo())

@@ -78,11 +78,17 @@ public:
         creators["tricks of the trade on main tank"] = &RogueTriggerFactoryInternal::tricks_of_the_trade_on_main_tank;
         creators["adrenaline rush"] = &RogueTriggerFactoryInternal::adrenaline_rush;
         creators["blade fury"] = &RogueTriggerFactoryInternal::blade_fury;
+        creators["recuperate"] = &RogueTriggerFactoryInternal::recuperate;
+        creators["revealing strike"] = &RogueTriggerFactoryInternal::revealing_strike;
+        creators["vendetta"] = &RogueTriggerFactoryInternal::vendetta;
     }
 
 private:
     static Trigger* adrenaline_rush(PlayerbotAI* botAI) { return new AdrenalineRushTrigger(botAI); }
     static Trigger* blade_fury(PlayerbotAI* botAI) { return new BladeFuryTrigger(botAI); }
+    static Trigger* recuperate(PlayerbotAI* botAI) { return new RecuperateTrigger(botAI); }
+    static Trigger* revealing_strike(PlayerbotAI* botAI) { return new RevealingStrikeTrigger(botAI); }
+    static Trigger* vendetta(PlayerbotAI* botAI) { return new VendettaTrigger(botAI); }
     static Trigger* kick(PlayerbotAI* botAI) { return new KickInterruptSpellTrigger(botAI); }
     static Trigger* rupture(PlayerbotAI* botAI) { return new RuptureTrigger(botAI); }
     static Trigger* slice_and_dice(PlayerbotAI* botAI) { return new SliceAndDiceTrigger(botAI); }
@@ -144,6 +150,10 @@ public:
         creators["fan of knives"] = &RogueAiObjectContextInternal::fan_of_knives;
         creators["killing spree"] = &RogueAiObjectContextInternal::killing_spree;
         creators["cold blood"] = &RogueAiObjectContextInternal::cold_blood;
+        creators["recuperate"] = &RogueAiObjectContextInternal::recuperate;
+        creators["revealing strike"] = &RogueAiObjectContextInternal::revealing_strike;
+        creators["hemorrhage"] = &RogueAiObjectContextInternal::hemorrhage;
+        creators["vendetta"] = &RogueAiObjectContextInternal::vendetta;
     }
 
 private:
@@ -186,6 +196,10 @@ private:
     static Action* fan_of_knives(PlayerbotAI* ai) { return new FanOfKnivesAction(ai); }
     static Action* killing_spree(PlayerbotAI* ai) { return new CastKillingSpreeAction(ai); }
     static Action* cold_blood(PlayerbotAI* ai) { return new CastColdBloodAction(ai); }
+    static Action* recuperate(PlayerbotAI* ai) { return new CastRecuperateAction(ai); }
+    static Action* revealing_strike(PlayerbotAI* ai) { return new CastRevealingStrikeAction(ai); }
+    static Action* hemorrhage(PlayerbotAI* ai) { return new CastHemorrhageAction(ai); }
+    static Action* vendetta(PlayerbotAI* ai) { return new CastVendettaAction(ai); }
 };
 
 SharedNamedObjectContextList<Strategy> RogueAiObjectContext::sharedStrategyContexts;

@@ -19,8 +19,10 @@ public:
         creators["entangling roots on cc"] = &entangling_roots_on_cc;
         creators["wrath"] = &wrath;
         creators["starfall"] = &starfall;
+        creators["starsurge"] = &starsurge;
         creators["insect swarm"] = &insect_swarm;
         creators["moonfire"] = &moonfire;
+        creators["sunfire"] = &sunfire;
         creators["starfire"] = &starfire;
         creators["moonkin form"] = &moonkin_form;
         creators["typhoon"] = &typhoon;
@@ -90,6 +92,16 @@ private:
         );
     }
 
+    static ActionNode* starsurge([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "starsurge",
+            /*P*/ { NextAction("moonkin form") },
+            /*A*/ {},
+            /*C*/ {}
+        );
+    }
+
     static ActionNode* insect_swarm([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode(
@@ -106,6 +118,17 @@ private:
             "moonfire",
             /*P*/ { NextAction("moonkin form") },
             /*A*/ {},
+            /*C*/ {}
+        );
+    }
+
+    // Sunfire is Moonfire's Solar-Eclipse form; if the bot's book doesn't expose it yet, fall back to Moonfire.
+    static ActionNode* sunfire([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "sunfire",
+            /*P*/ { NextAction("moonkin form") },
+            /*A*/ { NextAction("moonfire") },
             /*C*/ {}
         );
     }
@@ -179,9 +202,14 @@ BalanceDruidStrategy::BalanceDruidStrategy(PlayerbotAI* botAI) : GenericDruidStr
 
 std::vector<NextAction> BalanceDruidStrategy::getDefaultActions()
 {
+    // ShatterCore 4.3.4 Balance single-target filler. The Eclipse state machine is driven by Wrath/Starfire's
+    // isUseful(): Wrath is the Solar-heading filler, Starfire the Lunar-heading filler. Each blocks itself while
+    // the opposite Eclipse window is active, so listing both here lets the bot always cast the correct one to
+    // push the bar toward the next Eclipse. Starsurge (a separate high-priority trigger) and the DoTs out-rank
+    // these fillers.
     return {
-        NextAction("starfire", 5.4f),
-        NextAction("wrath", 5.3f),
+        NextAction("starfire", 5.4f),  // Lunar-heading filler (self-blocks during Solar)
+        NextAction("wrath", 5.3f),     // Solar-heading filler (self-blocks during Lunar)
     };
 }
 
@@ -189,16 +217,29 @@ void BalanceDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     GenericDruidStrategy::InitTriggers(triggers);
 
-    // Debuffs and DoTs
+    // ShatterCore 4.3.4 Balance single-target priority (class reference 12.1):
+    // 1. Keep Insect Swarm + Moonfire/Sunfire up (re-snapshot on Eclipse entry).
+    // 2. Starsurge on cooldown (and free Shooting Stars instant procs).
+    // 3. Filler per Eclipse state machine (Wrath toward Solar / Starfire toward Lunar) -- from getDefaultActions().
+
+    // Armor debuff.
     triggers.push_back(new TriggerNode("faerie fire", { NextAction("faerie fire", 29.5f) }));
+
+    // Starsurge on cooldown -- the highest-priority nuke; pushes the bar in the current direction.
+    triggers.push_back(new TriggerNode("starsurge", { NextAction("starsurge", 19.0f) }));
+
+    // Maintain DoTs. Sunfire is the Solar-Eclipse Moonfire (same in-game button); its trigger only fires while
+    // Solar Eclipse is up, otherwise the plain Moonfire trigger maintains the Lunar/neutral DoT.
     triggers.push_back(new TriggerNode("insect swarm", { NextAction("insect swarm", 18.0f) }));
+    triggers.push_back(new TriggerNode("sunfire", { NextAction("sunfire", 17.6f) }));
     triggers.push_back(new TriggerNode("moonfire", { NextAction("moonfire", 17.5f) }));
 
-    // Eclipse procs
+    // Eclipse: cast the empowered filler while the Eclipse buff is up (this also feeds the Eclipse-timing values
+    // that Wrath/Starfire isUseful() read).
     triggers.push_back(new TriggerNode("eclipse (solar)", { NextAction("wrath", 20.0f) }));
     triggers.push_back(new TriggerNode("eclipse (lunar)", { NextAction("starfire", 20.0f) }));
 
-    // Utility/Defensive
+    // Utility/Defensive.
     triggers.push_back(new TriggerNode("medium mana", { NextAction("innervate", 29.0f) }));
     triggers.push_back(new TriggerNode("enemy too close for spell", { NextAction("flee", 39.0f) }));
 }

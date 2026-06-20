@@ -64,6 +64,46 @@ public:
     uint8 Calculate() override;
 };
 
+// ShatterCore: Holy Power (Paladin, 4.3.4) -- 0..3 charges read from POWER_HOLY_POWER.
+class HolyPowerValue : public Uint8CalculatedValue, public Qualified
+{
+public:
+    HolyPowerValue(PlayerbotAI* botAI, std::string const name = "holy power") : Uint8CalculatedValue(botAI, name) {}
+
+    Unit* GetTarget();
+    uint8 Calculate() override;
+};
+
+// ShatterCore (4.3.4): Cataclysm class resources read directly from their POWER_* type. (Shadow Orbs, Eclipse
+// and DK Runes are special-cased per spec -- aura stacks / a signed power / per-rune counts, not a plain pool --
+// so those are added in the owning class's own value files.)
+class FocusValue : public Uint8CalculatedValue, public Qualified  // Hunter (replaces mana in Cata)
+{
+public:
+    FocusValue(PlayerbotAI* botAI, std::string const name = "focus") : Uint8CalculatedValue(botAI, name) {}
+
+    Unit* GetTarget();
+    uint8 Calculate() override;
+};
+
+class SoulShardsValue : public Uint8CalculatedValue, public Qualified  // Warlock
+{
+public:
+    SoulShardsValue(PlayerbotAI* botAI, std::string const name = "soul shards") : Uint8CalculatedValue(botAI, name) {}
+
+    Unit* GetTarget();
+    uint8 Calculate() override;
+};
+
+class RunicPowerValue : public Uint8CalculatedValue, public Qualified  // Death Knight (0..130)
+{
+public:
+    RunicPowerValue(PlayerbotAI* botAI, std::string const name = "runic power") : Uint8CalculatedValue(botAI, name) {}
+
+    Unit* GetTarget();
+    uint8 Calculate() override;
+};
+
 class ManaValue : public Uint8CalculatedValue, public Qualified
 {
 public:

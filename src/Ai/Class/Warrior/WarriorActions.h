@@ -71,6 +71,13 @@ BUFF_ACTION(CastSweepingStrikesAction, "sweeping strikes");
 // arms talents 3.3.5
 MELEE_ACTION(CastBladestormAction, "bladestorm");
 
+// ShatterCore (4.3.4): Colossus Smash -- shared Arms/Fury armor-ignore cooldown to weave big hits inside.
+MELEE_ACTION(CastColossusSmashAction, "colossus smash");
+// ShatterCore (4.3.4): Heroic Leap -- AoE gap-closer / opener (new in Cataclysm).
+REACH_ACTION(CastHeroicLeapAction, "heroic leap", 8.0f);
+// ShatterCore (4.3.4): Inner Rage -- short self-buff that increases damage while dumping high rage.
+BUFF_ACTION(CastInnerRageAction, "inner rage");
+
 // fury
 MELEE_ACTION(CastCleaveAction, "cleave");
 MELEE_ACTION(CastExecuteAction, "execute");
@@ -100,6 +107,8 @@ BUFF_ACTION(CastHeroicFuryAction, "heroic fury");
 BUFF_ACTION(CastDeathWishAction, "death wish");
 BUFF_ACTION(CastRecklessnessAction, "recklessness");
 MELEE_ACTION(CastBloodthirstAction, "bloodthirst");
+// ShatterCore (4.3.4 Fury): Raging Blow -- only usable while Enraged (Bloodthirst crit / Berserker Rage / Death Wish).
+MELEE_ACTION(CastRagingBlowAction, "raging blow");
 DEBUFF_ACTION_R(CastPiercingHowlAction, "piercing howl", 8.0f);
 // fury talents 2.4.3
 BUFF_ACTION(CastRampageAction, "rampage");

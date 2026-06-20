@@ -10,6 +10,9 @@
 #include "BattlegroundWS.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
+#include "DBCStores.h"
+#include "Map.h"
 
 Unit* FlagCarrierValue::Calculate()
 {
@@ -128,7 +131,7 @@ CreatureData const* BgMasterValue::NearestBm(bool allowDead)
         if (!bmPair)
             continue;
 
-        WorldPosition bmPos(bmPair->mapid, bmPair->posX, bmPair->posY, bmPair->posZ, bmPair->orientation);
+        WorldPosition bmPos(bmPair->mapId, bmPair->spawnPoint.GetPositionX(), bmPair->spawnPoint.GetPositionY(), bmPair->spawnPoint.GetPositionZ(), bmPair->spawnPoint.GetOrientation());
 
         float dist = botPos.distance(bmPos);  // This is the aproximate travel distance.
 
@@ -136,7 +139,7 @@ CreatureData const* BgMasterValue::NearestBm(bool allowDead)
         if (rbmPair && rDist <= dist)
             continue;
 
-        CreatureTemplate const* bmTemplate = sObjectMgr->GetCreatureTemplate(bmPair->id1);
+        CreatureTemplate const* bmTemplate = sObjectMgr->GetCreatureTemplate(bmPair->id);
         if (!bmTemplate)
             continue;
 
@@ -152,9 +155,9 @@ CreatureData const* BgMasterValue::NearestBm(bool allowDead)
             continue;
 
         // Is the area hostile?
-        if (area->team == 4 && bot->GetTeamId() == TEAM_ALLIANCE)
+        if (area->FactionGroupMask == 4 && bot->GetTeamId() == TEAM_ALLIANCE)
             continue;
-        if (area->team == 2 && bot->GetTeamId() == TEAM_HORDE)
+        if (area->FactionGroupMask == 2 && bot->GetTeamId() == TEAM_HORDE)
             continue;
 
         if (!allowDead)
@@ -165,7 +168,7 @@ CreatureData const* BgMasterValue::NearestBm(bool allowDead)
                 continue;
 
             // Is the unit dead?
-            if (unit->getDeathState() == DeathState::Dead)
+            if (unit->getDeathState() == DEAD)
                 continue;
         }
 
@@ -191,7 +194,7 @@ BattlegroundTypeId RpgBgTypeValue::Calculate()
             if (!bg)
                 continue;
 
-            if (bot->GetLevel() < bg->GetMinLevel())
+            if (bot->getLevel() < bg->GetMinLevel())
                 continue;
 
             // check if already in queue

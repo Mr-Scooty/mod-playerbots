@@ -13,6 +13,13 @@
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
+#include "DBCStores.h"
+
+// AzerothCore Battleground.h constant not present in ShatterCore
+constexpr uint32 TIME_TO_AUTOREMOVE = 120000;
 
 bool BGJoinAction::Execute(Event /*event*/)
 {
@@ -31,7 +38,7 @@ bool BGJoinAction::Execute(Event /*event*/)
             return false;
 
         uint32 mapId = bg->GetMapId();
-        PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, bot->GetLevel());
+        PvPDifficultyEntry const* pvpDiff = sDBCManager.GetBattlegroundBracketByLevel(mapId, bot->getLevel());
         if (!pvpDiff)
             return false;
 
@@ -158,7 +165,7 @@ bool BGJoinAction::gatherArenaTeam(ArenaType type)
         if (!member)
             continue;
 
-        if (member->GetLevel() < 70)
+        if (member->getLevel() < 70)
             continue;
 
         if (!group->AddMember(member))
@@ -169,7 +176,7 @@ bool BGJoinAction::gatherArenaTeam(ArenaType type)
             continue;
 
         memberBotAI->Reset();
-        member->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+        member->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
         member->TeleportTo(bot->GetMapId(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(), 0);
 
         LOG_INFO("playerbots", "Bot {} <{}>: Member of <{}>", member->GetGUID().ToString().c_str(),
@@ -208,7 +215,7 @@ bool BGJoinAction::canJoinBg(BattlegroundQueueTypeId queueTypeId, BattlegroundBr
     // check if the bracket exists for the bot's level for the specific Battleground/Arena type
     Battleground* bg = sBattlegroundMgr->GetBattlegroundTemplate(bgTypeId);
     uint32 mapId = bg->GetMapId();
-    PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, bot->GetLevel());
+    PvPDifficultyEntry const* pvpDiff = sDBCManager.GetBattlegroundBracketByLevel(mapId, bot->getLevel());
     if (!pvpDiff)
         return false;
 
@@ -327,7 +334,7 @@ bool BGJoinAction::isUseful()
         return false;
 
     // check level
-    if (bot->GetLevel() < 10)
+    if (bot->getLevel() < 10)
         return false;
 
     // do not try if with player master
@@ -343,7 +350,7 @@ bool BGJoinAction::isUseful()
         return false;
 
     // check Deserter debuff
-    if (bot->IsDeserter())
+    if (bot->HasAura(26013))
         return false;
 
     // check if has free queue slots (pointless as already making sure not in queue)
@@ -396,7 +403,7 @@ bool BGJoinAction::JoinQueue(uint32 type)
         return false;
 
     uint32 mapId = bg->GetMapId();
-    PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, bot->GetLevel());
+    PvPDifficultyEntry const* pvpDiff = sDBCManager.GetBattlegroundBracketByLevel(mapId, bot->getLevel());
     if (!pvpDiff)
         return false;
 
@@ -503,7 +510,7 @@ bool BGJoinAction::JoinQueue(uint32 type)
     }
 
     LOG_INFO("playerbots", "Bot {} {}:{} <{}> queued {} {}", bot->GetGUID().ToString().c_str(),
-             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str(), _bgType.c_str(),
+             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName().c_str(), _bgType.c_str(),
              isRated   ? "Rated Arena"
              : isArena ? "Arena"
                        : "");
@@ -670,7 +677,7 @@ bool BGLeaveAction::Execute(Event /*event*/)
         return false;
 
     LOG_INFO("playerbots", "Bot {} {}:{} <{}> leaves {} queue", bot->GetGUID().ToString().c_str(),
-             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str(),
+             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName().c_str(),
              isArena ? "Arena" : "BG");
 
     WorldPacket packet(CMSG_BATTLEFIELD_PORT, 20);
@@ -714,10 +721,10 @@ bool BGStatusAction::LeaveBG(PlayerbotAI* botAI)
     botAI->ChangeStrategy("-arena", BOT_STATE_NON_COMBAT);
 
     LOG_INFO("playerbots", "Bot {} {}:{} <{}> leaves {}", bot->GetGUID().ToString().c_str(),
-             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName(),
+             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName(),
              isArena ? "Arena" : "BG");
 
-    WorldPacket packet(CMSG_LEAVE_BATTLEFIELD);
+    WorldPacket packet(CMSG_BATTLEFIELD_LEAVE);
     packet << uint8(0);
     packet << uint8(0);  // BattlegroundTypeId-1 ?
     packet << uint32(0);
@@ -800,7 +807,7 @@ bool BGStatusAction::Execute(Event event)
     BattlegroundBracketId bracketId;
     Battleground* bg = sBattlegroundMgr->GetBattlegroundTemplate(_bgTypeId);
     mapId = bg->GetMapId();
-    PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, bot->GetLevel());
+    PvPDifficultyEntry const* pvpDiff = sDBCManager.GetBattlegroundBracketByLevel(mapId, bot->getLevel());
     if (pvpDiff)
         bracketId = pvpDiff->GetBracketId();
 
@@ -864,7 +871,7 @@ bool BGStatusAction::Execute(Event event)
     if (Time1 == TIME_TO_AUTOREMOVE)  // Battleground is over, bot needs to leave
     {
         LOG_INFO("playerbots", "Bot {} <{}> ({} {}): Received BG status TIME_TO_AUTOREMOVE for {} {}",
-                 bot->GetGUID().ToString().c_str(), bot->GetName(), bot->GetLevel(),
+                 bot->GetGUID().ToString().c_str(), bot->GetName(), bot->getLevel(),
                  bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", isArena ? "Arena" : "BG", _bgType);
 
         if (LeaveBG(botAI))
@@ -874,7 +881,7 @@ bool BGStatusAction::Execute(Event event)
     if (statusid == STATUS_WAIT_QUEUE)  // bot is in queue
     {
         LOG_INFO("playerbots", "Bot {} {}:{} <{}>: Received BG status WAIT_QUEUE (wait time: {}) for {} {}",
-                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                  bot->GetName(), Time2, isArena ? "Arena" : "BG", _bgType);
         // temp fix for crash
         // return true;
@@ -892,11 +899,11 @@ bool BGStatusAction::Execute(Event event)
                 {
                     if (isArena)
                     {
-                        _bgTypeId = bg->GetBgTypeID();
+                        _bgTypeId = bg->GetTypeID();
                     }
 
                     LOG_INFO("playerbots", "Bot {} {}:{} <{}>: Force join {} {}", bot->GetGUID().ToString().c_str(),
-                             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName(),
+                             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName(),
                              isArena ? "Arena" : "BG", _bgType);
                     WorldPacket emptyPacket;
                     bot->GetSession()->HandleCancelMountAuraOpcode(emptyPacket);
@@ -953,7 +960,7 @@ bool BGStatusAction::Execute(Event event)
                 return false;
 
             LOG_INFO("playerbots", "Bot {} {}:{} <{}> waited too long and leaves queue ({} {}).",
-                     bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                     bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                      bot->GetName(), isArena ? "Arena" : "BG", _bgType);
 
             WorldPacket packet(CMSG_BATTLEFIELD_PORT, 20);
@@ -973,7 +980,7 @@ bool BGStatusAction::Execute(Event event)
     if (statusid == STATUS_IN_PROGRESS)  // placeholder for Leave BG if it takes too long
     {
         LOG_INFO("playerbots", "Bot {} {}:{} <{}>: Received BG status IN_PROGRESS for {} {}",
-                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                  bot->GetName(), isArena ? "Arena" : "BG", _bgType);
         return false;
     }
@@ -981,7 +988,7 @@ bool BGStatusAction::Execute(Event event)
     if (statusid == STATUS_WAIT_JOIN)  // bot may join
     {
         LOG_INFO("playerbots", "Bot {} {}:{} <{}>: Received BG status WAIT_JOIN for {} {}",
-                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                 bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                  bot->GetName(), isArena ? "Arena" : "BG", _bgType);
 
         if (isArena)
@@ -994,7 +1001,7 @@ bool BGStatusAction::Execute(Event event)
             {
                 LOG_ERROR("playerbots", "Bot {} {}:{} <{}>: Missing QueueInfo for {} {}",
                           bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H",
-                          bot->GetLevel(), bot->GetName(), isArena ? "Arena" : "BG", _bgType);
+                          bot->getLevel(), bot->GetName(), isArena ? "Arena" : "BG", _bgType);
                 return false;
             }
 
@@ -1007,16 +1014,16 @@ bool BGStatusAction::Execute(Event event)
                 {
                     LOG_ERROR("playerbots", "Bot {} {}:{} <{}>: Missing QueueInfo for {} {}",
                               bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H",
-                              bot->GetLevel(), bot->GetName(), isArena ? "Arena" : "BG", _bgType);
+                              bot->getLevel(), bot->GetName(), isArena ? "Arena" : "BG", _bgType);
                     return false;
                 }
 
-                _bgTypeId = bg->GetBgTypeID();
+                _bgTypeId = bg->GetTypeID();
             }
         }
 
         LOG_INFO("playerbots", "Bot {} {}:{} <{}> joined {} - {}", bot->GetGUID().ToString().c_str(),
-                 bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName(),
+                 bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName(),
                  isArena ? "Arena" : "BG", _bgType);
 
         WorldPacket emptyPacket;
@@ -1059,7 +1066,7 @@ bool BGStatusCheckAction::Execute(Event /*event*/)
     bot->GetSession()->HandleBattlefieldStatusOpcode(packet);
 
     LOG_INFO("playerbots", "Bot {} <{}> ({} {}) : Checking BG invite status", bot->GetGUID().ToString().c_str(),
-             bot->GetName(), bot->GetLevel(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H");
+             bot->GetName(), bot->getLevel(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H");
 
     return true;
 }

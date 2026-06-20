@@ -9,6 +9,7 @@
 #include "LastMovementValue.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
+#include "MotionMaster.h"
 
 bool StayActionBase::Stay()
 {

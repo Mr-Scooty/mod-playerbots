@@ -9,6 +9,8 @@
 #include <stdexcept>
 
 #include "Playerbots.h"
+#include "DatabaseEnv.h"
+#include "Log.h"
 
 std::map<std::string, std::string> CustomStrategy::actionLinesCache;
 

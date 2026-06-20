@@ -61,8 +61,8 @@ float EstimatedGroupDpsValue::Calculate()
             roleMultiplier = 0.1f;
         else
             roleMultiplier = 1.0f;
-        float basicDps = GetBasicDps(player->GetLevel());
-        float basicGs = GetBasicGs(player->GetLevel());
+        float basicDps = GetBasicDps(player->getLevel());
+        float basicGs = GetBasicGs(player->getLevel());
         uint32 mixedGearScore = PlayerbotAI::GetMixedGearScore(player, true, false, 12);
         float gs_modifier = (float)mixedGearScore / basicGs;
         // bonus for wotlk epic gear

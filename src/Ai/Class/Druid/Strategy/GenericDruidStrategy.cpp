@@ -237,11 +237,17 @@ void DruidAoeStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     if (tab == DRUID_TAB_BALANCE)
     {
+        // ShatterCore 4.3.4 Balance AoE (class reference 12.1): Starfall on CD, Wild Mushroom x3 + Detonate,
+        // Hurricane channel, multi-DoT at 2-3 targets (Sunfire during Solar, else Moonfire).
         triggers.push_back(new TriggerNode("hurricane channel check", { NextAction("cancel channel", 22.0f) }));
         triggers.push_back(new TriggerNode("starfall", { NextAction("starfall", 28.5f) }));
-        triggers.push_back(new TriggerNode("medium aoe", { NextAction("hurricane", 23.0f) }));
+        triggers.push_back(new TriggerNode("medium aoe", {
+            NextAction("wild mushroom: detonate", 23.5f),
+            NextAction("hurricane", 23.0f)
+        }));
         triggers.push_back(new TriggerNode("enemy within melee", { NextAction("typhoon", 40.0f) }));
         triggers.push_back(new TriggerNode("insect swarm on attacker", { NextAction("insect swarm on attacker", 5.2f) }));
+        triggers.push_back(new TriggerNode("sunfire on attacker", { NextAction("sunfire on attacker", 5.15f) }));
         triggers.push_back(new TriggerNode("moonfire on attacker", { NextAction("moonfire on attacker", 5.1f) }));
     }
 

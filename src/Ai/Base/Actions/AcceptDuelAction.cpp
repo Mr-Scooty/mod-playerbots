@@ -7,6 +7,7 @@
 
 #include "Event.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 bool AcceptDuelAction::Execute(Event event)
 {

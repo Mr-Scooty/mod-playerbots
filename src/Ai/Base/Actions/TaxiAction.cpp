@@ -11,6 +11,8 @@
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
 #include "Config.h"
+#include "ObjectAccessor.h"
+#include "DBCStores.h"
 
 bool TaxiAction::Execute(Event event)
 {
@@ -20,7 +22,7 @@ bool TaxiAction::Execute(Event event)
 
     WorldPacket& p = event.getPacket();
     std::string const param = event.getParam();
-    if ((!p.empty() && (p.GetOpcode() == CMSG_TAXICLEARALLNODES || p.GetOpcode() == CMSG_TAXICLEARNODE)) ||
+    if ((!p.empty() && (p.GetOpcode() == CMSG_TAXICLEARALLNODES || p.GetOpcode() == CMSG_TAXICLEARALLNODES)) ||
         param == "clear")
     {
         movement.taxiNodes.clear();
@@ -37,7 +39,7 @@ bool TaxiAction::Execute(Event event)
         if (!npc || !npc->IsAlive())
             continue;
 
-        if (!(npc->GetNpcFlags() & UNIT_NPC_FLAG_FLIGHTMASTER))
+        if (!(npc->GetUInt32Value(UNIT_NPC_FLAGS) & UNIT_NPC_FLAG_FLIGHTMASTER))
             continue;
 
         if (bot->GetDistance(npc) > sPlayerbotAIConfig.farDistance)
@@ -50,7 +52,7 @@ bool TaxiAction::Execute(Event event)
         for (uint32 i = 0; i < sTaxiPathStore.GetNumRows(); ++i)
         {
             if (TaxiPathEntry const* entry = sTaxiPathStore.LookupEntry(i))
-                if (entry->from == curloc)
+                if (entry->FromTaxiNode == curloc)
                 {
                     uint8 field = uint8((i - 1) / 32);
                     if (field < TaxiMaskSize)
@@ -95,12 +97,12 @@ bool TaxiAction::Execute(Event event)
                 if (!entry)
                     continue;
 
-                TaxiNodesEntry const* dest = sTaxiNodesStore.LookupEntry(entry->to);
+                TaxiNodesEntry const* dest = sTaxiNodesStore.LookupEntry(entry->ToTaxiNode);
                 if (!dest)
                     continue;
 
                 std::ostringstream out;
-                out << index++ << ": " << dest->name[0];
+                out << index++ << ": " << dest->Name;
                 botAI->TellMasterNoFacing(out.str());
             }
 
@@ -115,7 +117,7 @@ bool TaxiAction::Execute(Event event)
             if (!entry)
                 return false;
 
-            return bot->ActivateTaxiPathTo({entry->from, entry->to}, npc, 0);
+            return bot->ActivateTaxiPathTo({entry->FromTaxiNode, entry->ToTaxiNode}, npc, 0);
         }
 
         if (!movement.taxiNodes.empty() && !bot->ActivateTaxiPathTo(movement.taxiNodes, npc, 0))

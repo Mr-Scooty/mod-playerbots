@@ -10,6 +10,7 @@
 #include "LootMgr.h"
 #include "NamedObjectContext.h"
 #include "Value.h"
+#include "Loot.h"
 
 class PlayerbotAI;
 

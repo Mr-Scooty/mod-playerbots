@@ -9,6 +9,7 @@
 #include "ItemCountValue.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "Bag.h"
 
 bool BankAction::Execute(Event event)
 {
@@ -18,7 +19,7 @@ bool BankAction::Execute(Event event)
     for (GuidVector::iterator i = npcs.begin(); i != npcs.end(); i++)
     {
         Unit* npc = botAI->GetUnit(*i);
-        if (!npc || !npc->HasNpcFlag(UNIT_NPC_FLAG_BANKER))
+        if (!npc || !npc->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_BANKER))
             continue;
 
         return ExecuteBank(text, npc);
@@ -44,7 +45,7 @@ bool BankAction::ExecuteBank(std::string const text, Unit* /*bank*/)
         for (std::vector<Item*>::iterator i = found.begin(); i != found.end(); i++)
         {
             Item* item = *i;
-            result &= Withdraw(item->GetTemplate()->ItemId);
+            result &= Withdraw(item->GetTemplate()->GetId());
         }
     }
     else
@@ -119,8 +120,8 @@ void BankAction::ListItems()
         if (Item* pItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem)
             {
-                items[pItem->GetTemplate()->ItemId] += pItem->GetCount();
-                soulbound[pItem->GetTemplate()->ItemId] = pItem->IsSoulBound();
+                items[pItem->GetTemplate()->GetId()] += pItem->GetCount();
+                soulbound[pItem->GetTemplate()->GetId()] = pItem->IsSoulBound();
             }
 
     for (uint32 i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
@@ -130,8 +131,8 @@ void BankAction::ListItems()
                     if (Item* pItem = pBag->GetItemByPos(j))
                         if (pItem)
                         {
-                            items[pItem->GetTemplate()->ItemId] += pItem->GetCount();
-                            soulbound[pItem->GetTemplate()->ItemId] = pItem->IsSoulBound();
+                            items[pItem->GetTemplate()->GetId()] += pItem->GetCount();
+                            soulbound[pItem->GetTemplate()->GetId()] = pItem->IsSoulBound();
                         }
 
     TellItems(items, soulbound);
@@ -147,7 +148,7 @@ Item* BankAction::FindItemInBank(uint32 ItemId)
             if (!pItemProto)
                 continue;
 
-            if (pItemProto->ItemId == ItemId)  // have required item
+            if (pItemProto->GetId() == ItemId)  // have required item
                 return pItem;
         }
     }
@@ -165,7 +166,7 @@ Item* BankAction::FindItemInBank(uint32 ItemId)
                     if (!pItemProto)
                         continue;
 
-                    if (pItemProto->ItemId == ItemId)
+                    if (pItemProto->GetId() == ItemId)
                         return pItem;
                 }
             }

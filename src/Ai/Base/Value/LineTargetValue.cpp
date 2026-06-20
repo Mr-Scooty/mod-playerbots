@@ -6,6 +6,7 @@
 #include "LineTargetValue.h"
 
 #include "Playerbots.h"
+#include "ObjectAccessor.h"
 
 Unit* LineTargetValue::Calculate()
 {

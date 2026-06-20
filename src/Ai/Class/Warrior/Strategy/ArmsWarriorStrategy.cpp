@@ -109,10 +109,11 @@ ArmsWarriorStrategy::ArmsWarriorStrategy(PlayerbotAI* botAI) : GenericWarriorStr
 
 std::vector<NextAction> ArmsWarriorStrategy::getDefaultActions()
 {
+    // ShatterCore 4.3.4 Arms single-target filler priority (used when no higher-priority trigger fires):
+    // Mortal Strike is the rotation spine (10% healing debuff + Slaughter buff); Slam is the rage filler.
     return {
-        NextAction("bladestorm", ACTION_DEFAULT + 0.2f),
-        NextAction("mortal strike", ACTION_DEFAULT + 0.1f),
-        NextAction("sunder armor", ACTION_DEFAULT + 0.05f),
+        NextAction("mortal strike", ACTION_DEFAULT + 0.2f),  // on-CD striker + Mortal Wounds healing debuff
+        NextAction("slam", ACTION_DEFAULT + 0.1f),           // rage filler
         NextAction("melee", ACTION_DEFAULT)
     };
 }
@@ -147,11 +148,16 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
+    // ShatterCore 4.3.4 Arms single-target priority (class reference doc 3.1):
+    // 1) Colossus Smash on CD (8s armor-ignore window) 2) Mortal Strike on CD 3) Execute (<20%)
+    // 4) Overpower on Taste for Blood proc 5) Rend if missing 6) Slam filler 7) Heroic Strike rage dump.
+
+    // Maintain Rend (Taste for Blood: Rend ticks enable Overpower).
     triggers.push_back(
         new TriggerNode(
             "rend",
             {
-                NextAction("rend", ACTION_HIGH + 8)
+                NextAction("rend", ACTION_HIGH + 7)
             }
         )
     );
@@ -160,20 +166,22 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         new TriggerNode(
             "rend on attacker",
             {
-                NextAction("rend on attacker", ACTION_HIGH + 8)
+                NextAction("rend on attacker", ACTION_HIGH + 7)
             }
         )
     );
 
+    // Colossus Smash on cooldown -- armor-ignore window; line big strikes up inside it.
     triggers.push_back(
         new TriggerNode(
-            "mortal strike",
+            "colossus smash",
             {
-                NextAction("mortal strike", ACTION_HIGH + 3)
+                NextAction("colossus smash", ACTION_HIGH + 6)
             }
         )
     );
 
+    // Execute when the target is below 20% (target critical health) or on a Sudden Death proc.
     triggers.push_back(
         new TriggerNode(
             "target critical health",
@@ -192,11 +200,12 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
+    // Overpower on Taste for Blood proc (also via the generic Overpower-available CanCast).
     triggers.push_back(
         new TriggerNode(
-            "hamstring",
+            "taste for blood",
             {
-                NextAction("piercing howl", ACTION_HIGH)
+                NextAction("overpower", ACTION_HIGH + 4)
             }
         )
     );
@@ -210,11 +219,33 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
+    // Mortal Strike on cooldown -- the rotation spine (Mortal Wounds healing debuff + Slaughter buff).
     triggers.push_back(
         new TriggerNode(
-            "taste for blood",
+            "mortal strike",
             {
-                NextAction("overpower", ACTION_HIGH + 4)
+                NextAction("mortal strike", ACTION_HIGH + 3)
+            }
+        )
+    );
+
+    // Sweeping Strikes for cleave/AoE.
+    triggers.push_back(
+        new TriggerNode(
+            "light aoe",
+            {
+                NextAction("sweeping strikes", ACTION_HIGH + 2),
+                NextAction("bladestorm", ACTION_HIGH + 1),
+                NextAction("cleave", ACTION_HIGH)
+            }
+        )
+    );
+
+    triggers.push_back(
+        new TriggerNode(
+            "hamstring",
+            {
+                NextAction("piercing howl", ACTION_HIGH)
             }
         )
     );
@@ -228,12 +259,12 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
+    // Heroic Strike is the rage dump at high rage (off-GCD next-swing); especially inside Colossus Smash.
     triggers.push_back(
         new TriggerNode(
             "high rage available",
             {
-                NextAction("heroic strike", ACTION_HIGH),
-                NextAction("slam", ACTION_HIGH + 1)
+                NextAction("heroic strike", ACTION_HIGH)
             }
         )
     );
@@ -246,11 +277,12 @@ void ArmsWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
+    // Recklessness burst cooldown (Arms takes it from the Fury filler tree).
     triggers.push_back(
         new TriggerNode(
-            "death wish",
+            "recklessness",
             {
-                NextAction("death wish", ACTION_HIGH + 2)
+                NextAction("recklessness", ACTION_HIGH + 2)
             }
         )
     );

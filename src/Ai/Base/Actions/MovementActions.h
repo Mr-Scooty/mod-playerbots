@@ -11,6 +11,7 @@
 #include "Action.h"
 #include "LastMovementValue.h"
 #include "PlayerbotAIConfig.h"
+#include "MoveSplineInitArgs.h"
 
 class Player;
 class PlayerbotAI;

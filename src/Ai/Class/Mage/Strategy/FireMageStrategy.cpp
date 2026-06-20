@@ -13,13 +13,19 @@ FireMageStrategy::FireMageStrategy(PlayerbotAI* botAI) : GenericMageStrategy(bot
 }
 
 // ===== Default Actions =====
+// ShatterCore 4.3.4 Fire single-target filler priority (class reference 10.2).
+// Fireball is the core filler that fishes for crits (which feed Ignite and Hot Streak);
+// Scorch is the movement filler / Critical Mass applicator; Fire Blast is the instant
+// on-the-move filler. The high-priority maintenance/proc steps (Living Bomb, Pyroblast!
+// on Hot Streak) come from InitTriggers below.
 std::vector<NextAction> FireMageStrategy::getDefaultActions()
 {
     return {
-        NextAction("fireball", 5.3f),
-        NextAction("frostbolt", 5.2f),   // fire immune target
-        NextAction("fire blast", 5.1f),  // cast during movement
-        NextAction("shoot", 5.0f)
+        NextAction("fireball", ACTION_DEFAULT + 0.4f),   // primary filler -- fishes crits for Ignite/Hot Streak
+        NextAction("scorch", ACTION_DEFAULT + 0.3f),     // instant-ish filler while moving / Critical Mass debuff
+        NextAction("frostbolt", ACTION_DEFAULT + 0.2f),  // for fire-immune targets
+        NextAction("fire blast", ACTION_DEFAULT + 0.1f), // instant filler on the move
+        NextAction("shoot", ACTION_DEFAULT)
     };
 }
 
@@ -28,30 +34,50 @@ void FireMageStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     GenericMageStrategy::InitTriggers(triggers);
 
-    // Debuff Triggers
-    triggers.push_back(
-        new TriggerNode(
-            "improved scorch",
-            {
-                NextAction("scorch", 19.0f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "living bomb",
-            {
-                NextAction("living bomb", 18.5f)
-            }
-        )
-    );
+    // ShatterCore 4.3.4 Fire rotation (class reference 10.2). High-priority maintenance/proc
+    // steps live here; single-target fillers come from getDefaultActions(). Combustion and
+    // Mirror Image cooldowns are handled by the shared MageBoostStrategy.
 
-    // Proc Trigger
+    // Pyroblast! on a Hot Streak proc: two consecutive crits grant a free instant Pyroblast.
+    // This is the highest-value button in the rotation -- consume it immediately before it expires.
     triggers.push_back(
         new TriggerNode(
             "hot streak",
             {
-                NextAction("pyroblast", 25.0f)
+                NextAction("pyroblast", ACTION_HIGH + 3)
+            }
+        )
+    );
+
+    // Maintain Living Bomb (rolling fire DoT that explodes; the spec's signature DoT, also
+    // a Combustion-snapshot component). Refresh whenever it falls off the target.
+    triggers.push_back(
+        new TriggerNode(
+            "living bomb",
+            {
+                NextAction("living bomb", ACTION_HIGH + 2)
+            }
+        )
+    );
+
+    // Keep the +crit debuff up (Critical Mass / Improved Scorch) when no other source provides it,
+    // by weaving a Scorch -- only fires if the target is missing the debuff.
+    triggers.push_back(
+        new TriggerNode(
+            "improved scorch",
+            {
+                NextAction("scorch", ACTION_HIGH + 1)
+            }
+        )
+    );
+
+    // Flame Orb on cooldown -- instant fire-and-forget DPS (4.3.4). Above the single-target
+    // fillers but below the Hot Streak / Living Bomb maintenance steps.
+    triggers.push_back(
+        new TriggerNode(
+            "flame orb off cd",
+            {
+                NextAction("flame orb", ACTION_DEFAULT + 1.0f)
             }
         )
     );

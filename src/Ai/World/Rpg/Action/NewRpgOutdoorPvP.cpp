@@ -1,6 +1,8 @@
 #include "NewRpgOutdoorPvP.h"
 #include "OutdoorPvP.h"
 #include "OutdoorPvPMgr.h"
+#include "Log.h"
+#include "AreaDefines.h"
 
 bool NewRpgOutdoorPvpAction::Execute(Event event)
 {
@@ -13,8 +15,8 @@ bool NewRpgOutdoorPvpAction::Execute(Event event)
         return false;
 
     uint32 zoneId = bot->GetZoneId();
-    OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(zoneId);
-    if (!outdoorPvP || zoneId == AREA_NAGRAND)
+    OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(bot->GetMap(), zoneId);
+    if (!outdoorPvP || zoneId == 3518) // Nagrand
     {
         botAI->rpgInfo.ChangeToIdle();
         return false;
@@ -34,13 +36,13 @@ bool NewRpgOutdoorPvpAction::Execute(Event event)
         auto it = capturePointMap.find(data.capturePointSpawnId);
         if (it != capturePointMap.end())
         {
-            OPvPCapturePoint* capturePoint = it->second;
-            if (capturePoint && capturePoint->_capturePoint)
+            OPvPCapturePoint* capturePoint = it->second.get();  // ShatterCore: map stores unique_ptr
+            if (capturePoint && capturePoint->m_capturePoint)
             {
                 float threshold = capturePoint->GetMinValue();
                 float slider = capturePoint->GetSlider();
                 uint8 faction = bot->GetTeamId();
-                LOG_DEBUG("playerbots", "[NEW RPG] Bot {} with faction {} is evaluating existing RPG objective {} with threshold {} and slider value {}", bot->GetName(), faction, capturePoint->_capturePoint->GetName(), threshold, slider);
+                LOG_DEBUG("playerbots", "[NEW RPG] Bot {} with faction {} is evaluating existing RPG objective {} with threshold {} and slider value {}", bot->GetName(), faction, capturePoint->m_capturePoint->GetName(), threshold, slider);
                 if ((faction == TEAM_HORDE && slider >= -threshold) ||
                     (faction == TEAM_ALLIANCE && slider <= threshold))
                     objective = capturePoint;
@@ -62,7 +64,7 @@ bool NewRpgOutdoorPvpAction::Execute(Event event)
         LOG_DEBUG("playerbots","[NEW RPG] Bot {} selected OutDoorPvP target capturePointSpawnId {}", bot->GetName(), data.capturePointSpawnId);
     }
 
-    GameObject* objectiveGO = objective->_capturePoint;
+    GameObject* objectiveGO = objective->m_capturePoint;
     if (!objectiveGO)
         return false;
 
@@ -89,16 +91,16 @@ OPvPCapturePoint* NewRpgOutdoorPvpAction::SelectNewObjective(OutdoorPvP::OPvPCap
     }
     for (auto const& [guid, point] : capturePointMap)
     {
-        GameObject* capturePointObject = point->_capturePoint;
+        GameObject* capturePointObject = point->m_capturePoint;
         if (!capturePointObject)
             continue;
 
         float threshold = point->GetMinValue();
         float slider = point->GetSlider();
         if (faction == TEAM_HORDE && slider > -threshold)
-            candidateObjectives.push_back(point);
+            candidateObjectives.push_back(point.get());  // ShatterCore: map stores unique_ptr
         else if (faction == TEAM_ALLIANCE && slider < threshold)
-            candidateObjectives.push_back(point);
+            candidateObjectives.push_back(point.get());  // ShatterCore: map stores unique_ptr
     }
     if (candidateObjectives.empty())
     {

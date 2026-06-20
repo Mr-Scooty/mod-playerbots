@@ -7,6 +7,7 @@
 
 #include "ItemUsageValue.h"
 #include "Playerbots.h"
+#include "TradeData.h"
 
 std::vector<Item*> ItemsUsefulToGiveValue::Calculate()
 {

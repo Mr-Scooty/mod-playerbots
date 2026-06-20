@@ -38,7 +38,7 @@ void AutoMaintenanceOnLevelupAction::AutoPickTalents()
     if (bot->GetFreeTalentPoints() <= 0)
         return;
 
-    PlayerbotFactory factory(bot, bot->GetLevel());
+    PlayerbotFactory factory(bot, bot->getLevel());
     factory.InitTalentsTree(true, true, true);
     factory.InitPetTalents();
 }
@@ -73,7 +73,7 @@ void AutoMaintenanceOnLevelupAction::LearnSpells(std::ostringstream* out)
 
 void AutoMaintenanceOnLevelupAction::LearnTrainerSpells(std::ostringstream* /*out*/)
 {
-    PlayerbotFactory factory(bot, bot->GetLevel());
+    PlayerbotFactory factory(bot, bot->getLevel());
     factory.InitSkills();
     factory.InitClassSpells();
     factory.InitAvailableSpells();
@@ -82,13 +82,13 @@ void AutoMaintenanceOnLevelupAction::LearnTrainerSpells(std::ostringstream* /*ou
 
 void AutoMaintenanceOnLevelupAction::LearnQuestSpells(std::ostringstream* out)
 {
-    ObjectMgr::QuestMap const& questTemplates = sObjectMgr->GetQuestTemplates();
-    for (ObjectMgr::QuestMap::const_iterator i = questTemplates.begin(); i != questTemplates.end(); ++i)
+    ObjectMgr::QuestContainer const& questTemplates = sObjectMgr->GetQuestTemplates();
+    for (ObjectMgr::QuestContainer::const_iterator i = questTemplates.begin(); i != questTemplates.end(); ++i)
     {
-        Quest const* quest = i->second;
+        Quest const* quest = &i->second;
 
-        if (!quest->GetRequiredClasses() || quest->IsRepeatable() || quest->GetMinLevel() < 10 ||
-            quest->GetMinLevel() > bot->GetLevel())
+        if (!quest->GetAllowableClasses() || quest->IsRepeatable() || quest->GetMinLevel() < 10 ||
+            quest->GetMinLevel() > bot->getLevel())
         {
             continue;
         }
@@ -144,12 +144,12 @@ void AutoMaintenanceOnLevelupAction::LearnQuestSpells(std::ostringstream* out)
 std::string const AutoMaintenanceOnLevelupAction::FormatSpell(SpellInfo const* sInfo)
 {
     std::ostringstream out;
-    std::string const rank = sInfo->Rank[0];
+    std::string const rank = sInfo->Rank;
 
     if (rank.empty())
-        out << "|cffffffff|Hspell:" << sInfo->Id << "|h[" << sInfo->SpellName[LOCALE_enUS] << "]|h|r";
+        out << "|cffffffff|Hspell:" << sInfo->Id << "|h[" << sInfo->SpellName << "]|h|r";
     else
-        out << "|cffffffff|Hspell:" << sInfo->Id << "|h[" << sInfo->SpellName[LOCALE_enUS] << " " << rank << "]|h|r";
+        out << "|cffffffff|Hspell:" << sInfo->Id << "|h[" << sInfo->SpellName << " " << rank << "]|h|r";
 
     return out.str();
 }
@@ -159,7 +159,7 @@ void AutoMaintenanceOnLevelupAction::AutoUpgradeEquip()
     if (!sRandomPlayerbotMgr.IsRandomBot(bot))
         return;
 
-    PlayerbotFactory factory(bot, bot->GetLevel());
+    PlayerbotFactory factory(bot, bot->getLevel());
 
     factory.CleanupConsumables();
 

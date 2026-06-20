@@ -11,6 +11,7 @@
 #include "Playerbots.h"
 #include "ReputationMgr.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
 
 GuidVector AttackersValue::Calculate()
 {
@@ -46,8 +47,8 @@ GuidVector AttackersValue::Calculate()
     for (Unit* unit : targets)
         result.push_back(unit->GetGUID());
 
-    if (bot->duel && bot->duel->Opponent)
-        result.push_back(bot->duel->Opponent->GetGUID());
+    if (bot->duel && bot->duel->opponent)
+        result.push_back(bot->duel->opponent->GetGUID());
 
     // workaround for bots of same faction not fighting in arena
     if (bot->InArena())
@@ -92,7 +93,7 @@ void AttackersValue::AddAttackersOf(Player* player, std::unordered_set<Unit*>& t
     if (!player || !player->IsInWorld() || player->IsBeingTeleported())
         return;
 
-    for (auto const& [guid, ref] : player->GetThreatMgr().GetThreatenedByMeList())
+    for (auto const& [guid, ref] : player->GetThreatManager().GetThreatenedByMeList())
     {
         Unit* attacker = ref->GetOwner();
         if (!attacker)
@@ -144,14 +145,14 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
     if (!attacker->IsVisible() || !attacker->IsInWorld() || attacker->GetMapId() != bot->GetMapId())
         return false;
 
-    if (attacker->isDead() || attacker->HasSpiritOfRedemptionAura())
+    if (attacker->isDead() || attacker->HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION))
         return false;
 
     // Flag checks
-    if (attacker->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2))
+    if (attacker->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_ATTACKABLE_2))
         return false;
 
-    if (attacker->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC) || attacker->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
+    if (attacker->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC) || attacker->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
         return false;
 
     // Relationship checks
@@ -168,7 +169,7 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
 
     // PvP prohibition checks (skip for duels)
     if ((attacker->GetGUID().IsPlayer() || attacker->GetGUID().IsPet()) &&
-        (!bot->duel || bot->duel->Opponent != attacker) &&
+        (!bot->duel || bot->duel->opponent != attacker) &&
         (sPlayerbotAIConfig.IsPvpProhibited(attacker->GetZoneId(), attacker->GetAreaId()) ||
         sPlayerbotAIConfig.IsPvpProhibited(bot->GetZoneId(), bot->GetAreaId())))
     {
@@ -176,7 +177,7 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
         // This will stop currently attacking pets from continuing their attack.
         // This will first require the bot to change from a combat strat. It will
         // not be reached if the bot only switches targets, including NPC targets.
-        for (Unit::ControlSet::const_iterator itr = bot->m_Controlled.begin();
+        for (Unit::ControlList::const_iterator itr = bot->m_Controlled.begin();
             itr != bot->m_Controlled.end(); ++itr)
         {
             Creature* creature = dynamic_cast<Creature*>(*itr);
@@ -193,7 +194,7 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
 
     // Unflagged player check
     if (attacker->IsPlayer() && !attacker->IsPvP() && !attacker->IsFFAPvP() &&
-        (!bot->duel || bot->duel->Opponent != attacker))
+        (!bot->duel || bot->duel->opponent != attacker))
         return false;
 
     // Creature-specific checks
@@ -205,7 +206,7 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
 
         bool leaderHasThreat = false;
         if (bot->GetGroup() && botAI->GetMaster())
-            leaderHasThreat = attacker->GetThreatMgr().GetThreat(botAI->GetMaster());
+            leaderHasThreat = attacker->GetThreatManager().GetThreat(botAI->GetMaster());
 
         bool isMemberBotGroup = false;
         if (bot->GetGroup() && botAI->GetMaster())
@@ -249,7 +250,7 @@ bool PossibleAddsValue::Calculate()
         if (!add || !add->IsInWorld() || add->IsDuringRemoveFromWorld())
             continue;
 
-        if (!add->GetTarget() && !add->GetThreatMgr().GetLastVictim() && add->IsHostileTo(bot))
+        if (!add->GetTarget() && !add->GetThreatManager().GetLastVictim() && add->IsHostileTo(bot))
         {
             for (ObjectGuid const attackerGUID : attackers)
             {

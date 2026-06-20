@@ -60,8 +60,11 @@ bool CastEnvenomAction::isUseful()
 
 bool CastEnvenomAction::isPossible()
 {
-    // alternate to eviscerate if talents unlearned
-    return botAI->HasAura(58410, bot) /* Master Poisoner Rank 3 */;
+    // Envenom (32645) is the core Assassination finisher; it only requires the bot to know the spell, have combo
+    // points, and (for full benefit) Deadly Poison on the target. Do NOT gate it on the Master Poisoner talent
+    // (58410) -- that is an optional Assassination talent, and gating on it silently disables the finisher for any
+    // bot that did not spend that point or is below the talent level. Defer to the base spell-cast validation.
+    return CastMeleeSpellAction::isPossible();
 }
 
 bool CastTricksOfTheTradeOnMainTankAction::isUseful()

@@ -92,7 +92,10 @@ public:
 class MissileBarrageTrigger : public HasAuraTrigger
 {
 public:
-    MissileBarrageTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "missile barrage") {}
+    // 4.3.4: the Arcane proc that allows Arcane Missiles is the buff "Arcane Missiles!" (spell 79683).
+    // "Missile Barrage" was the WotLK name and does not exist on the 4.3.4 spellbook, so the old aura
+    // name never resolved. The registration key stays "missile barrage" (an internal node name only).
+    MissileBarrageTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "arcane missiles!") {}
 };
 
 class ArcaneBlastTrigger : public BuffTrigger
@@ -252,7 +255,10 @@ public:
 class BrainFreezeTrigger : public HasAuraTrigger
 {
 public:
-    BrainFreezeTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "fireball!") {}
+    // 4.3.4: the Brain Freeze proc is the talent buff "Brain Freeze" (spell 44546), which makes the
+    // next Fireball/Frostfire Bolt instant & free. The WotLK-era "Fireball!" proc buff no longer exists,
+    // so the old name never resolved against the 4.3.4 spellbook.
+    BrainFreezeTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "brain freeze") {}
 };
 
 class FrostNovaOnTargetTrigger : public DebuffTrigger
@@ -306,6 +312,16 @@ class BlastWaveOffCdTrigger : public SpellNoCooldownTrigger
 {
 public:
     BlastWaveOffCdTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "blast wave") {}
+};
+
+// 4.3.4 Flame Orb / Frostfire Orb: fire-and-forget orb usable on cooldown by all specs. Active when
+// the bot knows either spell (frost mages have the Frostfire Orb upgrade) and it is off cooldown.
+// Returns false when neither spell is learned, so it degrades gracefully on bots without the ability.
+class FlameOrbOffCdTrigger : public Trigger
+{
+public:
+    FlameOrbOffCdTrigger(PlayerbotAI* botAI) : Trigger(botAI, "flame orb off cd") {}
+    bool IsActive() override;
 };
 
 class BlastWaveOffCdTriggerAndMediumAoeTrigger : public TwoTriggers

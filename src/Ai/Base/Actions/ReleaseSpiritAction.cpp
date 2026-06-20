@@ -6,7 +6,6 @@
 #include "ReleaseSpiritAction.h"
 #include "ServerFacade.h"
 #include "Event.h"
-#include "GameGraveyard.h"
 #include "NearestNpcsValue.h"
 #include "ObjectDefines.h"
 #include "ObjectGuid.h"
@@ -15,6 +14,12 @@
 #include "ServerFacade.h"
 #include "Corpse.h"
 #include "Log.h"
+#include "Map.h"
+#include "MapManager.h"
+#include "PhasingHandler.h"
+#include "WorldSession.h"
+#include "Battleground.h"
+#include "NPCPackets.h"
 
 // ReleaseSpiritAction implementation
 bool ReleaseSpiritAction::Execute(Event event)
@@ -33,7 +38,7 @@ bool ReleaseSpiritAction::Execute(Event event)
         return false;
     }
 
-    if (bot->GetCorpse() && bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    if (bot->GetCorpse() && bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
     {
         botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "release_spirit_already_spirit", "I am already a spirit", {}));
@@ -75,7 +80,7 @@ void ReleaseSpiritAction::LogRelease(const std::string& releaseMsg) const
     LOG_DEBUG("playerbots", "Bot {} {}:{} <{}> {}",
         bot->GetGUID().ToString().c_str(),
         teamPrefix,
-        bot->GetLevel(),
+        bot->getLevel(),
         bot->GetName().c_str(),
         releaseMsg.c_str());
 }
@@ -110,7 +115,7 @@ bool AutoReleaseSpiritAction::isUseful()
     if (bot->InBattleground())
         return ShouldDelayBattlegroundRelease();
 
-    if (bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    if (bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         return false;
 
     return ShouldAutoRelease();
@@ -150,7 +155,7 @@ bool AutoReleaseSpiritAction::HandleBattlegroundSpiritHealer()
         // and in IOC it's not within clicking range when they res in own base
 
         // Teleport to nearest friendly Spirit Healer when not currently in range of one.
-        bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+        bot->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
         bot->TeleportTo(bot->GetMapId(), spiritHealer->GetPositionX(), spiritHealer->GetPositionY(), spiritHealer->GetPositionZ(), 0.f);
         RESET_AI_VALUE(bool, "combat::self target");
         RESET_AI_VALUE(WorldPosition, "current position");
@@ -158,9 +163,9 @@ bool AutoReleaseSpiritAction::HandleBattlegroundSpiritHealer()
     else if (!botAI->IsRealPlayer())
     {
         m_bgGossipTime = now;
-        WorldPacket packet(CMSG_GOSSIP_HELLO);
-        packet << spiritHealer->GetGUID();
-        bot->GetSession()->HandleGossipHelloOpcode(packet);
+        WorldPackets::NPC::Hello helloPacket{WorldPacket(CMSG_GOSSIP_HELLO)};
+        helloPacket.Unit = spiritHealer->GetGUID();
+        bot->GetSession()->HandleGossipHelloOpcode(helloPacket);
     }
 
     return true;
@@ -197,7 +202,7 @@ bool AutoReleaseSpiritAction::ShouldDelayBattlegroundRelease() const
     // This prevents currently casted (ranged) spells to be re-directed to the died bot's ghost.
 
     // If the bot already is a spirit, reset release time and return true
-    if (bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    if (bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
     {
         botAI->bgReleaseAttemptTime = 0;
         return true;
@@ -219,7 +224,7 @@ bool AutoReleaseSpiritAction::ShouldDelayBattlegroundRelease() const
 
 bool RepopAction::Execute(Event /*event*/)
 {
-    const GraveyardStruct* graveyard = GetGrave(
+    WorldSafeLocsEntry const* graveyard = GetGrave(
         AI_VALUE(uint32, "death count") > 10 ||
         CalculateDeadTime() > 30 * MINUTE
     );
@@ -244,10 +249,10 @@ int64 RepopAction::CalculateDeadTime() const
     return bot->isDead() ? 0 : 60 * MINUTE;
 }
 
-void RepopAction::PerformGraveyardTeleport(const GraveyardStruct* graveyard) const
+void RepopAction::PerformGraveyardTeleport(WorldSafeLocsEntry const* graveyard) const
 {
-    bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
-    bot->TeleportTo(graveyard->Map, graveyard->x, graveyard->y, graveyard->z, 0.f);
+    bot->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
+    bot->TeleportTo(graveyard->Continent, graveyard->Loc.X, graveyard->Loc.Y, graveyard->Loc.Z, 0.f);
     RESET_AI_VALUE(bool, "combat::self target");
     RESET_AI_VALUE(WorldPosition, "current position");
 }

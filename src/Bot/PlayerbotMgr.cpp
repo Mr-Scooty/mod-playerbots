@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <algorithm>
 
+#include "AccountMgr.h"
 #include "ChannelMgr.h"
 #include "CharacterCache.h"
 #include "CharacterPackets.h"
@@ -36,8 +37,11 @@
 #include "SharedDefines.h"
 #include "WorldSession.h"
 #include "BroadcastHelper.h"
-#include "WorldSessionMgr.h"
+#include "World.h"
 #include "DatabaseEnv.h"
+#include "DBCStores.h"
+#include "MotionMaster.h"
+#include "Channel.h"
 
 class BotInitGuard
 {
@@ -96,7 +100,7 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
     if (!accountId)
         return;
 
-    WorldSession* masterSession = masterAccountId ? sWorldSessionMgr->FindSession(masterAccountId) : nullptr;
+    WorldSession* masterSession = masterAccountId ? sWorld->FindSession(masterAccountId) : nullptr;
     Player* masterPlayer = masterSession ? masterSession->GetPlayer() : nullptr;
 
     bool isRndbot = !masterAccountId;
@@ -141,7 +145,8 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
         if (masterSession)
         {
             ChatHandler ch(masterSession);
-            ch.SendSysMessage(out.str());
+            // ShatterCore: SendSysMessage takes char const*, not std::string.
+            ch.SendSysMessage(out.str().c_str());
         }
         return;
     }
@@ -165,7 +170,7 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
                 if (masterAccountId)
                 {
                     // verify and find current world session of master
-                    WorldSession* masterSession = sWorldSessionMgr->FindSession(masterAccountId);
+                    WorldSession* masterSession = sWorld->FindSession(masterAccountId);
                     Player* masterPlayer = masterSession ? masterSession->GetPlayer() : nullptr;
 
                     if (masterPlayer)
@@ -202,10 +207,12 @@ void PlayerbotHolder::HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder con
     // At login DBC locale should be what the server is set to use by default (as spells etc are hardcoded to ENUS this
     // allows channels to work as intended)
     WorldSession* botSession =
-        new WorldSession(botAccountId, "", 0x0, nullptr, SEC_PLAYER, EXPANSION_WRATH_OF_THE_LICH_KING, time_t(0),
-                         sWorld->GetDefaultDbcLocale(), 0, false, false, 0, true);
+        new WorldSession(botAccountId, "", 0, nullptr, SEC_PLAYER, EXPANSION_CATACLYSM, time_t(0), sWorld->GetDefaultDbcLocale(), 0, false, /*isBot*/ true);
 
-    botSession->HandlePlayerLoginFromDB(holder);  // will delete lqh
+    // ShatterCore: HandlePlayerLogin is the TC login entry point; bots bypass the
+    // 4.3.4 connect-to-instance redirect entirely (no socket to reconnect)
+    botSession->LoadPermissions();
+    botSession->HandlePlayerLogin(holder);
 
     Player* bot = botSession->GetPlayer();
     if (!bot)
@@ -220,7 +227,7 @@ void PlayerbotHolder::HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder con
     }
 
     uint32 masterAccountId = holder.GetMasterAccountId();
-    WorldSession* masterSession = masterAccountId ? sWorldSessionMgr->FindSession(masterAccountId) : nullptr;
+    WorldSession* masterSession = masterAccountId ? sWorld->FindSession(masterAccountId) : nullptr;
 
     // Check if masterSession->GetPlayer() is valid
     Player* masterPlayer = masterSession ? masterSession->GetPlayer() : nullptr;
@@ -320,7 +327,7 @@ void PlayerbotMgr::CancelLogout()
 
         if (bot->GetSession()->isLogingOut())
         {
-            WorldPackets::Character::LogoutCancel data = WorldPacket(CMSG_LOGOUT_CANCEL);
+            WorldPacket data(CMSG_LOGOUT_CANCEL, 0);
             bot->GetSession()->HandleLogoutCancelOpcode(data);
             botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
                 "logout_cancel", "Logout cancelled!", {}));
@@ -340,7 +347,7 @@ void PlayerbotMgr::CancelLogout()
 
         if (bot->GetSession()->isLogingOut())
         {
-            WorldPackets::Character::LogoutCancel data = WorldPacket(CMSG_LOGOUT_CANCEL);
+            WorldPacket data(CMSG_LOGOUT_CANCEL, 0);
             bot->GetSession()->HandleLogoutCancelOpcode(data);
         }
     }
@@ -359,7 +366,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
         PlayerbotWorldThreadProcessor::instance().QueueOperation(std::move(cleanupOp));
 
         LOG_DEBUG("playerbots", "Bot {} logging out", bot->GetName().c_str());
-        bot->SaveToDB(false, false);
+        bot->SaveToDB(false);
 
         WorldSession* botWorldSessionPtr = bot->GetSession();
         WorldSession* masterWorldSessionPtr = nullptr;
@@ -427,7 +434,7 @@ void PlayerbotHolder::DisablePlayerBot(ObjectGuid guid)
 
         LOG_DEBUG("playerbots", "Bot {} logged out", bot->GetName().c_str());
 
-        bot->SaveToDB(false, false);
+        bot->SaveToDB(false);
 
         if (botAI->GetAiObjectContext())  // Maybe some day re-write to delate all pointer values.
         {
@@ -586,30 +593,30 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
 
     if (isRandomAccount && sPlayerbotAIConfig.randomBotFixedLevel)
     {
-        bot->SetPlayerFlag(PLAYER_FLAGS_NO_XP_GAIN);
+        bot->SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_NO_XP_GAIN);
     }
     else if (isRandomAccount && !sPlayerbotAIConfig.randomBotFixedLevel)
     {
-        bot->RemovePlayerFlag(PLAYER_FLAGS_NO_XP_GAIN);
+        bot->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_NO_XP_GAIN);
     }
 
-    bot->SaveToDB(false, false);
+    bot->SaveToDB(false);
     bool addClassBot = sRandomPlayerbotMgr.IsAccountType(accountId, 2);
-    if (addClassBot && master && abs((int)master->GetLevel() - (int)bot->GetLevel()) > 3)
+    if (addClassBot && master && abs((int)master->getLevel() - (int)bot->getLevel()) > 3)
     {
-        // PlayerbotFactory factory(bot, master->GetLevel());
+        // PlayerbotFactory factory(bot, master->getLevel());
         // factory.Randomize(false);
         uint32 mixedGearScore =
             PlayerbotAI::GetMixedGearScore(master, true, false, 12) * sPlayerbotAIConfig.autoInitEquipLevelLimitRatio;
         // work around: distinguish from 0 if no gear
         if (mixedGearScore == 0)
             mixedGearScore = 1;
-        PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, mixedGearScore);
+        PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_LEGENDARY, mixedGearScore);
         factory.Randomize(false);
     }
 
     // bots join World chat if not solo oriented
-    if (bot->GetLevel() >= 10 && sRandomPlayerbotMgr.IsRandomBot(bot) && GET_PLAYERBOT_AI(bot) &&
+    if (bot->getLevel() >= 10 && sRandomPlayerbotMgr.IsRandomBot(bot) && GET_PLAYERBOT_AI(bot) &&
         GET_PLAYERBOT_AI(bot)->GetGrouperType() != GrouperType::SOLO)
     {
         // TODO make action/config
@@ -636,34 +643,18 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
                 continue;
 
             Channel* new_channel = nullptr;
-            switch (channel->ChannelID)
+            switch (channel->ID)
             {
                 case ChatChannelId::GENERAL:
                 case ChatChannelId::LOCAL_DEFENSE:
-                {
-                    char new_channel_name_buf[100];
-                    snprintf(new_channel_name_buf, 100, channel->pattern[locale], current_zone_name.c_str());
-                    new_channel = cMgr->GetJoinChannel(new_channel_name_buf, channel->ChannelID);
-                    break;
-                }
                 case ChatChannelId::TRADE:
                 case ChatChannelId::GUILD_RECRUITMENT:
-                {
-                    char new_channel_name_buf[100];
-                    //3459 is ID for a zone named "City" (only exists for the sake of using its name)
-                    //Currently in magons TBC, if you switch zones, then you join "Trade - <zone>" and "GuildRecruitment - <zone>"
-                    //which is a core bug, should be "Trade - City" and "GuildRecruitment - City" in both 1.12 and TBC
-                    //but if you (actual player) logout in a city and log back in - you join "City" versions
-                    snprintf(new_channel_name_buf, 100, channel->pattern[locale], GET_PLAYERBOT_AI(bot)->GetLocalizedAreaName(GetAreaEntryByAreaID(3459)).c_str());
-                    new_channel = cMgr->GetJoinChannel(new_channel_name_buf, channel->ChannelID);
-                    break;
-                }
                 case ChatChannelId::LOOKING_FOR_GROUP:
                 case ChatChannelId::WORLD_DEFENSE:
-                {
-                    new_channel = cMgr->GetJoinChannel(channel->pattern[locale], channel->ChannelID);
+                    // ShatterCore resolves the localized channel name from the
+                    // ChatChannels entry and zone internally
+                    new_channel = cMgr->GetJoinChannel(channel->ID, std::string(channel->Name ? channel->Name : ""), current_zone);
                     break;
-                }
                 default:
                     break;
             }
@@ -766,31 +757,31 @@ std::string const PlayerbotHolder::ProcessBotCommand(std::string const cmd, Obje
             int gs;
             if (cmd == "init=white" || cmd == "init=common")
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_NORMAL);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_NORMAL);
                 factory.Randomize(false);
                 return "ok";
             }
             else if (cmd == "init=green" || cmd == "init=uncommon")
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_UNCOMMON);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_UNCOMMON);
                 factory.Randomize(false);
                 return "ok";
             }
             else if (cmd == "init=blue" || cmd == "init=rare")
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_RARE);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_RARE);
                 factory.Randomize(false);
                 return "ok";
             }
             else if (cmd == "init=epic" || cmd == "init=purple")
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_EPIC);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_EPIC);
                 factory.Randomize(false);
                 return "ok";
             }
             else if (cmd == "init=legendary" || cmd == "init=yellow")
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_LEGENDARY);
                 factory.Randomize(false);
                 return "ok";
             }
@@ -801,14 +792,14 @@ std::string const PlayerbotHolder::ProcessBotCommand(std::string const cmd, Obje
                 // work around: distinguish from 0 if no gear
                 if (mixedGearScore == 0)
                     mixedGearScore = 1;
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, mixedGearScore);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_LEGENDARY, mixedGearScore);
                 factory.Randomize(false);
                 return "ok, gear score limit: " + std::to_string(mixedGearScore / PlayerbotAI::GetItemScoreMultiplier(ItemQualities(ITEM_QUALITY_EPIC))) +
                        "(for epic)";
             }
             else if (cmd.starts_with("init=") && sscanf(cmd.c_str(), "init=%d", &gs) != -1)
             {
-                PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, gs);
+                PlayerbotFactory factory(bot, master->getLevel(), ITEM_QUALITY_LEGENDARY, gs);
                 factory.Randomize(false);
                 return "ok, gear score limit: " + std::to_string(gs / PlayerbotAI::GetItemScoreMultiplier(ItemQualities(ITEM_QUALITY_EPIC))) + "(for epic)";
             }
@@ -817,7 +808,7 @@ std::string const PlayerbotHolder::ProcessBotCommand(std::string const cmd, Obje
         if (cmd == "refresh=raid")
         {  // TODO: This function is not perfect yet. If you are already in a raid,
             // after the command is executed, the AI ​​needs to go back online or exit the raid and re-enter.
-            PlayerbotFactory factory(bot, bot->GetLevel());
+            PlayerbotFactory factory(bot, bot->getLevel());
             factory.UnbindInstance();
             return "ok";
         }
@@ -825,13 +816,13 @@ std::string const PlayerbotHolder::ProcessBotCommand(std::string const cmd, Obje
 
     if (cmd == "levelup" || cmd == "level")
     {
-        PlayerbotFactory factory(bot, bot->GetLevel());
+        PlayerbotFactory factory(bot, bot->getLevel());
         factory.Randomize(true);
         return "ok";
     }
     else if (cmd == "refresh")
     {
-        PlayerbotFactory factory(bot, bot->GetLevel());
+        PlayerbotFactory factory(bot, bot->getLevel());
         factory.Refresh();
         return "ok";
     }
@@ -842,7 +833,7 @@ std::string const PlayerbotHolder::ProcessBotCommand(std::string const cmd, Obje
     }
     else if (cmd == "quests")
     {
-        PlayerbotFactory factory(bot, bot->GetLevel());
+        PlayerbotFactory factory(bot, bot->getLevel());
         factory.InitInstanceQuests();
         return "Initialization quests";
     }
@@ -892,7 +883,7 @@ bool PlayerbotMgr::HandlePlayerbotMgrCommand(ChatHandler* handler, char const* a
 
     for (std::vector<std::string>::iterator i = messages.begin(); i != messages.end(); ++i)
     {
-        handler->PSendSysMessage("{}", i->c_str());
+        handler->PSendSysMessage("%s", i->c_str());
     }
 
     return true;
@@ -924,7 +915,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         if (master->CanBeGameMaster())
         {
             // OnBotLogin(master);
-            PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_EPIC);
+            PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_EPIC);
             factory.Randomize(false);
             messages.push_back("initself ok");
             return messages;
@@ -943,7 +934,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             if (master->CanBeGameMaster())
             {
                 // OnBotLogin(master);
-                PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_UNCOMMON);
+                PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_UNCOMMON);
                 factory.Randomize(false);
                 messages.push_back("initself ok");
                 return messages;
@@ -959,7 +950,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             if (master->CanBeGameMaster())
             {
                 // OnBotLogin(master);
-                PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_RARE);
+                PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_RARE);
                 factory.Randomize(false);
                 messages.push_back("initself ok");
                 return messages;
@@ -975,7 +966,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             if (master->CanBeGameMaster())
             {
                 // OnBotLogin(master);
-                PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_EPIC);
+                PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_EPIC);
                 factory.Randomize(false);
                 messages.push_back("initself ok");
                 return messages;
@@ -991,7 +982,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             if (master->CanBeGameMaster())
             {
                 // OnBotLogin(master);
-                PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_LEGENDARY);
+                PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_LEGENDARY);
                 factory.Randomize(false);
                 messages.push_back("initself ok");
                 return messages;
@@ -1008,7 +999,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             if (master->CanBeGameMaster())
             {
                 // OnBotLogin(master);
-                PlayerbotFactory factory(master, master->GetLevel(), ITEM_QUALITY_LEGENDARY, gs);
+                PlayerbotFactory factory(master, master->getLevel(), ITEM_QUALITY_LEGENDARY, gs);
                 factory.Randomize(false);
                 messages.push_back("initself ok, gs = " + std::to_string(gs));
                 return messages;
@@ -1156,12 +1147,13 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             }
         } //end
 
-        if (claz == 6 && master->GetLevel() < sWorld->getIntConfig(CONFIG_START_HEROIC_PLAYER_LEVEL))
+        if (claz == 6 && master->getLevel() < sWorld->getIntConfig(CONFIG_START_DEATH_KNIGHT_PLAYER_LEVEL))
         {
             messages.push_back("Your level is too low to summon Deathknight");
             return messages;
         }
-        uint8 teamId = master->GetTeamId(true);
+        // ShatterCore: GetTeamId() takes no argument (3.3.5a's ignore-override bool is gone).
+        uint8 teamId = master->GetTeamId();
         const std::unordered_set<ObjectGuid> &guidCache = sRandomPlayerbotMgr.addclassCache[RandomPlayerbotMgr::GetTeamClassIdx(teamId == TEAM_ALLIANCE, claz)];
         for (const ObjectGuid &guid: guidCache)
         {
@@ -1555,24 +1547,9 @@ void PlayerbotMgr::HandleMasterIncomingPacket(WorldPacket const& packet)
         // if master is logging out, log out all bots
         case CMSG_LOGOUT_REQUEST:
         {
-            Player* master = GetMaster();
-            if (master)
-            {
-                // Replicate the AFK logout prevention checks from WorldSession::HandleLogoutRequestOpcode
-                // so bots are not logged out when the master's own logout is going to be prevented.
-                AreaTableEntry const* areaEntry = sAreaTableStore.LookupEntry(master->GetAreaId());
-                bool preventAfkSanctuaryLogout = sWorld->getIntConfig(CONFIG_AFK_PREVENT_LOGOUT) == 1
-                                                 && master->isAFK() && areaEntry && areaEntry->IsSanctuary();
-
-                bool preventAfkLogout = sWorld->getIntConfig(CONFIG_AFK_PREVENT_LOGOUT) == 2
-                                        && master->isAFK();
-
-                if (preventAfkSanctuaryLogout || preventAfkLogout)
-                {
-                    break;
-                }
-            }
-
+            // ShatterCore: 3.3.5a/AzerothCore's CONFIG_AFK_PREVENT_LOGOUT feature does not exist
+            // in 4.3.4 TrinityCore (WorldSession::HandleLogoutRequestOpcode has no AFK-sanctuary
+            // prevention), so there is nothing to mirror here -- log the bots out with the master.
             LogoutAllBots();
             break;
         }
@@ -1610,7 +1587,7 @@ void PlayerbotMgr::SaveToDB()
     for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)
     {
         Player* const bot = it->second;
-        bot->SaveToDB(false, false);
+        bot->SaveToDB(false);
     }
 
     for (PlayerBotMap::const_iterator it = sRandomPlayerbotMgr.GetPlayerBotsBegin();
@@ -1618,7 +1595,7 @@ void PlayerbotMgr::SaveToDB()
     {
         Player* const bot = it->second;
         if (GET_PLAYERBOT_AI(bot) && GET_PLAYERBOT_AI(bot)->GetMaster() == GetMaster())
-            bot->SaveToDB(false, false);
+            bot->SaveToDB(false);
     }
 }
 
@@ -1909,7 +1886,7 @@ void PlayerbotMgr::HandleViewLinkedAccountsCommand(Player* player)
         {
             Field* accountFields = accountResult->Fetch();
             std::string username = accountFields[0].Get<std::string>();
-            ChatHandler(player->GetSession()).PSendSysMessage("- {}", username.c_str());
+            ChatHandler(player->GetSession()).PSendSysMessage("- %s", username.c_str());
         }
         else
         {

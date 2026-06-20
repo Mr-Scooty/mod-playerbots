@@ -12,6 +12,8 @@
 #include "Playerbots.h"
 #include "PositionValue.h"
 #include "ServerFacade.h"
+#include "Map.h"
+#include "DBCStores.h"
 
 std::vector<std::string> split(std::string const s, char delim);
 char* strstri(char const* haystack, char const* needle);
@@ -27,7 +29,7 @@ bool GoAction::Execute(Event event)
     {
         float x = bot->GetPositionX();
         float y = bot->GetPositionY();
-        Map2ZoneCoordinates(x, y, bot->GetZoneId());
+        sDBCManager.Map2ZoneCoordinates(x, y, bot->GetZoneId());
 
         std::ostringstream out;
         out << "I am at " << x << "," << y;
@@ -170,7 +172,7 @@ bool GoAction::Execute(Event event)
         std::vector<std::string> coords = split(param, ',');
         float x = atof(coords[0].c_str());
         float y = atof(coords[1].c_str());
-        Zone2MapCoordinates(x, y, bot->GetZoneId());
+        sDBCManager.Zone2MapCoordinates(x, y, bot->GetZoneId());
 
         Map* map = bot->GetMap();
         float z = bot->GetPositionZ();
@@ -183,13 +185,13 @@ bool GoAction::Execute(Event event)
             return false;
         }
 
-        if (map->IsInWater(bot->GetPhaseMask(), x, y, z, bot->GetCollisionHeight()))
+        if (map->IsInWater(bot->GetPhaseShift(), x, y, z))
         {
             botAI->TellError("It is in water");
             return false;
         }
 
-        float ground = map->GetHeight(x, y, z + 0.5f);
+        float ground = map->GetHeight(bot->GetPhaseShift(), x, y, z + 0.5f);
         if (ground <= INVALID_HEIGHT)
         {
             botAI->TellError("I can't go there");
@@ -197,7 +199,7 @@ bool GoAction::Execute(Event event)
         }
 
         float x1 = x, y1 = y;
-        Map2ZoneCoordinates(x1, y1, bot->GetZoneId());
+        sDBCManager.Map2ZoneCoordinates(x1, y1, bot->GetZoneId());
 
         std::ostringstream out;
         out << "Moving to " << x1 << "," << y1;

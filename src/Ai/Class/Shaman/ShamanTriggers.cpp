@@ -13,6 +13,8 @@
 #include "Creature.h"
 #include "Unit.h"
 #include <ctime>
+#include "Map.h"
+#include "SpellHistory.h"
 
 bool MainHandWeaponNoImbueTrigger::IsActive()
 {
@@ -29,7 +31,7 @@ bool OffHandWeaponNoImbueTrigger::IsActive()
     if (!itemForSpell)
         return false;
 
-    uint32 invType = itemForSpell->GetTemplate()->InventoryType;
+    uint32 invType = itemForSpell->GetTemplate()->GetInventoryType();
     bool allowedType = (invType == INVTYPE_WEAPON) || (invType == INVTYPE_WEAPONOFFHAND);
     if (itemForSpell->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT) || !allowedType)
         return false;
@@ -60,6 +62,14 @@ bool EarthShockExecuteTrigger::IsActive()
         return false;
 
     return true;
+}
+
+// ShatterCore 4.3.4 Fulmination: Lightning Shield charges are stored as proc-charges (Aura::GetCharges()),
+// not StackAmount, so read them directly. Earth Shock dumps the surplus once charges reach the cap (9).
+bool FulminationTrigger::IsActive()
+{
+    Aura* lightningShield = botAI->GetAura("lightning shield", bot);
+    return lightningShield && lightningShield->GetCharges() >= 9;
 }
 
 bool TotemTrigger::IsActive()
@@ -94,7 +104,7 @@ bool WaterBreathingOnPartyTrigger::IsActive()
 // and not on Chain Lightning (1.5 second cast with talents).
 bool ElementalMasteryTrigger::IsActive()
 {
-    return bot->HasSpellCooldown(421);
+    return bot->GetSpellHistory()->HasCooldown(421);
 }
 
 // Checks if Sprit Wolves are out/if Spirit Walk buff is not on the bot/if the cooldown for Spirit Walk is ready.

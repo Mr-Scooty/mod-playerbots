@@ -33,7 +33,7 @@ bool QueryItemUsageAction::Execute(Event event)
             continue;
 
         uint32 count = GetCount(itemTemplate);
-        uint32 total = bot->GetItemCount(itemTemplate->ItemId, true);
+        uint32 total = bot->GetItemCount(itemTemplate->GetId(), true);
         std::string itemInfo = QueryItem(itemTemplate, count, total);
 
         botAI->TellMaster(itemInfo);
@@ -47,7 +47,7 @@ uint32 QueryItemUsageAction::GetCount(ItemTemplate const* item)
 {
     uint32 total = 0;
 
-    std::vector<Item*> items = InventoryAction::parseItems(item->Name1);
+    std::vector<Item*> items = InventoryAction::parseItems(item->GetName(DEFAULT_LOCALE));
     if (!items.empty())
     {
         for (std::vector<Item*>::iterator i = items.begin(); i != items.end(); ++i)
@@ -63,7 +63,7 @@ std::string const QueryItemUsageAction::QueryItem(ItemTemplate const* item, uint
 {
     std::ostringstream out;
     std::string usage = QueryItemUsage(item);
-    std::string const quest = QueryQuestItem(item->ItemId);
+    std::string const quest = QueryQuestItem(item->GetId());
     std::string const price = QueryItemPrice(item);
     if (usage.empty())
         usage = (quest.empty() ? "Useless" : "Quest");
@@ -81,7 +81,7 @@ std::string const QueryItemUsageAction::QueryItem(ItemTemplate const* item, uint
 std::string const QueryItemUsageAction::QueryItemUsage(ItemTemplate const* item)
 {
     std::ostringstream out;
-    out << item->ItemId;
+    out << item->GetId();
     ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", out.str());
     switch (usage)
     {
@@ -121,11 +121,11 @@ std::string const QueryItemUsageAction::QueryItemPrice(ItemTemplate const* item)
     if (!sRandomPlayerbotMgr.IsRandomBot(bot))
         return "";
 
-    if (item->Bonding == BIND_WHEN_PICKED_UP)
+    if (item->GetBonding() == BIND_ON_ACQUIRE)
         return "";
 
     std::ostringstream msg;
-    std::vector<Item*> items = InventoryAction::parseItems(item->Name1);
+    std::vector<Item*> items = InventoryAction::parseItems(item->GetName(DEFAULT_LOCALE));
     int32 sellPrice = 0;
     if (!items.empty())
     {
@@ -133,7 +133,7 @@ std::string const QueryItemUsageAction::QueryItemPrice(ItemTemplate const* item)
         {
             Item* sell = *i;
             int32 price =
-                sell->GetCount() * sell->GetTemplate()->SellPrice * sRandomPlayerbotMgr.GetSellMultiplier(bot);
+                sell->GetCount() * sell->GetTemplate()->GetSellPrice() * sRandomPlayerbotMgr.GetSellMultiplier(bot);
             if (!sellPrice || sellPrice > price)
                 sellPrice = price;
         }
@@ -142,12 +142,12 @@ std::string const QueryItemUsageAction::QueryItemPrice(ItemTemplate const* item)
         msg << "Sell: " << chat->formatMoney(sellPrice);
 
     std::ostringstream out;
-    out << item->ItemId;
+    out << item->GetId();
     ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", out.str());
     if (usage == ITEM_USAGE_NONE)
         return msg.str();
 
-    int32 buyPrice = item->BuyPrice * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
+    int32 buyPrice = item->GetBuyPrice() * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
     if (buyPrice)
     {
         if (sellPrice)

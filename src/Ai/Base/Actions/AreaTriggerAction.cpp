@@ -10,6 +10,9 @@
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
 #include "Transport.h"
+#include "WorldSession.h"
+#include "MotionMaster.h"
+#include "DBCStores.h"
 
 bool ReachAreaTriggerAction::Execute(Event event)
 {
@@ -21,11 +24,11 @@ bool ReachAreaTriggerAction::Execute(Event event)
     p.rpos(0);
     p >> triggerId;
 
-    AreaTrigger const* at = sObjectMgr->GetAreaTrigger(triggerId);
+    AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(triggerId);
     if (!at)
         return false;
 
-    if (!sObjectMgr->GetAreaTriggerTeleport(triggerId))
+    if (!sObjectMgr->GetAreaTrigger(triggerId))
     {
         WorldPacket p1(CMSG_AREATRIGGER);
         p1 << triggerId;
@@ -35,7 +38,7 @@ bool ReachAreaTriggerAction::Execute(Event event)
         return true;
     }
 
-    if (bot->GetMapId() != at->map)
+    if (bot->GetMapId() != at->ContinentID)
     {
         botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "area_trigger_follow_too_far_error", "I won't follow: too far away", {}));
@@ -43,15 +46,12 @@ bool ReachAreaTriggerAction::Execute(Event event)
     }
 
     bot->GetMotionMaster()->MovePoint(
-        /*id*/ at->map,
-        /*coords*/ at->x, at->y, at->z,
-        /*forcedMovement*/ FORCED_MOVEMENT_NONE,
-        /*speed*/ 0.0f,             // default speed (not handled here)
-        /*orientation*/ 0.0f,       // keep current orientation of bot
-        /*generatePath*/ true,      // true => terrain path (2d mmap); false => straight spline (3d vmap)
-        /*forceDestination*/ false);
+        /*id*/ at->ContinentID,
+        /*coords*/ at->Pos.X, at->Pos.Y, at->Pos.Z,
+        /*generatePath*/ true,
+        /*speed*/ 0.0f);
 
-    float distance = bot->GetDistance(at->x, at->y, at->z);
+    float distance = bot->GetDistance(at->Pos.X, at->Pos.Y, at->Pos.Z);
     float delay = 1000.0f * distance / bot->GetSpeed(MOVE_RUN) + sPlayerbotAIConfig.reactDelay;
     botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
         "area_trigger_wait_for_me", "Wait for me", {}));
@@ -71,7 +71,7 @@ bool AreaTriggerAction::Execute(Event /*event*/)
     if (!sObjectMgr->GetAreaTrigger(triggerId))
         return false;
 
-    if (!sObjectMgr->GetAreaTriggerTeleport(triggerId))
+    if (!sObjectMgr->GetAreaTrigger(triggerId))
         return true;
 
     WorldPacket p(CMSG_AREATRIGGER);

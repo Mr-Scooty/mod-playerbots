@@ -10,6 +10,7 @@
 #include "ItemUsageValue.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
 
 size_t FindLastSeparator(std::string const text, std::string const sep)
 {
@@ -347,7 +348,7 @@ bool DisEnchantRandomItemAction::Execute(Event /*event*/)
     {
         // don't touch rare+ items if with real player/guild
         if ((botAI->HasRealPlayerMaster() || botAI->IsInRealGuild()) &&
-            item->GetTemplate()->Quality > ITEM_QUALITY_UNCOMMON)
+            item->GetTemplate()->GetQuality() > ITEM_QUALITY_UNCOMMON)
             return false;
 
         if (CastCustomSpellAction::Execute(

@@ -10,6 +10,7 @@
 #include "ThreatManager.h"
 #include "AiObjectContext.h"
 #include "PlayerbotAI.h"
+#include "Creature.h"
 
 bool TellTargetAction::Execute(Event /*event*/)
 {
@@ -43,7 +44,7 @@ bool TellAttackersAction::Execute(Event /*event*/)
 
     botAI->TellMaster("--- Threat ---");
 
-    auto const& threatenedByMe = bot->GetThreatMgr().GetThreatenedByMeList();
+    auto const& threatenedByMe = bot->GetThreatManager().GetThreatenedByMeList();
     if (threatenedByMe.empty())
         return true;
 

@@ -15,6 +15,9 @@
 #include "RpgSubActions.h"
 #include "ServerFacade.h"
 #include "PossibleRpgTargetsValue.h"
+#include "Map.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
 
 bool ChooseRpgTargetAction::HasSameTarget(ObjectGuid guid, uint32 max, GuidVector const& nearGuids)
 {
@@ -341,7 +344,7 @@ bool ChooseRpgTargetAction::isFollowValid(Player* bot, WorldPosition pos)
             return true;
     }
 
-    if ((inDungeon || !groupLeader->HasPlayerFlag(PLAYER_FLAGS_RESTING)) && realMaster == groupLeader && distance > 5.0f)
+    if ((inDungeon || !groupLeader->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING)) && realMaster == groupLeader && distance > 5.0f)
         return false;
 
     if (!groupLeader->isMoving() && distance < 25.0f)

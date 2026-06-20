@@ -24,39 +24,42 @@ void StatsCollector::CollectItemStats(ItemTemplate const* proto)
 {
     if (proto->IsRangedWeapon())
     {
-        float val = (proto->Damage[0].DamageMin + proto->Damage[0].DamageMax) * 1000 / 2 / proto->Delay;
+        float minDamage = 0.f, maxDamage = 0.f, dps = 0.f;
+        proto->GetWeaponDamage(nullptr, minDamage, maxDamage, dps);
+        float val = (minDamage + maxDamage) * 1000 / 2 / proto->GetDelay();
         stats[STATS_TYPE_RANGED_DPS] += val;
     }
-    else if (proto->IsWeapon())
+    else if (proto->GetClass() == ITEM_CLASS_WEAPON)  // ShatterCore: ItemTemplate::IsWeapon() removed; check class directly
     {
-        float val = (proto->Damage[0].DamageMin + proto->Damage[0].DamageMax) * 1000 / 2 / proto->Delay;
+        // 4.3.4: weapon damage is computed from item level/quality, not stored
+        float minDamage = 0.f, maxDamage = 0.f, dps = 0.f;
+        proto->GetWeaponDamage(nullptr, minDamage, maxDamage, dps);
+        float val = (minDamage + maxDamage) * 1000 / 2 / proto->GetDelay();
         stats[STATS_TYPE_MELEE_DPS] += val;
     }
-    stats[STATS_TYPE_ARMOR] += proto->Armor;
-    stats[STATS_TYPE_BLOCK_VALUE] += proto->Block;
-    for (int i = 0; i < proto->StatsCount; i++)
+    stats[STATS_TYPE_ARMOR] += proto->GetEffectiveArmor(nullptr);
+    // 4.3.4: shield block value was removed from items
+    for (uint32 i = 0; i < MAX_ITEM_PROTO_STATS; i++)
     {
-        const _ItemStat& stat = proto->ItemStat[i];
-        const int32& val = stat.ItemStatValue;
-        CollectByItemStatType(stat.ItemStatType, val);
+        CollectByItemStatType(proto->GetItemStatType(i), proto->GetItemStatValue(i));
     }
     for (uint8 j = 0; j < MAX_ITEM_PROTO_SPELLS; j++)
     {
-        switch (proto->Spells[j].SpellTrigger)
+        switch (proto->GetEffect(j).Trigger)
         {
             case ITEM_SPELLTRIGGER_ON_USE:
-                CollectSpellStats(proto->Spells[j].SpellId, 1.0f, Milliseconds(proto->Spells[j].SpellCooldown));
+                CollectSpellStats(proto->GetEffect(j).SpellID, 1.0f, Milliseconds(proto->GetEffect(j).Cooldown));
                 break;
             case ITEM_SPELLTRIGGER_ON_EQUIP:
-                CollectSpellStats(proto->Spells[j].SpellId, 1.0f, Milliseconds(0));
+                CollectSpellStats(proto->GetEffect(j).SpellID, 1.0f, Milliseconds(0));
                 break;
             case ITEM_SPELLTRIGGER_CHANCE_ON_HIT:
                 if (type_ & CollectorType::MELEE)
                 {
-                    if (proto->Spells[j].SpellPPMRate > 0.01f)
-                        CollectSpellStats(proto->Spells[j].SpellId, 1.0f, Milliseconds(static_cast<int>(60000 / proto->Spells[j].SpellPPMRate)));
+                    if (proto->SpellPPMRate > 0.01f)
+                        CollectSpellStats(proto->GetEffect(j).SpellID, 1.0f, Milliseconds(static_cast<int>(60000 / proto->SpellPPMRate)));
                     else
-                        CollectSpellStats(proto->Spells[j].SpellId, 1.0f, Milliseconds(static_cast<int>(60000 / 1.8f)));  // Default PPM = 1.8
+                        CollectSpellStats(proto->GetEffect(j).SpellID, 1.0f, Milliseconds(static_cast<int>(60000 / 1.8f)));  // Default PPM = 1.8
                 }
                 break;
             default:
@@ -64,9 +67,9 @@ void StatsCollector::CollectItemStats(ItemTemplate const* proto)
         }
     }
 
-    if (proto->socketBonus)
+    if (proto->GetSocketBonus())
     {
-        if (const SpellItemEnchantmentEntry* enchant = sSpellItemEnchantmentStore.LookupEntry(proto->socketBonus))
+        if (const SpellItemEnchantmentEntry* enchant = sSpellItemEnchantmentStore.LookupEntry(proto->GetSocketBonus()))
             CollectEnchantStats(enchant);
     }
 }
@@ -203,11 +206,11 @@ void StatsCollector::CollectSpellStats(uint32 spellId, float multiplier, Millise
 
 void StatsCollector::CollectEnchantStats(SpellItemEnchantmentEntry const* enchant, uint32 default_enchant_amount)
 {
-    for (int s = 0; s < MAX_SPELL_ITEM_ENCHANTMENT_EFFECTS; ++s)
+    for (int s = 0; s < MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)  // ShatterCore: MAX_SPELL_ITEM_ENCHANTMENT_EFFECTS renamed
     {
-        uint32 enchant_display_type = enchant->type[s];
-        uint32 enchant_amount = enchant->amount[s];
-        uint32 enchant_spell_id = enchant->spellid[s];
+        uint32 enchant_display_type = enchant->Effect[s];
+        uint32 enchant_amount = enchant->EffectPointsMin[s];
+        uint32 enchant_spell_id = enchant->EffectArg[s];
 
         if (SpecialEnchantFilter(enchant_spell_id))
             continue;
@@ -372,7 +375,7 @@ bool StatsCollector::CanBeTriggeredByType(SpellInfo const* spellInfo, uint32 pro
         {
             triggerMask |= MELEE_PROC_FLAG_MASK;
             triggerMask |= SPELL_PROC_FLAG_MASK;
-            triggerMask |= PROC_FLAG_DONE_PERIODIC;
+            triggerMask |= PROC_FLAG_DEAL_PERIODIC;
             if (procFlags & triggerMask)
                 return true;
             break;
@@ -381,7 +384,8 @@ bool StatsCollector::CanBeTriggeredByType(SpellInfo const* spellInfo, uint32 pro
         {
             triggerMask |= MELEE_PROC_FLAG_MASK;
             triggerMask |= SPELL_PROC_FLAG_MASK;
-            triggerMask |= PERIODIC_PROC_FLAG_MASK;
+            // ShatterCore: PERIODIC_PROC_FLAG_MASK -> deal|take periodic
+            triggerMask |= (PROC_FLAG_DEAL_PERIODIC | PROC_FLAG_TAKE_PERIODIC);
             if (procFlags & triggerMask)
                 return true;
             break;
@@ -390,7 +394,7 @@ bool StatsCollector::CanBeTriggeredByType(SpellInfo const* spellInfo, uint32 pro
         {
             triggerMask |= RANGED_PROC_FLAG_MASK;
             triggerMask |= SPELL_PROC_FLAG_MASK;
-            triggerMask |= PROC_FLAG_DONE_PERIODIC;
+            triggerMask |= PROC_FLAG_DEAL_PERIODIC;
             if (procFlags & triggerMask)
                 return true;
             break;
@@ -398,10 +402,11 @@ bool StatsCollector::CanBeTriggeredByType(SpellInfo const* spellInfo, uint32 pro
         case CollectorType::SPELL_DMG:
         {
             triggerMask |= SPELL_PROC_FLAG_MASK;
-            triggerMask |= PROC_FLAG_DONE_PERIODIC;
+            triggerMask |= PROC_FLAG_DEAL_PERIODIC;
             // Healing spell cannot trigger
-            triggerMask &= ~PROC_FLAG_DONE_SPELL_NONE_DMG_CLASS_POS;
-            triggerMask &= ~PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_POS;
+            // ShatterCore: DONE_SPELL_*_DMG_CLASS_POS -> DEAL_HELPFUL_ABILITY/SPELL
+            triggerMask &= ~PROC_FLAG_DEAL_HELPFUL_ABILITY;
+            triggerMask &= ~PROC_FLAG_DEAL_HELPFUL_SPELL;
             if (procFlags & triggerMask)
                 return true;
             break;
@@ -409,13 +414,14 @@ bool StatsCollector::CanBeTriggeredByType(SpellInfo const* spellInfo, uint32 pro
         case CollectorType::SPELL_HEAL:
         {
             triggerMask |= SPELL_PROC_FLAG_MASK;
-            triggerMask |= PROC_FLAG_DONE_PERIODIC;
+            triggerMask |= PROC_FLAG_DEAL_PERIODIC;
             // Dmg spell should not trigger
-            triggerMask &= ~PROC_FLAG_DONE_SPELL_NONE_DMG_CLASS_NEG;
-            triggerMask &= ~PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG;
+            // ShatterCore: DONE_SPELL_*_DMG_CLASS_NEG -> DEAL_HARMFUL_ABILITY/SPELL
+            triggerMask &= ~PROC_FLAG_DEAL_HARMFUL_ABILITY;
+            triggerMask &= ~PROC_FLAG_DEAL_HARMFUL_SPELL;
             if (!spellFamilyName)
                 triggerMask &=
-                    ~PROC_FLAG_DONE_PERIODIC;  // spellFamilyName = 0 and PROC_FLAG_DONE_PERIODIC -> it is a dmg spell
+                    ~PROC_FLAG_DEAL_PERIODIC;  // spellFamilyName = 0 and PROC_FLAG_DEAL_PERIODIC -> it is a dmg spell
             if (procFlags & triggerMask)
                 return true;
             break;
@@ -540,8 +546,7 @@ void StatsCollector::CollectByItemStatType(uint32 itemStatType, int32 val)
         case ITEM_MOD_BLOCK_VALUE:
             stats[STATS_TYPE_BLOCK_VALUE] += val;
             break;
-        case ITEM_MOD_SPELL_HEALING_DONE:  // deprecated
-        case ITEM_MOD_SPELL_DAMAGE_DONE:   // deprecated
+        // ShatterCore: ITEM_MOD_SPELL_HEALING_DONE / ITEM_MOD_SPELL_DAMAGE_DONE removed from 4.3.4 enum (deprecated)
         default:
             break;
     }

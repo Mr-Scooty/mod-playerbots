@@ -4,7 +4,6 @@
  */
 
 #include "CheckMountStateAction.h"
-#include "AreaDefines.h"
 #include "BattleGroundTactics.h"
 #include "BattlegroundEY.h"
 #include "BattlegroundWS.h"
@@ -15,6 +14,9 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "SpellAuraEffects.h"
+#include "MotionMaster.h"
+#include "WorldSession.h"
+#include "Log.h"
 
 static constexpr uint32 SPELL_COLD_WEATHER_FLYING = 54197;
 
@@ -32,7 +34,7 @@ MountData CollectMountData(const Player* bot)
         if (!spellInfo || spellInfo->Effects[0].ApplyAuraName != SPELL_AURA_MOUNTED)
             continue;
 
-        if (entry.second->State == PLAYERSPELL_REMOVED || !entry.second->Active || spellInfo->IsPassive())
+        if (entry.second.state == PLAYERSPELL_REMOVED || !entry.second.active || spellInfo->IsPassive())
             continue;
 
         int32 effect1 = spellInfo->Effects[1].BasePoints;
@@ -156,7 +158,7 @@ bool CheckMountStateAction::isUseful()
     // to mostly be an issue in tunnels of WSG and AV)
     float posZ = bot->GetPositionZ();
     float groundLevel = bot->GetMapWaterOrGroundLevel(bot->GetPositionX(), bot->GetPositionY(), posZ);
-    if (!bot->IsMounted() && !bot->HasWaterWalkAura() && posZ < groundLevel)
+    if (!bot->IsMounted() && !bot->HasAuraType(SPELL_AURA_WATER_WALK) && posZ < groundLevel)
         return false;
 
     // Not useful when bot does not have mount strat and is not currently mounted
@@ -164,7 +166,7 @@ bool CheckMountStateAction::isUseful()
         return false;
 
     // Not useful when level lower than minimum required
-    if (bot->GetLevel() < sPlayerbotAIConfig.useGroundMountAtMinLevel)
+    if (bot->getLevel() < sPlayerbotAIConfig.useGroundMountAtMinLevel)
         return false;
 
     // Allow mounting while transformed only if the form allows it
@@ -234,7 +236,7 @@ void CheckMountStateAction::Dismount()
     WorldPacket emptyPacket;
     bot->GetSession()->HandleCancelMountAuraOpcode(emptyPacket);
 
-    bool const wantsFly = bot->HasIncreaseMountedFlightSpeedAura() || bot->HasFlyAura();
+    bool const wantsFly = bot->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) || bot->HasAuraType(SPELL_AURA_FLY);
     bool const isWaterWalking = bot->HasUnitMovementFlag(MOVEMENTFLAG_WATERWALKING);
     bool const isFlying = bot->HasUnitMovementFlag(MOVEMENTFLAG_FLYING);
     bool const hasGravityDisabled = bot->HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
@@ -242,8 +244,7 @@ void CheckMountStateAction::Dismount()
     {
         bot->RemoveUnitMovementFlag(
             MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY);
-        if (!bot->IsRooted())
-            bot->SendMovementFlagUpdate();
+        // 4.3.4: movement flags propagate through the movement update system
     }
 }
 
@@ -296,7 +297,7 @@ bool CheckMountStateAction::TryForms(Player* master, int32 masterMountType, int3
         botAI->CastSpell(SPELL_FLIGHT_FORM, bot);
 
         // Compensate speedbuff
-        bot->SetSpeed(MOVE_RUN, 2.5, true);
+        bot->SetSpeedRate(MOVE_RUN, float(2.5));
         return true;
     }
 
@@ -308,7 +309,7 @@ bool CheckMountStateAction::TryForms(Player* master, int32 masterMountType, int3
         botAI->CastSpell(SPELL_SWIFT_FLIGHT_FORM, bot);
 
         // Compensate speedbuff
-        bot->SetSpeed(MOVE_RUN, 3.8, true);
+        bot->SetSpeedRate(MOVE_RUN, float(3.8));
         return true;
     }
 
@@ -478,13 +479,13 @@ static bool BotCanUseFlyingMount(Player const* bot)
         return false;
 
     AreaTableEntry const* area = sAreaTableStore.LookupEntry(bot->GetAreaId());
-    if (!area || !area->IsFlyable())
+    if (!area)
         return false;
-    if (area->flags & AREA_FLAG_NO_FLY_ZONE)
-        return false;
+    // 4.3.4: no per-area IsFlyable flag; flying is allowed everywhere except
+    // specific unflyable maps, gated by the appropriate license spells
 
-    uint32 const vmap = GetVirtualMapForMapAndZone(bot->GetMapId(), bot->GetZoneId());
-    if (vmap == MAP_NORTHREND && !bot->HasSpell(SPELL_COLD_WEATHER_FLYING))
+    uint32 const vmap = sDBCManager.GetVirtualMapForMapAndZone(bot->GetMapId(), bot->GetZoneId());
+    if (vmap == 571 /*MAP_NORTHREND*/ && !bot->HasSpell(SPELL_COLD_WEATHER_FLYING))
         return false;
 
     return true;
@@ -494,7 +495,7 @@ int32 CheckMountStateAction::CalculateMasterMountSpeed(Player* master, const Mou
 {
     // Check riding skill and level requirements
     int32 ridingSkill = bot->GetPureSkillValue(SKILL_RIDING);
-    int32 botLevel = bot->GetLevel();
+    int32 botLevel = bot->getLevel();
 
     if (ridingSkill <= 75 && botLevel < static_cast<int32>(sPlayerbotAIConfig.useFastGroundMountAtMinLevel))
         return 59;

@@ -8,6 +8,7 @@
 #include "Event.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "Log.h"
 
 bool AcceptAllQuestsAction::ProcessQuest(Quest const* quest, Object* questGiver)
 {
@@ -110,14 +111,14 @@ bool AcceptQuestShareAction::Execute(Event event)
     p >> quest;
 
     Quest const* qInfo = sObjectMgr->GetQuestTemplate(quest);
-    if (!qInfo || !bot->GetDivider())
+    if (!qInfo || !bot->GetPlayerSharingQuest())
         return false;
 
     quest = qInfo->GetQuestId();
 
-    if (bot->HasQuest(quest))
+    if (bot->hasQuest(quest))
     {
-        bot->SetDivider(ObjectGuid::Empty);
+        bot->ClearQuestSharingInfo();
         botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "quest_already_have_error", "I have this quest", {}));
         return false;
@@ -126,18 +127,18 @@ bool AcceptQuestShareAction::Execute(Event event)
     if (!bot->CanTakeQuest(qInfo, false))
     {
         // can't take quest
-        bot->SetDivider(ObjectGuid::Empty);
+        bot->ClearQuestSharingInfo();
         botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "quest_cant_take_error", "I can't take this quest", {}));
 
         return false;
     }
 
-    if (!bot->GetDivider().IsEmpty())
+    if (!bot->GetPlayerSharingQuest().IsEmpty())
     {
         // send msg to quest giving player
         master->SendPushToPartyResponse(bot, QUEST_PARTY_MSG_ACCEPT_QUEST);
-        bot->SetDivider(ObjectGuid::Empty);
+        bot->ClearQuestSharingInfo();
     }
 
     if (bot->CanAddQuest(qInfo, false))

@@ -25,13 +25,23 @@
 #include "BattlegroundWS.h"
 #include "Event.h"
 #include "GameObject.h"
-#include "IVMapMgr.h"
+#include "IVMapManager.h"
 #include "PathGenerator.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
 #include "PvpTriggers.h"
 #include "ServerFacade.h"
 #include "Vehicle.h"
+#include "MotionMaster.h"
+#include "Map.h"
+#include "WorldSession.h"
+
+// AzerothCore WS areatrigger ids for the flag spawn platforms
+constexpr uint32 BG_WS_TRIGGER_ALLIANCE_FLAG_SPAWN = 3646;
+constexpr uint32 BG_WS_TRIGGER_HORDE_FLAG_SPAWN = 3647;
+
+// AzerothCore constant: gameobjects per AB node (banner set + auras)
+constexpr uint32 BG_AB_OBJECTS_PER_NODE = 8;
 
 // common bg positions
 Position const WS_WAITING_POS_HORDE_1 = {944.981f, 1423.478f, 345.434f, 6.18f};
@@ -63,9 +73,9 @@ Position const AB_GY_CAMPING_ALLIANCE = {1262.627f, 1256.341f, -27.289f, 0.64f};
 // the captains aren't the actual creatures but invisible trigger creatures - they still have correct death state and
 // location (unless they move)
 uint32 const AV_CREATURE_A_CAPTAIN = AV_CPLACE_TRIGGER16;
-uint32 const AV_CREATURE_A_BOSS = AV_CPLACE_A_BOSS;
+uint32 const AV_CREATURE_A_BOSS = AV_CPLACE_MAX + AV_NPC_A_BOSS; // ShatterCore: bosses are static creatures
 uint32 const AV_CREATURE_H_CAPTAIN = AV_CPLACE_TRIGGER18;
-uint32 const AV_CREATURE_H_BOSS = AV_CPLACE_H_BOSS;
+uint32 const AV_CREATURE_H_BOSS = AV_CPLACE_MAX + AV_NPC_H_BOSS;
 
 Position const AV_CAVE_SPAWN_ALLIANCE = {872.460f, -491.571f, 96.546f, 0.0f};
 Position const AV_CAVE_SPAWN_HORDE = {-1437.127f, -608.382f, 51.185f, 0.0f};
@@ -1254,17 +1264,17 @@ static uint32 AB_AttackObjectives[] = {
 };
 
 static std::tuple<uint32, uint32, uint32> EY_AttackObjectives[] = {
-    {POINT_FEL_REAVER, BG_EY_OBJECT_FLAG_FEL_REAVER, AT_FEL_REAVER_POINT},
-    {POINT_BLOOD_ELF, BG_EY_OBJECT_FLAG_BLOOD_ELF, AT_BLOOD_ELF_POINT},
-    {POINT_DRAENEI_RUINS, BG_EY_OBJECT_FLAG_DRAENEI_RUINS, AT_DRAENEI_RUINS_POINT},
-    {POINT_MAGE_TOWER, BG_EY_OBJECT_FLAG_MAGE_TOWER, AT_MAGE_TOWER_POINT}
+    {FEL_REAVER, BG_EY_OBJECT_FLAG_FEL_REAVER, TR_FEL_REAVER_POINT},
+    {BLOOD_ELF, BG_EY_OBJECT_FLAG_BLOOD_ELF, TR_BLOOD_ELF_POINT},
+    {DRAENEI_RUINS, BG_EY_OBJECT_FLAG_DRAENEI_RUINS, TR_DRAENEI_RUINS_POINT},
+    {MAGE_TOWER, BG_EY_OBJECT_FLAG_MAGE_TOWER, TR_MAGE_TOWER_POINT}
 };
 
 static std::unordered_map<uint32, Position> EY_NodePositions = {
-    {POINT_FEL_REAVER, Position(2044.173f, 1727.503f, 1189.505f)},
-    {POINT_BLOOD_ELF, Position(2048.277f, 1395.093f, 1194.255f)},
-    {POINT_DRAENEI_RUINS, Position(2286.245f, 1404.683f, 1196.991f)},
-    {POINT_MAGE_TOWER, Position(2284.720f, 1728.457f, 1189.153f)}
+    {FEL_REAVER, Position(2044.173f, 1727.503f, 1189.505f)},
+    {BLOOD_ELF, Position(2048.277f, 1395.093f, 1194.255f)},
+    {DRAENEI_RUINS, Position(2286.245f, 1404.683f, 1196.991f)},
+    {MAGE_TOWER, Position(2284.720f, 1728.457f, 1189.153f)}
 };
 
 static std::pair<uint32, uint32> IC_AttackObjectives[] = {
@@ -1304,9 +1314,9 @@ std::string const BGTactics::HandleConsoleCommandPrivate(WorldSession* session, 
     Battleground* bg = player->GetBattleground();
     if (!bg)
         return "Command can only be used within a battleground";
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
     char* cmd = strtok((char*)args, " ");
     // char* charname = strtok(nullptr, " ");
 
@@ -1581,9 +1591,9 @@ bool BGTactics::Execute(Event /*event*/)
 
     std::vector<BattleBotPath*> const* vPaths;
     std::vector<uint32> const* vFlagIds;
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bot->GetBattleground()->GetBgTypeID(true);
+        bgType = bot->GetBattleground()->GetTypeID(true);
 
     switch (bgType)
     {
@@ -1726,9 +1736,9 @@ bool BGTactics::moveToStart(bool force)
     if (!force && bg->GetStatus() != STATUS_WAIT_JOIN)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     if (bgType == BATTLEGROUND_WS)
     {
@@ -1855,9 +1865,9 @@ bool BGTactics::selectObjective(bool reset)
 
     WorldObject* BgObjective = nullptr;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
     switch (bgType)
     {
         case BATTLEGROUND_AV:
@@ -1960,7 +1970,7 @@ bool BGTactics::selectObjective(bool reset)
             if (!BgObjective && hasSnowfallRole)
             {
                 const BG_AV_NodeInfo& snowfallNode = av->GetAVNodeInfo(BG_AV_NODES_SNOWFALL_GRAVE);
-                if (snowfallNode.OwnerId == TEAM_NEUTRAL)
+                if (snowfallNode.Owner == TEAM_NEUTRAL)
                 {
                     if (GameObject* go = bg->GetBGObject(BG_AV_OBJECT_FLAG_N_SNOWFALL_GRAVE))
                     {
@@ -2036,7 +2046,7 @@ bool BGTactics::selectObjective(bool reset)
                 if ((towersDown >= 2) || (strategy == AV_STRATEGY_OFFENSIVE))
                 {
                     uint8 lastGY = (team == TEAM_HORDE) ? BG_AV_NODES_FIRSTAID_STATION : BG_AV_NODES_FROSTWOLF_HUT;
-                    bool ownsFinalGY = av->GetAVNodeInfo(lastGY).OwnerId == team;
+                    bool ownsFinalGY = av->GetAVNodeInfo(lastGY).Owner == team;
 
                     uint32 bossId = (team == TEAM_HORDE) ? AV_CREATURE_A_BOSS : AV_CREATURE_H_BOSS;
                     if (Creature* boss = bg->GetBGCreature(bossId))
@@ -2060,7 +2070,7 @@ bool BGTactics::selectObjective(bool reset)
                 {
                     const BG_AV_NodeInfo& node = av->GetAVNodeInfo(nodeId);
                     GameObject* go = bg->GetBGObject(goId);
-                    if (!go || node.State == POINT_DESTROYED || node.TotalOwnerId == team)
+                    if (!go || node.State == POINT_DESTROYED || node.TotalOwner == team)
                         continue;
 
                     if (node.State == POINT_ASSAULTED && urand(0, 99) >= 1)
@@ -2357,11 +2367,11 @@ bool BGTactics::selectObjective(bool reset)
             for (uint32 nodeId : AB_AttackObjectives)
             {
                 uint8 state = ab->GetCapturePointInfo(nodeId)._state;
-                if (state == BG_AB_NODE_STATE_NEUTRAL ||
+                if (state == BG_AB_NODE_TYPE_NEUTRAL ||
                     (team == TEAM_ALLIANCE &&
-                     (state == BG_AB_NODE_STATE_HORDE_OCCUPIED || state == BG_AB_NODE_STATE_HORDE_CONTESTED)) ||
+                     (state == BG_AB_NODE_STATUS_HORDE_OCCUPIED || state == BG_AB_NODE_STATUS_HORDE_CONTESTED)) ||
                     (team == TEAM_HORDE &&
-                     (state == BG_AB_NODE_STATE_ALLY_OCCUPIED || state == BG_AB_NODE_STATE_ALLY_CONTESTED)))
+                     (state == BG_AB_NODE_STATUS_ALLY_OCCUPIED || state == BG_AB_NODE_STATUS_ALLY_CONTESTED)))
                 {
                     hasValidTarget = true;
                     break;
@@ -2403,10 +2413,10 @@ bool BGTactics::selectObjective(bool reset)
                 {
                     uint8 state = ab->GetCapturePointInfo(nodeId)._state;
 
-                    bool isContested = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATE_HORDE_CONTESTED) ||
-                                       (team == TEAM_HORDE && state == BG_AB_NODE_STATE_ALLY_CONTESTED);
-                    bool isOwned = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATE_ALLY_OCCUPIED) ||
-                                   (team == TEAM_HORDE && state == BG_AB_NODE_STATE_HORDE_OCCUPIED);
+                    bool isContested = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATUS_HORDE_CONTESTED) ||
+                                       (team == TEAM_HORDE && state == BG_AB_NODE_STATUS_ALLY_CONTESTED);
+                    bool isOwned = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATUS_ALLY_OCCUPIED) ||
+                                   (team == TEAM_HORDE && state == BG_AB_NODE_STATUS_HORDE_OCCUPIED);
 
                     if (!isContested && !isOwned)
                         continue;
@@ -2438,12 +2448,12 @@ bool BGTactics::selectObjective(bool reset)
                     {
                         uint8 state = ab->GetCapturePointInfo(nodeId)._state;
 
-                        bool isNeutral = state == BG_AB_NODE_STATE_NEUTRAL;
-                        bool isEnemyOccupied = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATE_HORDE_OCCUPIED) ||
-                                               (team == TEAM_HORDE && state == BG_AB_NODE_STATE_ALLY_OCCUPIED);
+                        bool isNeutral = state == BG_AB_NODE_TYPE_NEUTRAL;
+                        bool isEnemyOccupied = (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATUS_HORDE_OCCUPIED) ||
+                                               (team == TEAM_HORDE && state == BG_AB_NODE_STATUS_ALLY_OCCUPIED);
                         bool isFriendlyContested =
-                            (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATE_ALLY_CONTESTED) ||
-                            (team == TEAM_HORDE && state == BG_AB_NODE_STATE_HORDE_CONTESTED);
+                            (team == TEAM_ALLIANCE && state == BG_AB_NODE_STATUS_ALLY_CONTESTED) ||
+                            (team == TEAM_HORDE && state == BG_AB_NODE_STATUS_HORDE_CONTESTED);
 
                         if (!(isNeutral || isEnemyOccupied || isFriendlyContested))
                             continue;
@@ -3180,9 +3190,9 @@ bool BGTactics::moveToObjective(bool ignoreDist)
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     PositionInfo pos = context->GetValue<PositionMap&>("position")->Get()["bg objective"];
     if (!pos.isSet())
@@ -3226,9 +3236,9 @@ bool BGTactics::selectObjectiveWp(std::vector<BattleBotPath*> const& vPaths)
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     PositionInfo pos = context->GetValue<PositionMap&>("position")->Get()["bg objective"];
     if (!pos.isSet())
@@ -3367,7 +3377,7 @@ bool BGTactics::resetObjective()
 
     // Adjust role-change chance based on battleground type
     uint32 oddsToChangeRole = 1;  // default low
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
 
     if (bgType == BATTLEGROUND_WS)
         oddsToChangeRole = 2;
@@ -3442,9 +3452,9 @@ bool BGTactics::startNewPathBegin(std::vector<BattleBotPath*> const& vPaths)
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     if (bgType == BATTLEGROUND_IC)
         return false;
@@ -3503,9 +3513,9 @@ bool BGTactics::startNewPathFree(std::vector<BattleBotPath*> const& vPaths)
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     if (bgType == BATTLEGROUND_IC)
         return false;
@@ -3570,9 +3580,9 @@ bool BGTactics::atFlag(std::vector<BattleBotPath*> const& vPaths, std::vector<ui
         return false;
 
     // Get the actual BG type (in case of random BG)
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     // Initialize vectors for nearby objects and players
     GuidVector closeObjects;
@@ -3840,7 +3850,7 @@ bool BGTactics::atFlag(std::vector<BattleBotPath*> const& vPaths, std::vector<ui
                 // Prevent capturing from inside flag pole
                 if (dist == 0.0f)
                 {
-                    float const moveDist = bot->GetObjectSize() + go->GetObjectSize() + 0.1f;
+                    float const moveDist = bot->GetCombatReach() + go->GetCombatReach() + 0.1f;
                     return MoveTo(bot->GetMapId(), go->GetPositionX() + (urand(0, 1) ? -moveDist : moveDist),
                                   go->GetPositionY() + (urand(0, 1) ? -moveDist : moveDist), go->GetPositionZ());
                 }
@@ -3859,7 +3869,7 @@ bool BGTactics::atFlag(std::vector<BattleBotPath*> const& vPaths, std::vector<ui
 
                 Spell* spell = new Spell(bot, spellInfo, TRIGGERED_NONE);
                 spell->m_targets.SetGOTarget(go);
-                spell->prepare(&spell->m_targets);
+                spell->prepare(spell->m_targets);
 
                 botAI->WaitForSpellCast(spell);
 
@@ -3949,7 +3959,7 @@ bool BGTactics::atFlag(std::vector<BattleBotPath*> const& vPaths, std::vector<ui
                         spell->m_targets.SetGOTarget(go);
 
                         bot->StopMoving();
-                        spell->prepare(&spell->m_targets);
+                        spell->prepare(spell->m_targets);
 
                         botAI->WaitForSpellCast(spell);
                         resetObjective();
@@ -3984,7 +3994,7 @@ bool BGTactics::flagTaken()
     if (!bg)
         return false;
 
-    return !bg->GetFlagPickerGUID(bg->GetOtherTeamId(bot->GetTeamId())).IsEmpty();
+    return !bg->GetFlagPickerGUID(bg->GetOtherTeam(bot->GetTeamId())).IsEmpty();
 }
 
 bool BGTactics::teamFlagTaken()
@@ -4029,9 +4039,9 @@ bool BGTactics::useBuff()
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     GuidVector closeObjects = AI_VALUE(GuidVector, "nearest game objects no los");
     if (closeObjects.empty())
@@ -4120,9 +4130,9 @@ bool BGTactics::IsLockedInsideKeep()
     if (!bg)
         return false;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     if (bgType != BATTLEGROUND_IC)
         return false;
@@ -4343,10 +4353,10 @@ bool ArenaTactics::moveToCenter(Battleground* bg)
             break;
     }
 
-    switch (bg->GetBgTypeID())
+    switch (bg->GetTypeID())
     {
         case BATTLEGROUND_BE:
-            if (bg->GetTeamStartPosition(bot->GetBgTeamId())->GetPositionY() < 240)
+            if (bg->GetTeamStartPosition(TeamId(bot->GetBGTeam() == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE))->GetPositionY() < 240)
             {
                 if (Preference == 3)
                     MoveTo(bg->GetMapId(), 6226.65f + frand(-1, +1), 264.36f + frand(-1, +1), 1.31f, false, true);
@@ -4366,7 +4376,7 @@ bool ArenaTactics::moveToCenter(Battleground* bg)
             }
             break;
         case BATTLEGROUND_RL:
-            if (bg->GetTeamStartPosition(bot->GetBgTeamId())->GetPositionY() < 1600)
+            if (bg->GetTeamStartPosition(TeamId(bot->GetBGTeam() == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE))->GetPositionY() < 1600)
             {
                 if (Preference == 3)
                     MoveTo(bg->GetMapId(), 1262.14f + frand(-1, +1), 1657.63f + frand(-1, +1), 33.76f, false, true);
@@ -4386,7 +4396,7 @@ bool ArenaTactics::moveToCenter(Battleground* bg)
             }
             break;
         case BATTLEGROUND_NA:
-            if (bg->GetTeamStartPosition(bot->GetBgTeamId())->GetPositionY() < 2870)
+            if (bg->GetTeamStartPosition(TeamId(bot->GetBGTeam() == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE))->GetPositionY() < 2870)
             {
                 if (Preference == 3)
                     MoveTo(bg->GetMapId(), 4068.85f + frand(-1, +1), 2911.98f + frand(-1, +1), 12.99f, false, true);
@@ -4411,12 +4421,12 @@ bool ArenaTactics::moveToCenter(Battleground* bg)
                 // they like to hang around at the tip of the pipes doing nothing, so we just teleport them down
                 if (bot->GetDistance(1333.07f, 817.18f, 13.35f) < 4)
                 {
-                    bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+                    bot->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
                     bot->TeleportTo(bg->GetMapId(), 1330.96f, 816.75f, 3.2f, bot->GetOrientation());
                 }
                 if (bot->GetDistance(1250.13f, 764.79f, 13.34f) < 4)
                 {
-                    bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+                    bot->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
                     bot->TeleportTo(bg->GetMapId(), 1252.19f, 765.41f, 3.2f, bot->GetOrientation());
                 }
             }

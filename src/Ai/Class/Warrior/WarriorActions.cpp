@@ -7,6 +7,7 @@
 
 #include "AiFactory.h"
 #include "Playerbots.h"
+#include "SpellHistory.h"
 
 bool CastBerserkerRageAction::isPossible()
 {
@@ -20,7 +21,7 @@ bool CastBerserkerRageAction::isPossible()
     if (!bot->HasSpell(spellId))
         return false;
 
-    if (bot->HasSpellCooldown(spellId))
+    if (bot->GetSpellHistory()->HasCooldown(spellId))
         return false;
 
     return true;
@@ -160,7 +161,7 @@ bool CastRetaliationAction::isUseful()
     }
 
     // Spell cooldown check
-    if (bot->HasSpellCooldown(20230))
+    if (bot->GetSpellHistory()->HasCooldown(20230))
     {
         return false;
     }
@@ -236,7 +237,7 @@ bool CastShatteringThrowAction::Execute(Event /*event*/)
 
 bool CastShatteringThrowAction::isUseful()
 {
-    if (!bot->HasSpell(64382) || bot->HasSpellCooldown(64382))
+    if (!bot->HasSpell(64382) || bot->GetSpellHistory()->HasCooldown(64382))
         return false;
 
     GuidVector enemies = AI_VALUE(GuidVector, "possible targets");

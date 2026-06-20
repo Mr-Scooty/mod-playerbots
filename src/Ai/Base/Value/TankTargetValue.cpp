@@ -76,8 +76,8 @@ public:
             if (new_unit == currentTarget)
                 return true;
         }
-        float new_threat = new_unit->GetThreatMgr().GetThreat(bot);
-        float old_threat = old_unit->GetThreatMgr().GetThreat(bot);
+        float new_threat = new_unit->GetThreatManager().GetThreat(bot);
+        float old_threat = old_unit->GetThreatManager().GetThreat(bot);
         float new_dis = bot->GetDistance(new_unit);
         float old_dis = bot->GetDistance(old_unit);
         // hasAggro? -> withinMelee? -> threat

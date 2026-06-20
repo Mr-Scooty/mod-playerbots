@@ -10,6 +10,7 @@
 #include "Playerbots.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "SpellHistory.h"
 
 std::vector<NextAction> CastDeathchillAction::getPrerequisites()
 {
@@ -44,7 +45,7 @@ bool CastRaiseDeadAction::Execute(Event event)
 
     const uint32_t spellId = AI_VALUE2(uint32_t, "spell id", spell);
 
-    bot->AddSpellCooldown(spellId, 0, 3 * 60 * 1000);
+    bot->GetSpellHistory()->AddCooldown(spellId, 0, std::chrono::milliseconds(3 * 60 * 1000));
 
     return true;
 }

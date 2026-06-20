@@ -158,6 +158,10 @@ public:
         creators["health"] = &ValueContext::health;
         creators["rage"] = &ValueContext::rage;
         creators["energy"] = &ValueContext::energy;
+        creators["holy power"] = &ValueContext::holy_power;
+        creators["focus"] = &ValueContext::focus;
+        creators["soul shards"] = &ValueContext::soul_shards;
+        creators["runic power"] = &ValueContext::runic_power;
         creators["mana"] = &ValueContext::mana;
         creators["combo"] = &ValueContext::combo;
         creators["dead"] = &ValueContext::dead;
@@ -401,6 +405,10 @@ private:
     static UntypedValue* health(PlayerbotAI* botAI) { return new HealthValue(botAI); }
     static UntypedValue* rage(PlayerbotAI* botAI) { return new RageValue(botAI); }
     static UntypedValue* energy(PlayerbotAI* botAI) { return new EnergyValue(botAI); }
+    static UntypedValue* holy_power(PlayerbotAI* botAI) { return new HolyPowerValue(botAI); }
+    static UntypedValue* focus(PlayerbotAI* botAI) { return new FocusValue(botAI); }
+    static UntypedValue* soul_shards(PlayerbotAI* botAI) { return new SoulShardsValue(botAI); }
+    static UntypedValue* runic_power(PlayerbotAI* botAI) { return new RunicPowerValue(botAI); }
     static UntypedValue* mana(PlayerbotAI* botAI) { return new ManaValue(botAI); }
     static UntypedValue* combo(PlayerbotAI* botAI) { return new ComboPointsValue(botAI); }
     static UntypedValue* dead(PlayerbotAI* botAI) { return new IsDeadValue(botAI); }

@@ -9,10 +9,13 @@
 #include "Player.h"
 #include "SpellMgr.h"
 #include "World.h"
+#include "DBCStores.h"
+#include "SpellInfo.h"
 
 uint32 TalentSpec::TalentListEntry::tabPage() const
 {
-    return talentTabInfo->TalentTabID == 41 ? 1 : talentTabInfo->tabpage;
+    // ShatterCore: 3.3.5a TalentTabEntry::TalentTabID (own DBC id) -> 4.3.4 TalentTabEntry::ID; tabpage -> OrderIndex
+    return talentTabInfo->ID == 41 ? 1 : talentTabInfo->OrderIndex;
 }
 
 // Checks a talent link on basic validity.
@@ -81,32 +84,32 @@ bool TalentSpec::CheckTalents(uint32 level, std::ostringstream* out)
     {
         if (entry.rank > entry.maxRank)
         {
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->RankID[0]);
-            *out << "spec is not for this class. " << spellInfo->SpellName[0] << " has " << (entry.rank - entry.maxRank)
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->SpellRank[0]);
+            *out << "spec is not for this class. " << spellInfo->SpellName << " has " << (entry.rank - entry.maxRank)
                  << " points above max rank.";
             return false;
         }
 
-        if (entry.rank > 0 && entry.talentInfo->DependsOn)
+        if (entry.rank > 0 && entry.talentInfo->PrereqTalent[0])
         {
-            if (sTalentStore.LookupEntry(entry.talentInfo->DependsOn))
+            if (sTalentStore.LookupEntry(entry.talentInfo->PrereqTalent[0]))
             {
                 bool found = false;
                 SpellInfo const* spellInfodep = nullptr;
 
                 for (auto& dep : talents)
-                    if (dep.talentInfo->TalentID == entry.talentInfo->DependsOn)
+                    if (dep.talentInfo->ID == entry.talentInfo->PrereqTalent[0])
                     {
-                        spellInfodep = sSpellMgr->GetSpellInfo(dep.talentInfo->RankID[0]);
-                        if (dep.rank >= entry.talentInfo->DependsOnRank)
+                        spellInfodep = sSpellMgr->GetSpellInfo(dep.talentInfo->SpellRank[0]);
+                        if (dep.rank >= entry.talentInfo->PrereqRank[0])
                             found = true;
                     }
 
                 if (!found)
                 {
-                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->RankID[0]);
-                    *out << "spec is invalid. Talent:" << spellInfo->SpellName[0]
-                         << " needs: " << spellInfodep->SpellName[0] << " at rank: " << entry.talentInfo->DependsOnRank;
+                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->SpellRank[0]);
+                    *out << "spec is invalid. Talent:" << spellInfo->SpellName
+                         << " needs: " << spellInfodep->SpellName << " at rank: " << entry.talentInfo->PrereqRank[0];
                     return false;
                 }
             }
@@ -120,10 +123,10 @@ bool TalentSpec::CheckTalents(uint32 level, std::ostringstream* out)
 
         for (auto& entry : talentTree)
         {
-            if (entry.rank > 0 && entry.talentInfo->Row * 5 > points)
+            if (entry.rank > 0 && entry.talentInfo->TierID * 5 > points)
             {
-                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->RankID[0]);
-                *out << "spec is is invalid. Talent " << spellInfo->SpellName[0] << " is selected with only " << points
+                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(entry.talentInfo->SpellRank[0]);
+                *out << "spec is is invalid. Talent " << spellInfo->SpellName << " is selected with only " << points
                      << " in row below it.";
                 return false;
             }
@@ -148,7 +151,7 @@ void TalentSpec::ApplyTalents(Player* bot, std::ostringstream* /*out*/)
     {
         if (entry.rank == 0)
             continue;
-        bot->LearnTalent(entry.talentInfo->TalentID, entry.rank - 1);
+        bot->LearnTalent(entry.talentInfo->ID, entry.rank - 1);
     }
 }
 
@@ -163,7 +166,7 @@ void TalentSpec::GetTalents(uint32 classMask)
         if (!talentInfo)
             continue;
 
-        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TalentTab);
+        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TabID);
         if (!talentTabInfo)
             continue;
 
@@ -177,7 +180,7 @@ void TalentSpec::GetTalents(uint32 classMask)
 
         for (uint8 rank = 0; rank < MAX_TALENT_RANK; ++rank)
         {
-            uint32 spellId = talentInfo->RankID[rank];
+            uint32 spellId = talentInfo->SpellRank[rank];
             if (!spellId)
                 continue;
 
@@ -201,13 +204,13 @@ bool sortTalentMap(TalentSpec::TalentListEntry i, TalentSpec::TalentListEntry j,
     if (tabSort[itab] > tabSort[jtab])
         return false;
 
-    if (i.talentInfo->Row < j.talentInfo->Row)
+    if (i.talentInfo->TierID < j.talentInfo->TierID)
         return true;
 
-    if (i.talentInfo->Row > j.talentInfo->Row)
+    if (i.talentInfo->TierID > j.talentInfo->TierID)
         return false;
 
-    if (i.talentInfo->Col < j.talentInfo->Col)
+    if (i.talentInfo->ColumnIndex < j.talentInfo->ColumnIndex)
         return true;
 
     return false;
@@ -247,7 +250,7 @@ void TalentSpec::ReadTalents(Player* bot)
     for (auto& entry : talents)
         for (uint8 rank = 0; rank < MAX_TALENT_RANK; ++rank)
         {
-            uint32 spellId = entry.talentInfo->RankID[rank];
+            uint32 spellId = entry.talentInfo->SpellRank[rank];
             if (!spellId)
                 continue;
 

@@ -7,6 +7,7 @@
 
 #include "Playerbots.h"
 #include "SharedDefines.h"
+#include "ObjectAccessor.h"
 
 uint8 MyAttackerCountValue::Calculate() { return bot->getAttackers().size(); }
 
@@ -64,7 +65,7 @@ uint8 BalancePercentValue::Calculate()
             if (!player || !player->IsAlive())
                 continue;
 
-            playerLevel += player->GetLevel();
+            playerLevel += player->getLevel();
         }
         uint32 memberCount = group->GetMembersCount();
         playerLevel /= memberCount;
@@ -80,7 +81,7 @@ uint8 BalancePercentValue::Calculate()
         if (!creature || !creature->IsAlive())
             continue;
 
-        uint32 level = creature->GetLevel();
+        uint32 level = creature->getLevel();
 
         switch (creature->GetCreatureTemplate()->rank)
         {

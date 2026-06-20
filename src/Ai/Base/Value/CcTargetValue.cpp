@@ -10,6 +10,7 @@
 #include "Group.h"
 #include "PlayerbotAI.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
 
 class FindTargetForCcStrategy : public FindTargetStrategy
 {

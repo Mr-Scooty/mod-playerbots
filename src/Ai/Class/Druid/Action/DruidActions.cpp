@@ -10,9 +10,16 @@
 #include "ServerFacade.h"
 #include "AoeValues.h"
 #include "TargetValue.h"
+#include "SpellHistory.h"
 
 constexpr uint32 SPELL_ECLIPSE_SOLAR = 48517;
 constexpr uint32 SPELL_ECLIPSE_LUNAR = 48518;
+
+// ShatterCore (4.3.4 Balance): signed Eclipse meter, read from POWER_ECLIPSE (-100..+100).
+int32 EclipseValue::Calculate()
+{
+    return bot->GetPower(POWER_ECLIPSE);
+}
 
 namespace
 {
@@ -25,7 +32,7 @@ namespace
         if (!existingThorns)
             return true;
 
-        target->RemoveOwnedAura(existingThorns, AURA_REMOVE_BY_CANCEL);
+        target->RemoveOwnedAura(existingThorns, AuraRemoveFlags::ByCancel);
         return true;
     }
 }
@@ -219,7 +226,7 @@ bool CastInnervateOnHealerAction::isPossible()
         return false;
 
     uint32 spellId = AI_VALUE2(uint32, "spell id", "innervate");
-    return spellId && !bot->HasSpellCooldown(spellId);
+    return spellId && !bot->GetSpellHistory()->HasCooldown(spellId);
 }
 
 std::vector<NextAction> CastInnervateOnHealerAction::getPrerequisites()

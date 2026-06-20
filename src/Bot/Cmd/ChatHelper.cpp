@@ -13,6 +13,7 @@
 #include "SpellInfo.h"
 
 #include <regex>
+#include "World.h"
 
 std::map<std::string, uint32> ChatHelper::consumableSubClasses;
 std::map<std::string, uint32> ChatHelper::tradeSubClasses;
@@ -419,8 +420,8 @@ std::string const ChatHelper::FormatWorldEntry(int32 entry)
 std::string const ChatHelper::FormatSpell(SpellInfo const* spellInfo)
 {
     std::ostringstream out;
-    std::string spellName = spellInfo->SpellName[sWorld->GetDefaultDbcLocale()] ?
-        spellInfo->SpellName[sWorld->GetDefaultDbcLocale()] : spellInfo->SpellName[LOCALE_enUS];
+    // ShatterCore: SpellInfo::SpellName is a single char* (not a localized array), use it directly.
+    std::string spellName = spellInfo->SpellName ? spellInfo->SpellName : "";
     out << "|cffffffff|Hspell:" << spellInfo->Id << "|h[" << spellName << "]|h|r";
     return out.str();
 }
@@ -428,19 +429,15 @@ std::string const ChatHelper::FormatSpell(SpellInfo const* spellInfo)
 std::string const ChatHelper::FormatItem(ItemTemplate const* proto, uint32 count, uint32 total)
 {
     char color[32];
-    snprintf(color, sizeof(color), "%x", ItemQualityColors[proto->Quality]);
+    snprintf(color, sizeof(color), "%x", ItemQualityColors[proto->GetQuality()]);
 
+    // ShatterCore: no ItemLocale/GetItemLocale in core; use the template name directly.
     std::string itemName;
-    const ItemLocale* locale = sObjectMgr->GetItemLocale(proto->ItemId);
-
-    if (locale && locale->Name.size() > sWorld->GetDefaultDbcLocale())
-        itemName = locale->Name[sWorld->GetDefaultDbcLocale()];
-
-    if (itemName.empty())
-        itemName = proto->Name1;
+    if (char const* n = proto->GetName(DEFAULT_LOCALE))
+        itemName = n;
 
     std::ostringstream out;
-    out << "|c" << color << "|Hitem:" << proto->ItemId << ":0:0:0:0:0:0:0"
+    out << "|c" << color << "|Hitem:" << proto->GetId() << ":0:0:0:0:0:0:0"
         << "|h[" << itemName << "]|h|r";
 
     if (count > 1)

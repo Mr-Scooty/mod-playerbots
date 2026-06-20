@@ -249,6 +249,42 @@ public:
     ChainLightningNoCdTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "chain lightning") {}
 };
 
+// ShatterCore 4.3.4: Lava Burst off cooldown (also fires on Lava Surge resets, since the spell simply becomes
+// castable again). Used by Elemental to weave Lava Burst whenever available.
+class LavaBurstNoCdTrigger : public SpellNoCooldownTrigger
+{
+public:
+    LavaBurstNoCdTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "lava burst") {}
+};
+
+// ShatterCore 4.3.4 Elemental Fulmination: Lightning Shield builds to 9 charges; Earth Shock then dumps the
+// surplus as burst. Fires when the bot has Lightning Shield at >= 9 charges.
+// NOTE: the core (spell_shaman.cpp, spell 324) tracks Lightning Shield charges via Aura::GetCharges(), NOT
+// GetStackAmount(); the bot's HasAuraStackTrigger only inspects GetStackAmount() (which stays at 1 for
+// Lightning Shield), so we must read GetCharges() directly here. IsActive() also leaves Earth Shock available
+// as a normal castable so the rotation still works even if this charge read is ever off.
+class FulminationTrigger : public Trigger
+{
+public:
+    FulminationTrigger(PlayerbotAI* botAI) : Trigger(botAI, "fulmination") {}
+
+    bool IsActive() override;
+};
+
+// ShatterCore 4.3.4: Lightning Shield missing (Ele/Enh maintain it; Resto uses Water Shield instead).
+class NoLightningShieldTrigger : public BuffTrigger
+{
+public:
+    NoLightningShieldTrigger(PlayerbotAI* botAI) : BuffTrigger(botAI, "lightning shield") {}
+};
+
+// ShatterCore 4.3.4: Unleash Elements off cooldown (weapon-imbue burst weave).
+class UnleashElementsNoCdTrigger : public SpellNoCooldownTrigger
+{
+public:
+    UnleashElementsNoCdTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "unleash elements") {}
+};
+
 // Healing Triggers
 
 class EarthShieldOnMainTankTrigger : public BuffOnMainTankTrigger

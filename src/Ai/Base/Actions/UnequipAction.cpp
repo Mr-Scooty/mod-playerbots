@@ -72,9 +72,7 @@ void UnequipAction::UnequipItem(Item* item)
 
     WorldPacket packet(CMSG_AUTOSTORE_BAG_ITEM, 3);
     packet << bagIndex << slot << dstBag;
-    WorldPackets::Item::AutoStoreBagItem nicePacket(std::move(packet));
-    nicePacket.Read();
-    bot->GetSession()->HandleAutoStoreBagItemOpcode(nicePacket);
+        bot->GetSession()->HandleAutoStoreBagItemOpcode(packet);
 
     std::ostringstream out;
     out << chat->FormatItem(item->GetTemplate()) << " unequipped";

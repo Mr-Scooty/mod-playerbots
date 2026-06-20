@@ -28,10 +28,10 @@
 //        {
 //            SpellInfo const* info = spell->GetSpellInfo();
 //            bool isEruption = NaxxSpellIds::MatchesAnySpellId(info, {NaxxSpellIds::Eruption10});
-//            if (!isEruption && info && info->SpellName[LOCALE_enUS])
+//            if (!isEruption && info && info->SpellName)
 //            {
 //                // Fallback to name for custom spell data.
-//                isEruption = botAI->EqualLowercaseName(info->SpellName[LOCALE_enUS], "eruption");
+//                isEruption = botAI->EqualLowercaseName(info->SpellName, "eruption");
 //            }
 //            if (isEruption)
 //            {

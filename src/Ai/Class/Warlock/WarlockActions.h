@@ -248,6 +248,34 @@ public:
     std::string const GetTargetName() override { return "pet target"; }
 };
 
+// 4.3.4 Demon Soul: fuse with the demon for a spec-specific damage buff (self-buff, on cooldown).
+class CastDemonSoulAction : public CastBuffSpellAction
+{
+public:
+    CastDemonSoulAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "demon soul") {}
+};
+
+// 4.3.4 Soulburn: spends a soul shard to empower the next spell (instant Soul Fire, Seed spread, etc.).
+class CastSoulburnAction : public CastBuffSpellAction
+{
+public:
+    CastSoulburnAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "soulburn") {}
+};
+
+// 4.3.4 Dark Intent: haste/crit-link buff (bots default to self).
+class CastDarkIntentAction : public CastBuffSpellAction
+{
+public:
+    CastDarkIntentAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "dark intent") {}
+};
+
+// 4.3.4 Summon Doomguard: short-cooldown damage guardian (boss cooldown).
+class CastSummonDoomguardAction : public CastBuffSpellAction
+{
+public:
+    CastSummonDoomguardAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon doomguard") {}
+};
+
 // DoT/Curse Spells
 
 class CastCorruptionAction : public CastDebuffSpellAction
@@ -366,6 +394,31 @@ public:
     }
 };
 
+// 4.3.4 Banes (Cataclysm-renamed Curse of Agony / Curse of Doom).
+class CastBaneOfAgonyAction : public CastDebuffSpellAction
+{
+public:
+    CastBaneOfAgonyAction(PlayerbotAI* botAI) : CastDebuffSpellAction(botAI, "bane of agony", true) {}
+    bool isUseful() override { return CastAuraSpellAction::isUseful(); }
+};
+
+class CastBaneOfAgonyOnAttackerAction : public CastDebuffSpellOnAttackerAction
+{
+public:
+    CastBaneOfAgonyOnAttackerAction(PlayerbotAI* botAI)
+        : CastDebuffSpellOnAttackerAction(botAI, "bane of agony", true)
+    {
+    }
+    bool isUseful() override { return CastAuraSpellAction::isUseful(); }
+};
+
+class CastBaneOfDoomAction : public CastDebuffSpellAction
+{
+public:
+    CastBaneOfDoomAction(PlayerbotAI* botAI) : CastDebuffSpellAction(botAI, "bane of doom", true, 0) {}
+    bool isUseful() override { return CastAuraSpellAction::isUseful(); }
+};
+
 class CastCurseOfExhaustionAction : public CastDebuffSpellAction
 {
 public:
@@ -461,6 +514,20 @@ class CastChaosBoltAction : public CastSpellAction
 {
 public:
     CastChaosBoltAction(PlayerbotAI* ai) : CastSpellAction(ai, "chaos bolt") {}
+};
+
+// 4.3.4 Demonology: Hand of Gul'dan -- impact-zone nuke used on cooldown.
+class CastHandOfGuldanAction : public CastSpellAction
+{
+public:
+    CastHandOfGuldanAction(PlayerbotAI* ai) : CastSpellAction(ai, "hand of gul'dan") {}
+};
+
+// 4.3.4 Fel Flame: instant filler / on-the-move nuke (also extends Immolate/UA).
+class CastFelFlameAction : public CastSpellAction
+{
+public:
+    CastFelFlameAction(PlayerbotAI* ai) : CastSpellAction(ai, "fel flame") {}
 };
 
 class CastSearingPainAction : public CastSpellAction

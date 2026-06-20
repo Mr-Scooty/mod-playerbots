@@ -9,6 +9,10 @@
 #include "ItemCountValue.h"
 #include "ItemVisitors.h"
 #include "PlayerbotAI.h"
+#include "WorldSession.h"
+#include "TradeData.h"
+#include "ObjectAccessor.h"
+#include "TradePackets.h"
 
 bool TradeAction::Execute(Event event)
 {
@@ -38,9 +42,9 @@ bool TradeAction::Execute(Event event)
 
         if (!player->GetTrader())
         {
-            WorldPacket packet(CMSG_INITIATE_TRADE);
-            packet << player->GetGUID();
-            bot->GetSession()->HandleInitiateTradeOpcode(packet);
+            WorldPackets::Trade::InitiateTrade initPacket{WorldPacket(CMSG_INITIATE_TRADE)};
+            initPacket.Guid = player->GetGUID();
+            bot->GetSession()->HandleInitiateTradeOpcode(initPacket);
             return true;
         }
         else if (player->GetTrader() != bot)
@@ -50,9 +54,9 @@ bool TradeAction::Execute(Event event)
     uint32 copper = chat->parseMoney(text);
     if (copper > 0)
     {
-        WorldPacket packet(CMSG_SET_TRADE_GOLD, 4);
-        packet << copper;
-        bot->GetSession()->HandleSetTradeGoldOpcode(packet);
+        WorldPackets::Trade::SetTradeGold goldPacket{WorldPacket(CMSG_SET_TRADE_GOLD)};
+        goldPacket.Coinage = copper;
+        bot->GetSession()->HandleSetTradeGoldOpcode(goldPacket);
     }
 
     size_t pos = text.rfind(" ");
@@ -95,9 +99,9 @@ bool TradeAction::TradeItem(Item const* item, int8 slot)
             {
                 tradeSlot = i;
 
-                WorldPacket packet(CMSG_CLEAR_TRADE_ITEM, 1);
-                packet << (uint8)tradeSlot;
-                bot->GetSession()->HandleClearTradeItemOpcode(packet);
+                WorldPackets::Trade::ClearTradeItem clearPacket{WorldPacket(CMSG_CLEAR_TRADE_ITEM)};
+                clearPacket.TradeSlot = uint8(tradeSlot);
+                bot->GetSession()->HandleClearTradeItemOpcode(clearPacket);
                 pTrade->SetItem(TradeSlots(i), nullptr);
                 return true;
             }
@@ -113,10 +117,10 @@ bool TradeAction::TradeItem(Item const* item, int8 slot)
     if (tradeSlot == -1)
         return false;
 
-    WorldPacket packet(CMSG_SET_TRADE_ITEM, 3);
-    packet << (uint8)tradeSlot;
-    packet << (uint8)item->GetBagSlot();
-    packet << (uint8)item->GetSlot();
-    bot->GetSession()->HandleSetTradeItemOpcode(packet);
+    WorldPackets::Trade::SetTradeItem setPacket{WorldPacket(CMSG_SET_TRADE_ITEM)};
+    setPacket.TradeSlot = uint8(tradeSlot);
+    setPacket.PackSlot = uint8(item->GetBagSlot());
+    setPacket.ItemSlotInPack = uint8(item->GetSlot());
+    bot->GetSession()->HandleSetTradeItemOpcode(setPacket);
     return true;
 }

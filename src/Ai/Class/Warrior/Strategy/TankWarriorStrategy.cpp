@@ -132,9 +132,13 @@ TankWarriorStrategy::TankWarriorStrategy(PlayerbotAI* botAI) : GenericWarriorStr
 
 std::vector<NextAction> TankWarriorStrategy::getDefaultActions()
 {
+    // ShatterCore 4.3.4 Protection single-target filler priority (used when no higher-priority trigger fires):
+    // Shield Slam is the hardest-hitting threat strike, Revenge next, then Devastate (stacks Sunder to 3),
+    // with Demoralizing Shout as a debuff filler. The on-proc/on-CD steps come from the trigger nodes below.
     return {
-        NextAction("devastate", ACTION_DEFAULT + 0.3f),
-        NextAction("revenge", ACTION_DEFAULT + 0.2f),
+        NextAction("shield slam", ACTION_DEFAULT + 0.4f),
+        NextAction("revenge", ACTION_DEFAULT + 0.3f),
+        NextAction("devastate", ACTION_DEFAULT + 0.2f),
         NextAction("demoralizing shout", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
@@ -194,36 +198,52 @@ void TankWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             }
         )
     );
+    // ShatterCore 4.3.4 Protection threat priority (class reference doc 3.3):
+    // 1) Shield Slam on CD (Sword and Board resets it) 2) Revenge when usable 3) Devastate filler (stacks Sunder)
+    // 4) Heroic Strike rage dump 5) keep Thunder Clap + Demoralizing Shout up. Active mitigation via Shield Block.
+
+    // Sword and Board proc: free, instant Shield Slam reset -- always take it.
     triggers.push_back(
         new TriggerNode(
-            "sunder armor",
+            "sword and board",
             {
-                NextAction("devastate", ACTION_HIGH + 2)
+                NextAction("shield slam", ACTION_HIGH + 4)
             }
         )
     );
+    // Shield Slam on cooldown -- the primary threat strike.
     triggers.push_back(
         new TriggerNode(
-            "medium rage available",
+            "shield slam",
             {
-                NextAction("shield slam", ACTION_HIGH + 2),
-                NextAction("devastate", ACTION_HIGH + 1)
+                NextAction("shield slam", ACTION_HIGH + 3)
             }
         )
     );
-    triggers.push_back(
-        new TriggerNode(
-            "shield block",
-            {
-                NextAction("shield block", ACTION_INTERRUPT + 1)
-            }
-        )
-    );
+    // Revenge whenever it lights up (after an avoided attack) -- hits hard, free threat.
     triggers.push_back(
         new TriggerNode(
             "revenge",
             {
                 NextAction("revenge", ACTION_HIGH + 2)
+            }
+        )
+    );
+    // Devastate to keep Sunder Armor at 3 stacks (also feeds Sword and Board chances).
+    triggers.push_back(
+        new TriggerNode(
+            "sunder armor",
+            {
+                NextAction("devastate", ACTION_HIGH + 1)
+            }
+        )
+    );
+    // Active mitigation: Shield Block window.
+    triggers.push_back(
+        new TriggerNode(
+            "shield block",
+            {
+                NextAction("shield block", ACTION_INTERRUPT + 1)
             }
         )
     );
@@ -313,14 +333,6 @@ void TankWarriorStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             "victory rush",
             {
                 NextAction("victory rush", ACTION_INTERRUPT)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "sword and board",
-            {
-                NextAction("shield slam", ACTION_INTERRUPT)
             }
         )
     );

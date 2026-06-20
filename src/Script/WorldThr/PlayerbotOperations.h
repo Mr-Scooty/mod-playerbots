@@ -20,7 +20,8 @@
 #include "RandomPlayerbotMgr.h"
 #include "UseMeetingStoneAction.h"
 #include "WorldSession.h"
-#include "WorldSessionMgr.h"
+#include "World.h"
+#include "Log.h"
 
 // Group invite operation
 class GroupInviteOperation : public PlayerbotOperation
@@ -335,7 +336,7 @@ public:
                 continue;
             }
 
-            if (member->GetLevel() < 70)
+            if (member->getLevel() < 70)
             {
                 LOG_DEBUG("playerbots", "ArenaGroupFormationOperation: Member {} is below level 70, skipping",
                          member->GetName());
@@ -371,7 +372,7 @@ public:
             if (memberBotAI)
                 memberBotAI->Reset();
 
-            member->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+            member->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
             member->TeleportTo(leader->GetMapId(), leader->GetPositionX(), leader->GetPositionY(),
                               leader->GetPositionZ(), 0);
 
@@ -498,7 +499,7 @@ public:
         PlayerbotHolder* holder = &RandomPlayerbotMgr::instance();
         if (m_masterAccountId)
         {
-            WorldSession* masterSession = sWorldSessionMgr->FindSession(m_masterAccountId);
+            WorldSession* masterSession = sWorld->FindSession(m_masterAccountId);
             Player* masterPlayer = masterSession ? masterSession->GetPlayer() : nullptr;
             if (masterPlayer)
                 holder = PlayerbotsMgr::instance().GetPlayerbotMgr(masterPlayer);

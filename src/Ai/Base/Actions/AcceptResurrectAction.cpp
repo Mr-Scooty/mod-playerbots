@@ -7,6 +7,7 @@
 
 #include "Event.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 bool AcceptResurrectAction::Execute(Event event)
 {

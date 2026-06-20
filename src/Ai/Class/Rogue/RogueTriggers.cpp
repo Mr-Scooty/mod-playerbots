@@ -8,6 +8,7 @@
 #include "GenericTriggers.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "SpellHistory.h"
 
 // bool AdrenalineRushTrigger::isPossible()
 // {
@@ -29,7 +30,7 @@ bool UnstealthTrigger::IsActive()
 
 bool StealthTrigger::IsActive()
 {
-    if (botAI->HasAura("stealth", bot) || bot->IsInCombat() || bot->HasSpellCooldown(1784))
+    if (botAI->HasAura("stealth", bot) || bot->IsInCombat() || bot->GetSpellHistory()->HasCooldown(1784))
         return false;
 
     float distance = 30.f;
@@ -63,13 +64,13 @@ bool StealthTrigger::IsActive()
     return target && ServerFacade::instance().GetDistance2d(bot, target) < distance;
 }
 
-bool SapTrigger::IsPossible() { return bot->GetLevel() > 10 && bot->HasSpell(6770) && !bot->IsInCombat(); }
+bool SapTrigger::IsPossible() { return bot->getLevel() > 10 && bot->HasSpell(6770) && !bot->IsInCombat(); }
 
 bool SprintTrigger::IsPossible() { return bot->HasSpell(2983); }
 
 bool SprintTrigger::IsActive()
 {
-    if (bot->HasSpellCooldown(2983))
+    if (bot->GetSpellHistory()->HasCooldown(2983))
         return false;
 
     float distance = botAI->GetMaster() ? 45.0f : 35.0f;

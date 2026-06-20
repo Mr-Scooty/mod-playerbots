@@ -10,6 +10,8 @@
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 #include "BroadcastHelper.h"
+#include "Map.h"
+#include "World.h"
 
 bool XpGainAction::Execute(Event event)
 {
@@ -65,7 +67,7 @@ void XpGainAction::GiveXP(uint32 xp, Unit* victim)
         return;
     }
 
-    uint32 level = bot->GetLevel();
+    uint32 level = bot->getLevel();
 
     // XP to money conversion processed in Player::RewardQuest
     if (level >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
@@ -91,7 +93,7 @@ void XpGainAction::GiveXP(uint32 xp, Unit* victim)
             bot->GiveLevel(level + 1);
         }
 
-        level = bot->GetLevel();
+        level = bot->getLevel();
         nextLvlXP = bot->GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
     }
 

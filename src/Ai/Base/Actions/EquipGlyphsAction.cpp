@@ -33,13 +33,13 @@ void EquipGlyphsAction::BuildGlyphCache()
     {
         uint32 itemId = kv.first;
         ItemTemplate const* proto = &kv.second;
-        if (!proto || proto->Class != ITEM_CLASS_GLYPH)
+        if (!proto || proto->GetClass() != ITEM_CLASS_GLYPH)
             continue;
 
         // inspect item spell
         for (uint32 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
         {
-            uint32 spellId = proto->Spells[i].SpellId;
+            uint32 spellId = proto->GetEffect(i).SpellID;
             if (!spellId) continue;
 
             SpellInfo const* si = sSpellMgr->GetSpellInfo(spellId);
@@ -85,7 +85,7 @@ bool EquipGlyphsAction::CollectGlyphs(std::vector<uint32> const& itemIds,
             return false;
 
         // check class by AllowableClass
-        if ((info->proto->AllowableClass & bot->getClassMask()) == 0)
+        if ((info->proto->GetAllowableClass() & bot->getClassMask()) == 0)
             return false;
 
         out.push_back(info);
@@ -124,18 +124,18 @@ bool EquipGlyphsAction::Execute(Event event)
 
             uint32 slotId   = bot->GetGlyphSlot(i);
             auto const* gs  = sGlyphSlotStore.LookupEntry(slotId);
-            if (!gs || gs->TypeFlags != g->prop->TypeFlags)
+            if (!gs || gs->Type != g->prop->GlyphSlotFlags)
                 continue;                                   // major/minor don't match
 
             // Remove aura if exist
-            uint32 cur = bot->GetGlyph(i);
+            uint32 cur = bot->GetGlyph(bot->GetActiveSpec(), i);
             if (cur)
                 if (auto* old = sGlyphPropertiesStore.LookupEntry(cur))
-                    bot->RemoveAurasDueToSpell(old->SpellId);
+                    bot->RemoveAurasDueToSpell(old->SpellID);
 
             // Apply new one
-            bot->CastSpell(bot, g->prop->SpellId, true);
-            bot->SetGlyph(i, g->prop->Id, true);
+            bot->CastSpell(bot, g->prop->SpellID, true);
+            bot->SetGlyph(i, g->prop->ID);
 
             used[i] = true;
             placed  = true;

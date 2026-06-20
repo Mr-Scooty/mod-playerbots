@@ -22,7 +22,7 @@ bool SpellCastUsefulValue::Calculate()
         (spellInfo->Attributes & SPELL_ATTR0_ON_NEXT_SWING) != 0)
     {
         if (Spell* spell = bot->GetCurrentSpell(CURRENT_MELEE_SPELL))
-            if (spell->m_spellInfo->Id == spellid && spell->IsNextMeleeSwingSpell() &&
+            if (spell->m_spellInfo->Id == spellid && spell->GetSpellInfo()->IsNextMeleeSwingSpell() &&
                 bot->HasUnitState(UNIT_STATE_MELEE_ATTACKING))
                 return false;
     }
@@ -53,7 +53,7 @@ bool SpellCastUsefulValue::Calculate()
     if (skipSpells.find(spellid) != skipSpells.end())
         return false;
 
-    std::string const spellName = spellInfo->SpellName[0];
+    std::string const spellName = spellInfo->SpellName;
     for (uint32 skipSpellId : skipSpells)
     {
         SpellInfo const* skipSpellInfo = sSpellMgr->GetSpellInfo(skipSpellId);
@@ -61,7 +61,7 @@ bool SpellCastUsefulValue::Calculate()
             continue;
 
         std::wstring wnamepart;
-        if (!Utf8toWStr(skipSpellInfo->SpellName[0], wnamepart))
+        if (!Utf8toWStr(skipSpellInfo->SpellName, wnamepart))
             continue;
 
         wstrToLower(wnamepart);

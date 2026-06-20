@@ -25,7 +25,7 @@ public:
 
         // Otherwise, continue with the normal loot logic
         std::ostringstream out;
-        out << proto->ItemId;
+        out << proto->GetId();
         ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", out.str());
         return usage != ITEM_USAGE_NONE;
     }
@@ -38,7 +38,7 @@ class GrayLootStrategy : public NormalLootStrategy
 public:
     bool CanLoot(ItemTemplate const* proto, AiObjectContext* context) override
     {
-        return NormalLootStrategy::CanLoot(proto, context) || proto->Quality == ITEM_QUALITY_POOR;
+        return NormalLootStrategy::CanLoot(proto, context) || proto->GetQuality() == ITEM_QUALITY_POOR;
     }
 
     std::string const GetName() override { return "gray"; }
@@ -50,8 +50,8 @@ public:
     bool CanLoot(ItemTemplate const* proto, AiObjectContext* context) override
     {
         return NormalLootStrategy::CanLoot(proto, context) ||
-               (proto->Quality >= ITEM_QUALITY_UNCOMMON && proto->Bonding != BIND_WHEN_PICKED_UP &&
-                (proto->Class == ITEM_CLASS_ARMOR || proto->Class == ITEM_CLASS_WEAPON));
+               (proto->GetQuality() >= ITEM_QUALITY_UNCOMMON && proto->GetBonding() != BIND_ON_ACQUIRE &&
+                (proto->GetClass() == ITEM_CLASS_ARMOR || proto->GetClass() == ITEM_CLASS_WEAPON));
     }
 
     std::string const GetName() override { return "disenchant"; }

@@ -8,6 +8,8 @@
 #include "ChatHelper.h"
 #include "LootObjectStack.h"
 #include "Playerbots.h"
+#include "ObjectAccessor.h"
+#include "DBCStores.h"
 
 bool ChooseTravelTargetAction::Execute(Event /*event*/)
 {
@@ -45,7 +47,7 @@ void ChooseTravelTargetAction::getNewTarget(TravelTarget* newTarget, TravelTarge
     bool foundTarget = foundTarget = SetGroupTarget(newTarget);
 
     //Empty bags/repair
-    if (!foundTarget && urand(1, 100) > 10 && bot->GetLevel() > 5)           //90% chance
+    if (!foundTarget && urand(1, 100) > 10 && bot->getLevel() > 5)           //90% chance
     {
         if  (AI_VALUE2(bool, "group or", "should sell,can sell,following party,near leader") ||
              AI_VALUE2(bool, "group or", "should repair,can repair,following party,near leader")
@@ -56,14 +58,14 @@ void ChooseTravelTargetAction::getNewTarget(TravelTarget* newTarget, TravelTarge
     }
 
     //Rpg in city
-    if (!foundTarget && urand(1, 100) > 90 && bot->GetLevel() > 5)           //10% chance
+    if (!foundTarget && urand(1, 100) > 90 && bot->getLevel() > 5)           //10% chance
     {
         foundTarget = SetNpcFlagTarget(newTarget, { UNIT_NPC_FLAG_BANKER,UNIT_NPC_FLAG_BATTLEMASTER,UNIT_NPC_FLAG_AUCTIONEER });
     }
 
     // PvP activities
     bool pvpActivate = false;
-    if (pvpActivate && !foundTarget && urand(0, 4) && bot->GetLevel() > 50)
+    if (pvpActivate && !foundTarget && urand(0, 4) && bot->getLevel() > 50)
     {
         WorldPosition pos = WorldPosition(bot);
         WorldPosition* botPos = &pos;
@@ -479,7 +481,7 @@ bool ChooseTravelTargetAction::SetQuestTarget(TravelTarget* target, bool onlyCom
     if (newQuests)
     {
         // Prefer new quests near the player at lower levels.
-        activeDestinations = TravelMgr::instance().getQuestTravelDestinations(bot, -1, true, false, 400 + bot->GetLevel() * 10);
+        activeDestinations = TravelMgr::instance().getQuestTravelDestinations(bot, -1, true, false, 400 + bot->getLevel() * 10);
     }
     if (activeQuests || completedQuests)
     {
@@ -505,10 +507,10 @@ bool ChooseTravelTargetAction::SetQuestTarget(TravelTarget* target, bool onlyCom
 
             if (onlyClassQuest && activeDestinations.size() && questDestinations.size()) //Only do class quests if we have any.
             {
-                if (activeDestinations.front()->GetQuestTemplate()->GetRequiredClasses() && !questTemplate->GetRequiredClasses())
+                if (activeDestinations.front()->GetQuestTemplate()->GetAllowableClasses() && !questTemplate->GetAllowableClasses())
                     continue;
 
-                if (!activeDestinations.front()->GetQuestTemplate()->GetRequiredClasses() && questTemplate->GetRequiredClasses())
+                if (!activeDestinations.front()->GetQuestTemplate()->GetAllowableClasses() && questTemplate->GetAllowableClasses())
                     activeDestinations.clear();
             }
 
@@ -722,7 +724,7 @@ bool ChooseTravelTargetAction::SetNpcFlagTarget(TravelTarget* target, std::vecto
             continue;
 
         if (!name.empty() && !strstri(cInfo->Name.c_str(), name.c_str()) &&
-            !strstri(cInfo->SubName.c_str(), name.c_str()))
+            !strstri(cInfo->Title.c_str(), name.c_str()))
             continue;
 
         if (!items.empty())
@@ -733,9 +735,9 @@ bool ChooseTravelTargetAction::SetNpcFlagTarget(TravelTarget* target, std::vecto
             {
                 for (auto item : items)
                 {
-                    for (auto vitem : vItems->m_items)
+                    for (auto const& vitem : vItems->m_items)
                     {
-                        if (vitem->item == item)
+                        if (vitem.item == item)
                         {
                             foundItem = true;
                             break;
@@ -916,7 +918,7 @@ bool ChooseTravelTargetAction::needForQuest(Unit* target)
         {
             QuestStatusData questStatus = quest.second;
 
-            if (questTemplate->GetQuestLevel() > bot->GetLevel())
+            if (questTemplate->GetQuestLevel() > bot->getLevel())
                 continue;
 
             for (int j = 0; j < QUEST_OBJECTIVES_COUNT; j++)

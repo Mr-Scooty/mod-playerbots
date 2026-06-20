@@ -262,4 +262,32 @@ public:
     bool IsActive() override;
 };
 
+// ShatterCore (4.3.4 Retribution): Holy Power finisher threshold (default 3) and Inquisition (HP-spender
+// damage buff) maintenance. HolyPowerAvailableTrigger reads the shared "holy power" value (POWER_HOLY_POWER);
+// InquisitionTrigger fires when the Inquisition buff is missing/expiring.
+class HolyPowerAvailableTrigger : public StatAvailable
+{
+public:
+    HolyPowerAvailableTrigger(PlayerbotAI* botAI, int32 amount = 3)
+        : StatAvailable(botAI, amount, "holy power available") {}
+
+    bool IsActive() override;
+};
+
+class InquisitionTrigger : public BuffTrigger
+{
+public:
+    InquisitionTrigger(PlayerbotAI* botAI) : BuffTrigger(botAI, "inquisition") {}
+
+    bool IsActive() override;
+};
+
+// ShatterCore (4.3.4 Protection): Grand Crusader talent procs a free, instant Avenger's Shield (and resets its
+// cooldown) off Crusader Strike/Hammer of the Righteous. Fire the proc consumer when the buff is up.
+class GrandCrusaderTrigger : public HasAuraTrigger
+{
+public:
+    GrandCrusaderTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "grand crusader") {}
+};
+
 #endif

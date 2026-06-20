@@ -9,6 +9,7 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "Vehicle.h"
+#include "Battleground.h"
 
 bool NearestEnemyPlayersValue::AcceptUnit(Unit* unit)
 {
@@ -20,10 +21,10 @@ bool NearestEnemyPlayersValue::AcceptUnit(Unit* unit)
     Player* enemy = dynamic_cast<Player*>(unit);
     if (enemy && botAI->IsOpposing(enemy) && enemy->IsPvP() &&
         !sPlayerbotAIConfig.IsPvpProhibited(enemy->GetZoneId(), enemy->GetAreaId()) &&
-        !enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2) &&
+        !enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_ATTACKABLE_2) &&
         ((inCannon || !enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))) &&
         /*!enemy->HasStealthAura() && !enemy->HasInvisibilityAura()*/ enemy->CanSeeOrDetect(bot) &&
-        !(enemy->HasSpiritOfRedemptionAura()))
+        !(enemy->HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION)))
     {
         // If with master, only attack if master is PvP flagged
         Player* master = botAI->GetMaster();
@@ -43,10 +44,10 @@ Unit* EnemyPlayerValue::Calculate()
     if (Vehicle* vehicle = bot->GetVehicle())
     {
         VehicleSeatEntry const* seat = vehicle->GetSeatForPassenger(bot);
-        if (!seat || !seat->CanControl())  // not in control of vehicle so cant attack anyone
+        if (!seat || !seat->HasFlag(VEHICLE_SEAT_FLAG_CAN_CONTROL))  // not in control of vehicle so cant attack anyone
             return nullptr;
         VehicleEntry const* vi = vehicle->GetVehicleInfo();
-        if (vi && vi->m_flags & VEHICLE_FLAG_FIXED_POSITION)
+        if (vi && vi->Flags & VEHICLE_FLAG_FIXED_POSITION)
             controllingCannon = true;
         else
             controllingVehicle = true;
@@ -153,9 +154,9 @@ float EnemyPlayerValue::GetMaxAttackDistance()
     if (!bg)
         return 40.0f;
 
-    BattlegroundTypeId bgType = bg->GetBgTypeID();
+    BattlegroundTypeId bgType = bg->GetTypeID();
     if (bgType == BATTLEGROUND_RB)
-        bgType = bg->GetBgTypeID(true);
+        bgType = bg->GetTypeID(true);
 
     if (bgType == BATTLEGROUND_IC)
     {

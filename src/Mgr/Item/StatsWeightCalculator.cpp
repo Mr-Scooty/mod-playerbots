@@ -45,7 +45,7 @@ StatsWeightCalculator::StatsWeightCalculator(Player* player) : player_(player)
     else
         type_ = CollectorType::RANGED;
     cls = player->getClass();
-    lvl = player->GetLevel();
+    lvl = player->getLevel();
     tab = AiFactory::GetPlayerSpecTab(player);
     collector_ = std::make_unique<StatsCollector>(type_, cls);
 
@@ -108,14 +108,14 @@ float StatsWeightCalculator::CalculateItem(uint32 itemId, int32 randomPropertyId
         // Heirloom items scale with player level
         // Use player level as effective item level for heirlooms - Quality EPIC
         // Else - Blend with item quality and level for normal items
-        if (proto->Quality == ITEM_QUALITY_HEIRLOOM)
+        if (proto->GetQuality() == ITEM_QUALITY_HEIRLOOM)
             weight_ *= PlayerbotFactory::CalcMixedGearScore(lvl, ITEM_QUALITY_EPIC);
         else
-            weight_ *= PlayerbotFactory::CalcMixedGearScore(proto->ItemLevel, proto->Quality);
+            weight_ *= PlayerbotFactory::CalcMixedGearScore(proto->GetBaseItemLevel(), proto->GetQuality());
     }
 
     // Apply weapon speed governance if slot is provided and this is a weapon
-    if (sPlayerbotAIConfig.preferredSpecWeapons && slot >= 0 && proto->Class == ITEM_CLASS_WEAPON)
+    if (sPlayerbotAIConfig.preferredSpecWeapons && slot >= 0 && proto->GetClass() == ITEM_CLASS_WEAPON)
         weight_ *= ApplyPreferredSpecWeapons(proto, slot);
 
     return weight_;
@@ -198,10 +198,10 @@ int32 StatsWeightCalculator::PickBestRandomPropertyId(uint32 itemId)
         return 0;
 
     bool isSuffix = false;
-    uint32 poolEntry = proto->RandomProperty;
+    uint32 poolEntry = proto->GetRandomProperty();
     if (!poolEntry)
     {
-        poolEntry = proto->RandomSuffix;
+        poolEntry = proto->GetRandomSuffix();
         isSuffix = true;
     }
     if (!poolEntry)
@@ -554,7 +554,7 @@ void StatsWeightCalculator::GenerateAdditionalWeights(Player* player)
 
 void StatsWeightCalculator::CalculateItemSetMod(Player* player, ItemTemplate const* proto)
 {
-    uint32 itemSet = proto->ItemSet;
+    uint32 itemSet = proto->GetItemSet();  // ShatterCore: ItemTemplate::ItemSet -> GetItemSet()
     if (!itemSet)
         return;
 
@@ -576,8 +576,9 @@ void StatsWeightCalculator::CalculateItemSetMod(Player* player, ItemTemplate con
 
             uint32 itemCount = eff->item_count;
             uint32 max_items = 0;
+            // ShatterCore: ItemSetEntry::items_to_triggerspell[] -> SetThreshold[] (items needed to trigger set spell)
             for (size_t j = 0; j < MAX_ITEM_SET_SPELLS; j++)
-                max_items = std::max(max_items, setEntry->items_to_triggerspell[j]);
+                max_items = std::max(max_items, setEntry->SetThreshold[j]);
             if (itemCount < max_items)
             {
                 multiplier += 0.1f * itemCount;  // 10% bonus for each item already equipped
@@ -602,7 +603,8 @@ void StatsWeightCalculator::CalculateSocketBonus(Player* /*player*/, ItemTemplat
     for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT + MAX_GEM_SOCKETS;
          ++enchant_slot)
     {
-        uint8 socketColor = proto->Socket[enchant_slot - SOCK_ENCHANTMENT_SLOT].Color;
+        // ShatterCore: ItemTemplate::Socket[].Color -> GetSocketColor(index)
+        uint32 socketColor = proto->GetSocketColor(enchant_slot - SOCK_ENCHANTMENT_SLOT);
 
         if (!socketColor)  // no socket slot
             continue;
@@ -618,17 +620,17 @@ void StatsWeightCalculator::CalculateSocketBonus(Player* /*player*/, ItemTemplat
 void StatsWeightCalculator::CalculateItemTypePenalty(ItemTemplate const* proto)
 {
     // // penalty for different type armor
-    // if (proto->Class == ITEM_CLASS_ARMOR && proto->SubClass >= ITEM_SUBCLASS_ARMOR_CLOTH &&
-    //     proto->SubClass <= ITEM_SUBCLASS_ARMOR_PLATE && NotBestArmorType(proto->SubClass))
+    // if (proto->GetClass() == ITEM_CLASS_ARMOR && proto->GetSubClass() >= ITEM_SUBCLASS_ARMOR_CLOTH &&
+    //     proto->GetSubClass() <= ITEM_SUBCLASS_ARMOR_PLATE && NotBestArmorType(proto->GetSubClass()))
     // {
     //     weight_ *= 1.0;
     // }
-    if (proto->Class == ITEM_CLASS_WEAPON)
+    if (proto->GetClass() == ITEM_CLASS_WEAPON)
     {
         // double hand
-        bool isDoubleHand = proto->Class == ITEM_CLASS_WEAPON &&
-                            !(ITEM_SUBCLASS_MASK_SINGLE_HAND & (1 << proto->SubClass)) &&
-                            !(ITEM_SUBCLASS_MASK_WEAPON_RANGED & (1 << proto->SubClass));
+        bool isDoubleHand = proto->GetClass() == ITEM_CLASS_WEAPON &&
+                            !(ITEM_SUBCLASS_MASK_SINGLE_HAND & (1 << proto->GetSubClass())) &&
+                            !(ITEM_SUBCLASS_MASK_WEAPON_RANGED & (1 << proto->GetSubClass()));
 
         if (isDoubleHand)
         {
@@ -672,31 +674,31 @@ void StatsWeightCalculator::CalculateItemTypePenalty(ItemTemplate const* proto)
             }
         }
         // fury with titan's grip
-        if ((!isDoubleHand || proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM ||
-             proto->SubClass == ITEM_SUBCLASS_WEAPON_STAFF) &&
+        if ((!isDoubleHand || proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_POLEARM ||
+             proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_STAFF) &&
             (cls == CLASS_WARRIOR && tab == WARRIOR_TAB_FURY && player_->CanTitanGrip()))
         {
             weight_ *= 0.1;
         }
 
-        if (cls == CLASS_HUNTER && proto->SubClass == ITEM_SUBCLASS_WEAPON_THROWN)
+        if (cls == CLASS_HUNTER && proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_THROWN)
         {
             weight_ *= 0.1;
         }
 
         if (lvl >= 10 && cls == CLASS_ROGUE && (tab == ROGUE_TAB_ASSASSINATION || tab == ROGUE_TAB_SUBTLETY) &&
-            proto->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
+            proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_DAGGER)
         {
             weight_ *= 1.5;
         }
 
         if (cls == CLASS_ROGUE && player_->HasAura(13964) &&
-            (proto->SubClass == ITEM_SUBCLASS_WEAPON_SWORD || proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE))
+            (proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_SWORD || proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_AXE))
         {
             weight_ *= 1.1;
         }
         if (cls == CLASS_WARRIOR && player_->HasAura(12785) &&
-            (proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM || proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2))
+            (proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_POLEARM || proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_AXE2))
         {
             weight_ *= 1.1;
         }
@@ -704,7 +706,7 @@ void StatsWeightCalculator::CalculateItemTypePenalty(ItemTemplate const* proto)
         {
             weight_ *= 1.3;
         }
-        bool slowDelay = proto->Delay > 2500;
+        bool slowDelay = proto->GetDelay() > 2500;
         if (cls == CLASS_SHAMAN && tab == SHAMAN_TAB_ENHANCEMENT && slowDelay)
             weight_ *= 1.1;
     }
@@ -736,7 +738,8 @@ void StatsWeightCalculator::ApplyOverflowPenalty(Player* player)
         {
             hit_current = player->GetTotalAuraModifier(SPELL_AURA_MOD_SPELL_HIT_CHANCE);
             hit_current +=
-                player->GetTotalAuraModifier(SPELL_AURA_MOD_INCREASES_SPELL_PCT_TO_HIT);  // suppression (18176)
+                // ShatterCore: SPELL_AURA_MOD_INCREASES_SPELL_PCT_TO_HIT -> SPELL_AURA_199 (renamed, unused in 4.3.4)
+                player->GetTotalAuraModifier(SPELL_AURA_199);  // suppression (18176)
             hit_current += player->GetRatingBonusValue(CR_HIT_SPELL);
 
             if (cls == CLASS_PRIEST && tab == PRIEST_TAB_SHADOW && player->HasAura(15835))  // Shadow Focus
@@ -852,7 +855,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
         slot != EQUIPMENT_SLOT_RANGED)
         return 1.0f;
 
-    uint32 delay = proto->Delay;  // milliseconds
+    uint32 delay = proto->GetDelay();  // milliseconds
     float boost = 1.0f + weight;  // applied on a match
 
     // Hunter: melee weapons are stat sticks — speed irrelevant.
@@ -875,8 +878,8 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
             if (tab == WARRIOR_TAB_ARMS)
             {
                 // Arms: slow 2H axes or polearms in mainhand only (Axe Specialization: +5% crit).
-                bool isAxeOrPolearm = (proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
-                                       proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM);
+                bool isAxeOrPolearm = (proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_AXE2 ||
+                                       proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_POLEARM);
                 if (slot == EQUIPMENT_SLOT_MAINHAND && delay >= 3400 && isAxeOrPolearm)
                     return boost;
             }
@@ -899,7 +902,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
                     // 1H DW: slow 1H (>=2600) in both hands.
                     // 2H must be excluded — delay >= 2600 would otherwise pass
                     // for a 2H heirloom (~3600ms) just as it did for Enhancement.
-                    if (proto->InventoryType == INVTYPE_2HWEAPON)
+                    if (proto->GetInventoryType() == INVTYPE_2HWEAPON)
                         break;
                     if (delay >= 2600)
                         return boost;
@@ -938,7 +941,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
             else if (tab == DEATH_KNIGHT_TAB_FROST)
             {
                 // Frost DK has Dual Wield innately — always dual-wields 1H.
-                if (proto->InventoryType == INVTYPE_2HWEAPON)
+                if (proto->GetInventoryType() == INVTYPE_2HWEAPON)
                     break;
                 if (delay >= 2600)
                     return boost;
@@ -957,7 +960,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
                 else
                 {
                     // Post-Dual Wield: slow 1H (>=2600) in both hands.
-                    if (proto->InventoryType == INVTYPE_2HWEAPON)
+                    if (proto->GetInventoryType() == INVTYPE_2HWEAPON)
                         break;
 
                     if (delay >= 2600)
@@ -966,7 +969,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
                         if (slot == EQUIPMENT_SLOT_OFFHAND)
                         {
                             Item* mh = player_->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-                            if (mh && mh->GetTemplate() && mh->GetTemplate()->Delay == delay)
+                            if (mh && mh->GetTemplate() && mh->GetTemplate()->GetDelay() == delay)
                                 mult *= boost;  // synchronized: ×(1+weight)² total = ×9 for 2.0f weight
                         }
                         return mult;
@@ -986,7 +989,7 @@ float StatsWeightCalculator::ApplyPreferredSpecWeapons(ItemTemplate const* proto
             }
             else  // Assassination or Subtlety: slow dagger MH, fast dagger OH.
             {
-                bool isDagger = (proto->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER);
+                bool isDagger = (proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_DAGGER);
                 if (slot == EQUIPMENT_SLOT_MAINHAND && isDagger && delay >= 1700)
                     return boost;
                 if (slot == EQUIPMENT_SLOT_OFFHAND && isDagger && delay <= 1500)

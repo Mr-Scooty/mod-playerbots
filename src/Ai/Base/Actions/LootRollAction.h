@@ -7,12 +7,13 @@
 #define _PLAYERBOT_LOOTROLLACTION_H
 
 #include "QueryItemUsageAction.h"
+#include "Group.h"
 
 class PlayerbotAI;
 
 struct ItemTemplate;
 
-enum RollVote : uint8;
+
 
 class LootRollAction : public QueryItemUsageAction
 {

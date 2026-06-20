@@ -3,12 +3,11 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
 #include "G3D/Vector2.h"
 #include "GossipDef.h"
-#include "IVMapMgr.h"
+#include "IVMapManager.h"
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
 #include "Object.h"
@@ -24,6 +23,9 @@
 #include "SharedDefines.h"
 #include "Timer.h"
 #include "TravelMgr.h"
+#include "Creature.h"
+#include "Log.h"
+#include "Map.h"
 
 bool TellRpgStatusAction::Execute(Event event)
 {
@@ -319,7 +321,7 @@ bool NewRpgDoQuestAction::DoIncompleteQuest(NewRpgInfo::DoQuest& data)
         float dx = nearestPoi.x, dy = nearestPoi.y;
 
         // z = MAX_HEIGHT as we do not know accurate z
-        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(dx, dy));
+        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(bot->GetPhaseShift(), dx, dy));  // ShatterCore: GetWaterLevel takes PhaseShift
 
         // double check for GetQuestPOIPosAndObjectiveIdx
         if (dz == INVALID_HEIGHT || dz == VMAP_INVALID_HEIGHT_VALUE)
@@ -413,7 +415,7 @@ bool NewRpgDoQuestAction::DoCompletedQuest(NewRpgInfo::DoQuest& data)
         // now we get the place to get rewarded
         float dx = poiInfo[0].pos.x, dy = poiInfo[0].pos.y;
         // z = MAX_HEIGHT as we do not know accurate z
-        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(dx, dy));
+        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(bot->GetPhaseShift(), dx, dy));  // ShatterCore: GetWaterLevel takes PhaseShift
 
         // double check for GetQuestPOIPosAndObjectiveIdx
         if (dz == INVALID_HEIGHT || dz == VMAP_INVALID_HEIGHT_VALUE)

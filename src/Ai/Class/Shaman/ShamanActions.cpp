@@ -8,6 +8,7 @@
 #include "Playerbots.h"
 #include "PlayerbotAI.h"
 #include "Action.h"
+#include "Map.h"
 
 bool CastTotemAction::isUseful()
 {

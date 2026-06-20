@@ -7,6 +7,7 @@
 
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
+#include "ObjectAccessor.h"
 
 class FindMaxThreatGapTargetStrategy : public FindTargetStrategy
 {
@@ -27,7 +28,7 @@ public:
             foundHighPriority = true;
             return;
         }
-        if (!result || CalcThreatGap(attacker, threatMgr) > CalcThreatGap(result, &result->GetThreatMgr()))
+        if (!result || CalcThreatGap(attacker, threatMgr) > CalcThreatGap(result, &result->GetThreatManager()))
             result = attacker;
     }
     float CalcThreatGap(Unit* attacker, ThreatManager* threatMgr)
@@ -245,7 +246,7 @@ public:
         Player* bot = botAI->GetBot();
         if (level == 10)
         {
-            Unit* combo_unit = bot->GetComboTarget();
+            Unit* combo_unit = ObjectAccessor::GetUnit(*bot, bot->GetComboTarget());
             if (new_unit == combo_unit)
                 return true;
 

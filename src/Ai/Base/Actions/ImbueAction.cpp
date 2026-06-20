@@ -19,7 +19,7 @@ bool ImbueWithPoisonAction::Execute(Event /*event*/)
     if (bot->HasAura(SPELL_AURA_MOD_STEALTH))
         bot->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
 
-    if (bot->getStandState() != UNIT_STAND_STATE_STAND)
+    if (bot->GetStandState() != UNIT_STAND_STATE_STAND)
         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
     static const std::vector<uint32_t> prioritizedInstantPoisons = {
@@ -113,7 +113,7 @@ bool ImbueWithStoneAction::Execute(Event /*event*/)
         bot->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
 
     // hp check
-    if (bot->getStandState() != UNIT_STAND_STATE_STAND)
+    if (bot->GetStandState() != UNIT_STAND_STATE_STAND)
         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
     // Search and apply stone to weapons
@@ -158,7 +158,7 @@ bool ImbueWithOilAction::Execute(Event /*event*/)
         bot->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
 
     // hp check
-    if (bot->getStandState() != UNIT_STAND_STATE_STAND)
+    if (bot->GetStandState() != UNIT_STAND_STATE_STAND)
         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
     // Search and apply oil to weapons

@@ -13,6 +13,10 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "RandomPlayerbotMgr.h"
+#include "Map.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "DBCStores.h"
 
 using namespace lfg;
 
@@ -94,9 +98,9 @@ bool LfgJoinAction::JoinLFG()
     bool random = urand(0, 100) < 20;
     bool heroic = urand(0, 100) < 50 &&
                   (visitor.count[ITEM_QUALITY_EPIC] >= 3 || visitor.count[ITEM_QUALITY_RARE] >= 10) &&
-                  bot->GetLevel() >= 70;
+                  bot->getLevel() >= 70;
     bool rbotAId = !heroic && (urand(0, 100) < 50 && visitor.count[ITEM_QUALITY_EPIC] >= 5 &&
-                               (bot->GetLevel() == 60 || bot->GetLevel() == 70 || bot->GetLevel() == 80));*/
+                               (bot->getLevel() == 60 || bot->getLevel() == 70 || bot->getLevel() == 80));*/
 
     LfgDungeonSet list;
     std::vector<uint32> selected;
@@ -112,10 +116,10 @@ bool LfgJoinAction::JoinLFG()
                          dungeon->TypeID != LFG_TYPE_HEROIC && dungeon->TypeID != LFG_TYPE_RAID))
             continue;
 
-        auto const& botLevel = bot->GetLevel();
+        auto const& botLevel = bot->getLevel();
 
         /*LFG_TYPE_RANDOM on classic is 15-58 so bot over level 25 will never queue*/
-        if (dungeon->MinLevel && (botLevel < dungeon->MinLevel || botLevel > dungeon->MaxLevel) ||
+        if (dungeon->MinLevel && (botLevel < dungeon->MinLevel || botLevel > dungeon->Maxlevel) ||
             (botLevel > dungeon->MinLevel + 10 && dungeon->TypeID == LFG_TYPE_DUNGEON))
             continue;
 
@@ -145,8 +149,8 @@ bool LfgJoinAction::JoinLFG()
         _roles = "DPS";
 
     LOG_INFO("playerbots", "Bot {} {}:{} <{}>: queues LFG, Dungeon as {} ({})", bot->GetGUID().ToString().c_str(),
-             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str(), _roles,
-             many ? "several dungeons" : dungeon->Name[0]);
+             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName().c_str(), _roles,
+             many ? "several dungeons" : dungeon->Name);
 
     // Set RbotAId Browser comment
     std::string const _gs = std::to_string(botAI->GetEquipGearScore(bot/*, false, false*/));
@@ -186,7 +190,7 @@ bool LfgRoleCheckAction::Execute(Event /*event*/)
         // sLFGMgr->UpdateRoleCheck(group->GetGUID(), bot->GetGUID(), newRoles);
 
         LOG_INFO("playerbots", "Bot {} {}:{} <{}>: LFG roles checked", bot->GetGUID().ToString().c_str(),
-                 bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str());
+                 bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(), bot->GetName().c_str());
 
         return true;
     }
@@ -312,7 +316,7 @@ bool LfgJoinAction::isUseful()
         return false;
     }
 
-    if (bot->GetLevel() < 15)
+    if (bot->getLevel() < 15)
         return false;
 
     // don't use if active player master

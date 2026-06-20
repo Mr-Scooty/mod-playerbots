@@ -6,6 +6,7 @@
 #include "ObjectMgr.h"
 #include "LootObjectStack.h"
 #include "AiObjectContext.h"
+#include "WorldSession.h"
 
 bool OpenItemAction::Execute(Event /*event*/)
 {
@@ -36,6 +37,6 @@ void OpenItemAction::OpenItem(Item* item, uint8 bag, uint8 slot)
     botAI->GetAiObjectContext()->GetValue<LootObject>("loot target")->Set(lootObject);
 
     std::ostringstream out;
-    out << "Opened item: " << item->GetTemplate()->Name1;
+    out << "Opened item: " << item->GetTemplate()->GetName(DEFAULT_LOCALE);
     botAI->TellMaster(out.str());
 }

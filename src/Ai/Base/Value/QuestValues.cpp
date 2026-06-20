@@ -5,34 +5,36 @@
 
 #include "QuestValues.h"
 
-#include "MapMgr.h"
+#include "MapManager.h"
 #include "Playerbots.h"
 #include "SharedValueContext.h"
+#include "World.h"
+#include "DBCStores.h"
 
 // What kind of a relation does this entry have with this quest.
 entryQuestRelationMap EntryQuestRelationMapValue::Calculate()
 {
     entryQuestRelationMap rMap;
 
-    for (auto relation : *sObjectMgr->GetCreatureQuestRelationMap())
+    for (auto relation : sObjectMgr->GetCreatureQuestRelationsMap())
         rMap[relation.first][relation.second] |= (int)QuestRelationFlag::questGiver;
 
-    for (auto relation : *sObjectMgr->GetCreatureQuestInvolvedRelationMap())
+    for (auto relation : sObjectMgr->GetCreatureQuestInvolvedRelationsMap())
         rMap[relation.first][relation.second] |= (int)QuestRelationFlag::questTaker;
 
-    for (auto relation : *sObjectMgr->GetGOQuestRelationMap())
+    for (auto relation : sObjectMgr->GetGOQuestRelationsMap())
         rMap[-(int32)relation.first][relation.second] |= (int)QuestRelationFlag::questGiver;
 
-    for (auto relation : *sObjectMgr->GetGOQuestInvolvedRelationMap())
+    for (auto relation : sObjectMgr->GetGOQuestInvolvedRelationsMap())
         rMap[-(int32)relation.first][relation.second] |= (int)QuestRelationFlag::questGiver;
 
     // Quest objectives
-    ObjectMgr::QuestMap const& questMap = sObjectMgr->GetQuestTemplates();
+    ObjectMgr::QuestContainer const& questMap = sObjectMgr->GetQuestTemplates();
 
     for (auto& questItr : questMap)
     {
         uint32 questId = questItr.first;
-        Quest* quest = questItr.second;
+        Quest const* quest = &questItr.second;
 
         for (uint32 objective = 0; objective < QUEST_OBJECTIVES_COUNT; objective++)
         {
@@ -64,7 +66,7 @@ void FindQuestObjectData::GetObjectiveEntries()
 // quest map.
 void FindQuestObjectData::operator()(CreatureData const& creData)
 {
-    uint32 entry = creData.id1;
+    uint32 entry = creData.id;
 
     for (auto& relation : relationMap[entry])
     {
@@ -94,7 +96,7 @@ questGuidpMap QuestGuidpMapValue::Calculate()
     FindQuestObjectData worker;
     for (auto const& itr : sObjectMgr->GetAllCreatureData())
         worker(itr.second);
-    for (auto const& itr : sObjectMgr->GetAllGOData())
+    for (auto const& itr : sObjectMgr->GetAllGameObjectData())
         worker(itr.second);
 
     return worker.GetResult();
@@ -140,7 +142,7 @@ questGiverMap QuestGiversValue::Calculate()
 
 std::vector<GuidPosition> ActiveQuestGiversValue::Calculate()
 {
-    questGiverMap qGivers = GAI_VALUE2(questGiverMap, "quest givers", bot->GetLevel());
+    questGiverMap qGivers = GAI_VALUE2(questGiverMap, "quest givers", bot->getLevel());
 
     std::vector<GuidPosition> retQuestGivers;
 
@@ -204,7 +206,7 @@ std::vector<GuidPosition> ActiveQuestTakersValue::Calculate()
 
         QuestStatus status = questStatus.second.Status;
         if ((status != QUEST_STATUS_COMPLETE || bot->GetQuestRewardStatus(questId)) &&
-            (!quest->IsAutoComplete() || !bot->CanTakeQuest(quest, false)))
+            (!quest->HasFlag(QUEST_FLAGS_AUTO_COMPLETE) || !bot->CanTakeQuest(quest, false)))
             continue;
 
         auto q = questMap.find(questId);
@@ -334,27 +336,27 @@ uint32 DialogStatusValue::getDialogStatus(Player* bot, int32 questgiver, uint32 
 {
     uint32 dialogStatus = DIALOG_STATUS_NONE;
 
-    QuestRelationBounds rbounds;   // QuestRelations (quest-giver)
-    QuestRelationBounds irbounds;  // InvolvedRelations (quest-finisher)
+    QuestRelationResult rbounds;   // QuestRelations (quest-giver)
+    QuestRelationResult irbounds;  // InvolvedRelations (quest-finisher)
 
     if (questgiver > 0)
     {
-        rbounds = sObjectMgr->GetCreatureQuestRelationBounds(questgiver);
-        irbounds = sObjectMgr->GetCreatureQuestInvolvedRelationBounds(questgiver);
+        rbounds = sObjectMgr->GetCreatureQuestRelations(questgiver);
+        irbounds = sObjectMgr->GetCreatureQuestInvolvedRelations(questgiver);
     }
     else
     {
-        rbounds = sObjectMgr->GetGOQuestRelationBounds(questgiver * -1);
-        irbounds = sObjectMgr->GetGOQuestInvolvedRelationBounds(questgiver * -1);
+        rbounds = sObjectMgr->GetGOQuestRelations(questgiver * -1);
+        irbounds = sObjectMgr->GetGOQuestInvolvedRelations(questgiver * -1);
     }
 
     // Check markings for quest-finisher
-    for (QuestRelations::const_iterator itr = irbounds.first; itr != irbounds.second; ++itr)
+    for (uint32 relationQuestId : irbounds)
     {
-        if (questId && itr->second != questId)
+        if (questId && relationQuestId != questId)
             continue;
 
-        Quest const* pQuest = sObjectMgr->GetQuestTemplate(itr->second);
+        Quest const* pQuest = sObjectMgr->GetQuestTemplate(relationQuestId);
         if (!pQuest)
         {
             continue;
@@ -362,12 +364,12 @@ uint32 DialogStatusValue::getDialogStatus(Player* bot, int32 questgiver, uint32 
 
         uint32 dialogStatusNew = DIALOG_STATUS_NONE;
 
-        QuestStatus status = bot->GetQuestStatus(itr->second);
+        QuestStatus status = bot->GetQuestStatus(relationQuestId);
 
-        if ((status == QUEST_STATUS_COMPLETE && !bot->GetQuestRewardStatus(itr->second)) ||
-            (pQuest->IsAutoComplete() && bot->CanTakeQuest(pQuest, false)))
+        if ((status == QUEST_STATUS_COMPLETE && !bot->GetQuestRewardStatus(relationQuestId)) ||
+            (pQuest->HasFlag(QUEST_FLAGS_AUTO_COMPLETE) && bot->CanTakeQuest(pQuest, false)))
         {
-            if (pQuest->IsAutoComplete() && pQuest->IsRepeatable())
+            if (pQuest->HasFlag(QUEST_FLAGS_AUTO_COMPLETE) && pQuest->IsRepeatable())
             {
                 dialogStatusNew = DIALOG_STATUS_REWARD_REP;
             }
@@ -388,12 +390,12 @@ uint32 DialogStatusValue::getDialogStatus(Player* bot, int32 questgiver, uint32 
     }
 
     // check markings for quest-giver
-    for (QuestRelations::const_iterator itr = rbounds.first; itr != rbounds.second; ++itr)
+    for (uint32 relationQuestId : rbounds)
     {
-        if (questId && itr->second != questId)
+        if (questId && relationQuestId != questId)
             continue;
 
-        Quest const* pQuest = sObjectMgr->GetQuestTemplate(itr->second);
+        Quest const* pQuest = sObjectMgr->GetQuestTemplate(relationQuestId);
         if (!pQuest)
         {
             continue;
@@ -401,7 +403,7 @@ uint32 DialogStatusValue::getDialogStatus(Player* bot, int32 questgiver, uint32 
 
         uint32 dialogStatusNew = DIALOG_STATUS_NONE;
 
-        QuestStatus status = bot->GetQuestStatus(itr->second);
+        QuestStatus status = bot->GetQuestStatus(relationQuestId);
 
         if (status == QUEST_STATUS_NONE)  // For all other cases the mark is handled either at some place else, or with
                                           // involved-relations already
@@ -411,13 +413,13 @@ uint32 DialogStatusValue::getDialogStatus(Player* bot, int32 questgiver, uint32 
                 if (bot->SatisfyQuestLevel(pQuest, false))
                 {
                     int32 lowLevelDiff = sWorld->getIntConfig(CONFIG_QUEST_LOW_LEVEL_HIDE_DIFF);
-                    if (pQuest->IsAutoComplete() ||
+                    if (pQuest->HasFlag(QUEST_FLAGS_AUTO_COMPLETE) ||
                         (pQuest->IsRepeatable() &&
-                         bot->getQuestStatusMap()[itr->second].Status == QUEST_STATUS_REWARDED))
+                         bot->getQuestStatusMap()[relationQuestId].Status == QUEST_STATUS_REWARDED))
                     {
                         dialogStatusNew = DIALOG_STATUS_REWARD_REP;
                     }
-                    else if (lowLevelDiff < 0 || bot->GetLevel() <= bot->GetQuestLevel(pQuest) + uint32(lowLevelDiff))
+                    else if (lowLevelDiff < 0 || bot->getLevel() <= bot->GetQuestLevel(pQuest) + uint32(lowLevelDiff))
                     {
                         dialogStatusNew = DIALOG_STATUS_AVAILABLE;
                     }

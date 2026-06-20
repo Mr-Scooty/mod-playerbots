@@ -10,6 +10,7 @@
 #include "ItemVisitors.h"
 #include "Playerbots.h"
 #include "ItemPackets.h"
+#include "WorldSession.h"
 
 class SellItemsVisitor : public IterateItemsVisitor
 {
@@ -33,7 +34,7 @@ public:
 
     bool Visit(Item* item) override
     {
-        if (item->GetTemplate()->Quality != ITEM_QUALITY_POOR)
+        if (item->GetTemplate()->GetQuality() != ITEM_QUALITY_POOR)
             return true;
 
         return SellItemsVisitor::Visit(item);
@@ -113,14 +114,12 @@ void SellAction::Sell(Item* item)
         ObjectGuid itemguid = item->GetGUID();
         uint32 count = item->GetCount();
 
-        uint32 botMoney = bot->GetMoney();
+        uint64 botMoney = bot->GetMoney();
 
         WorldPacket p(CMSG_SELL_ITEM);
         p << vendorguid << itemguid << count;
 
-        WorldPackets::Item::SellItem nicePacket(std::move(p));
-        nicePacket.Read();
-        bot->GetSession()->HandleSellItemOpcode(nicePacket);
+                bot->GetSession()->HandleSellItemOpcode(p);
 
         if (botAI->HasCheat(BotCheatMask::gold))
         {

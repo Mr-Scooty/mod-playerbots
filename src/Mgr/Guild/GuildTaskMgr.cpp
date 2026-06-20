@@ -9,11 +9,19 @@
 #include "Group.h"
 #include "GuildMgr.h"
 #include "Mail.h"
-#include "MapMgr.h"
+#include "MapManager.h"
 #include "PlayerbotFactory.h"
 #include "Playerbots.h"
 #include "RandomItemMgr.h"
 #include "ServerFacade.h"
+#include "Log.h"
+#include "Map.h"
+#include "WorldSession.h"
+#include "ObjectAccessor.h"
+#include "Guild.h"
+#include "DBCStores.h"
+#include "CharacterCache.h"
+#include "PhasingHandler.h"  // ShatterCore: Map::GetAreaId now requires a PhaseShift
 
 char* strstri(char const* str1, char const* str2);
 
@@ -186,11 +194,11 @@ private:
 
 bool GuildTaskMgr::CreateItemTask(Player* player, uint32 guildId)
 {
-    if (!player || player->GetLevel() < 5)
+    if (!player || player->getLevel() < 5)
         return false;
 
     RandomItemBySkillGuildTaskPredicate predicate(player);
-    uint32 itemId = sRandomItemMgr.GetRandomItem(player->GetLevel() - 5, RANDOM_ITEM_GUILD_TASK, &predicate);
+    uint32 itemId = sRandomItemMgr.GetRandomItem(player->getLevel() - 5, RANDOM_ITEM_GUILD_TASK, &predicate);
     if (!itemId)
     {
         LOG_ERROR("playerbots", "{} / {}: no items avaible for item task",
@@ -220,10 +228,10 @@ bool GuildTaskMgr::CreateKillTask(Player* player, uint32 guildId)
 
     std::vector<uint32> ids;
 
-    uint32 level = player->GetLevel();
+    uint32 level = player->getLevel();
     QueryResult results = WorldDatabase.Query(
         "SELECT ct.Entry, c.map, c.position_x, c.position_y, ct.Name FROM creature_template ct "
-        "JOIN creature c ON ct.Entry = c.id1 WHERE ct.MaxLevel < {} AND ct.MinLevel > {} AND ct.Rank = {} ",
+        "JOIN creature c ON ct.Entry = c.id WHERE ct.MaxLevel < {} AND ct.MinLevel > {} AND ct.Rank = {} ",
         level + 4, level - 3, rank);
     if (results)
     {
@@ -353,7 +361,7 @@ bool GuildTaskMgr::SendItemAdvertisement(CharacterDatabaseTransaction& trans, ui
 
     std::ostringstream body;
     body << GetHelloText(owner);
-    body << "We are in a great need of " << proto->Name1 << ". If you could sell us ";
+    body << "We are in a great need of " << proto->GetName(DEFAULT_LOCALE) << ". If you could sell us ";
     uint32 count = GetTaskValue(owner, guildId, "itemCount");
     if (count > 1)
         body << "at least " << count << " of them ";
@@ -367,7 +375,7 @@ bool GuildTaskMgr::SendItemAdvertisement(CharacterDatabaseTransaction& trans, ui
     body << leader->GetName() << "\n";
 
     std::ostringstream subject;
-    subject << "Guild Task: " << proto->Name1;
+    subject << "Guild Task: " << proto->GetName(DEFAULT_LOCALE);
     if (count > 1)
         subject << " (x" << count << ")";
 
@@ -403,11 +411,12 @@ bool GuildTaskMgr::SendKillAdvertisement(CharacterDatabaseTransaction& trans, ui
         if (!map)
             continue;
 
-        AreaTableEntry const* entry = sAreaTableStore.LookupEntry(map->GetAreaId(PHASEMASK_NORMAL, x, y, z));
+        // ShatterCore: Map::GetAreaId now takes a PhaseShift first arg (no WorldObject here -> empty phase)
+        AreaTableEntry const* entry = sAreaTableStore.LookupEntry(map->GetAreaId(PhasingHandler::GetEmptyPhaseShift(), x, y, z));
         if (!entry)
             continue;
 
-        location = entry->area_name[0];
+        location = entry->AreaName;
         break;
     } while (result->NextRow());
 
@@ -457,7 +466,7 @@ bool GuildTaskMgr::SendThanks(CharacterDatabaseTransaction& trans, uint32 owner,
 
         std::ostringstream body;
         body << GetHelloText(owner);
-        body << "One of our guild members wishes to thank you for the " << proto->Name1 << "!";
+        body << "One of our guild members wishes to thank you for the " << proto->GetName(DEFAULT_LOCALE) << "!";
         uint32 count = GetTaskValue(owner, guildId, "itemCount");
         if (count)
         {
@@ -487,10 +496,10 @@ uint32 GuildTaskMgr::GetMaxItemTaskCount(uint32 itemId)
     if (!proto)
         return 0;
 
-    if (!proto->Stackable || proto->GetMaxStackSize() == 1)
+    if (!proto->GetMaxStackSize() || proto->GetMaxStackSize() == 1)
         return 1;
 
-    if (proto->Quality == ITEM_QUALITY_NORMAL)
+    if (proto->GetQuality() == ITEM_QUALITY_NORMAL)
     {
         switch (proto->GetMaxStackSize())
         {
@@ -505,7 +514,7 @@ uint32 GuildTaskMgr::GetMaxItemTaskCount(uint32 itemId)
         }
     }
 
-    if (proto->Quality < ITEM_QUALITY_RARE)
+    if (proto->GetQuality() < ITEM_QUALITY_RARE)
     {
         switch (proto->GetMaxStackSize())
         {
@@ -708,9 +717,9 @@ bool GuildTaskMgr::HandleConsoleCommand(ChatHandler* /* handler */, char const* 
 
                     if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId))
                     {
-                        name << " (" << proto->Name1 << " x" << itemCount << ",";
+                        name << " (" << proto->GetName(DEFAULT_LOCALE) << " x" << itemCount << ",";
 
-                        switch (proto->Quality)
+                        switch (proto->GetQuality())
                         {
                             case ITEM_QUALITY_UNCOMMON:
                                 name << "green";
@@ -899,7 +908,7 @@ bool GuildTaskMgr::CheckItemTask(uint32 itemId, uint32 obtained, Player* ownerPl
             return false;
 
         uint32 money = GetTaskValue(owner, guildId, "payment");
-        SetTaskValue(owner, guildId, "payment", money + proto->BuyPrice * obtained, rewardTime + 300);
+        SetTaskValue(owner, guildId, "payment", money + proto->GetBuyPrice() * obtained, rewardTime + 300);
     }
 
     if (obtained >= count)
@@ -953,15 +962,15 @@ bool GuildTaskMgr::Reward(CharacterDatabaseTransaction& trans, uint32 owner, uin
         if (!proto)
             return false;
 
-        body << "We wish to thank you for the " << proto->Name1
+        body << "We wish to thank you for the " << proto->GetName(DEFAULT_LOCALE)
              << " you provided so kindly. We really appreciate this and may this small gift bring you our thanks!\n";
         body << "\n";
         body << "Many thanks,\n";
         body << guild->GetName() << "\n";
         body << leader->GetName() << "\n";
-        rewardType = proto->Quality > ITEM_QUALITY_NORMAL ? RANDOM_ITEM_GUILD_TASK_REWARD_EQUIP_BLUE
+        rewardType = proto->GetQuality() > ITEM_QUALITY_NORMAL ? RANDOM_ITEM_GUILD_TASK_REWARD_EQUIP_BLUE
                                                           : RANDOM_ITEM_GUILD_TASK_REWARD_EQUIP_GREEN;
-        itemId = sRandomItemMgr.GetRandomItem(player->GetLevel() - 5, rewardType);
+        itemId = sRandomItemMgr.GetRandomItem(player->getLevel() - 5, rewardType);
     }
     else if (killTask)
     {
@@ -977,16 +986,16 @@ bool GuildTaskMgr::Reward(CharacterDatabaseTransaction& trans, uint32 owner, uin
         body << leader->GetName() << "\n";
         rewardType = proto->rank == CREATURE_ELITE_RARE ? RANDOM_ITEM_GUILD_TASK_REWARD_TRADE
                                                         : RANDOM_ITEM_GUILD_TASK_REWARD_TRADE_RARE;
-        itemId = sRandomItemMgr.GetRandomItem(player->GetLevel(), rewardType);
+        itemId = sRandomItemMgr.GetRandomItem(player->getLevel(), rewardType);
         if (itemId)
         {
             ItemTemplate const* itemProto = sObjectMgr->GetItemTemplate(itemId);
             if (proto)
             {
-                if (itemProto->Quality == ITEM_QUALITY_NORMAL)
+                if (itemProto->GetQuality() == ITEM_QUALITY_NORMAL)
                     itemCount = itemProto->GetMaxStackSize();
 
-                if (proto->rank != CREATURE_ELITE_RARE && itemProto->Quality > ITEM_QUALITY_NORMAL)
+                if (proto->rank != CREATURE_ELITE_RARE && itemProto->GetQuality() > ITEM_QUALITY_NORMAL)
                     itemCount = urand(1, itemProto->GetMaxStackSize());
             }
         }

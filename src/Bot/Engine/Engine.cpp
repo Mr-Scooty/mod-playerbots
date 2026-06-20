@@ -12,6 +12,8 @@
 #include "Queue.h"
 #include "Strategy.h"
 #include "Timer.h"
+#include <cstdarg>
+#include "Log.h"
 
 Engine::Engine(PlayerbotAI* botAI, AiObjectContext* factory) : PlayerbotAIAware(botAI), aiObjectContext(factory)
 {

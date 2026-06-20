@@ -22,7 +22,7 @@ uint32 SpellIdValue::Calculate()
     uint32 extractedSpellId = handler.extractSpellId(namepart);
     if (extractedSpellId)
         if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(extractedSpellId))
-            namepart = spellInfo->SpellName[0];
+            namepart = spellInfo->SpellName;
 
     std::wstring wnamepart;
     if (!Utf8toWStr(namepart, wnamepart))
@@ -39,7 +39,7 @@ uint32 SpellIdValue::Calculate()
     {
         uint32 spellId = itr->first;
 
-        if (itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+        if (itr->second.state == PLAYERSPELL_REMOVED || !itr->second.active)
             continue;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
@@ -60,7 +60,7 @@ uint32 SpellIdValue::Calculate()
             }
         }
 
-        char const* spellName = spellInfo->SpellName[loc];
+        char const* spellName = spellInfo->SpellName;
         if (!useByItem && (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
                            !Utf8FitTo(spellName, wnamepart)))
             continue;
@@ -84,7 +84,7 @@ uint32 SpellIdValue::Calculate()
             if (spellInfo->Effects[0].Effect == SPELL_EFFECT_LEARN_SPELL)
                 continue;
 
-            char const* spellName = spellInfo->SpellName[loc];
+            char const* spellName = spellInfo->SpellName;
             if (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
                 !Utf8FitTo(spellName, wnamepart))
                 continue;
@@ -111,7 +111,7 @@ uint32 SpellIdValue::Calculate()
             if (!pSpellInfo)
                 continue;
 
-            std::string spellName = pSpellInfo->Rank[0];
+            std::string spellName = pSpellInfo->Rank;
 
             // For atoi, the input string has to start with a digit, so lets search for the first digit
             size_t i = 0;
@@ -171,7 +171,7 @@ uint32 VehicleSpellIdValue::Calculate()
 
     // do not allow if no spells
     VehicleSeatEntry const* seat = vehicle->GetSeatForPassenger(bot);
-    if (!seat || !(seat->m_flags & VEHICLE_SEAT_FLAG_CAN_CAST))
+    if (!seat || !(seat->Flags & VEHICLE_SEAT_FLAG_CAN_CAST))
         return 0;
 
     Unit* vehicleBase = vehicle->GetBase();
@@ -184,7 +184,7 @@ uint32 VehicleSpellIdValue::Calculate()
     uint32 extractedSpellId = handler.extractSpellId(namepart);
     if (extractedSpellId)
         if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(extractedSpellId))
-            namepart = spellInfo->SpellName[0];
+            namepart = spellInfo->SpellName;
 
     std::wstring wnamepart;
     if (!Utf8toWStr(namepart, wnamepart))
@@ -207,7 +207,7 @@ uint32 VehicleSpellIdValue::Calculate()
         if (!spellInfo || spellInfo->IsPassive())
             continue;
 
-        char const* spellName = spellInfo->SpellName[loc];
+        char const* spellName = spellInfo->SpellName;
         if (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
             !Utf8FitTo(spellName, wnamepart))
             continue;

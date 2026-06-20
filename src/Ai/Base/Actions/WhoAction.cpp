@@ -9,6 +9,7 @@
 #include "Event.h"
 #include "ItemVisitors.h"
 #include "Playerbots.h"
+#include "DBCStores.h"
 
 #ifndef WIN32
 inline int strcmpi(char const* s1, char const* s2)
@@ -45,7 +46,7 @@ bool WhoAction::Execute(Event event)
     {
         if (AreaTableEntry const* areaEntry = sAreaTableStore.LookupEntry(bot->GetAreaId()))
         {
-            out << ", (|cffb04040" << areaEntry->area_name[0] << "|r)";
+            out << ", (|cffb04040" << areaEntry->AreaName << "|r)";
         }
     }
 
@@ -74,7 +75,7 @@ std::string const WhoAction::QueryTrade(std::string const text)
     for (Item* sell : items)
     {
         int32 sellPrice =
-            sell->GetTemplate()->SellPrice * sRandomPlayerbotMgr.GetSellMultiplier(bot) * sell->GetCount();
+            sell->GetTemplate()->GetSellPrice() * sRandomPlayerbotMgr.GetSellMultiplier(bot) * sell->GetCount();
         if (!sellPrice)
             continue;
 
@@ -116,7 +117,7 @@ std::string const WhoAction::QuerySpec(std::string const /*text*/)
 
     out << "|h|cffffffff" << chat->FormatRace(bot->getRace()) << " [" << (bot->getGender() == GENDER_MALE ? "M" : "F")
         << "] " << chat->FormatClass(bot, spec);
-    out << " (|h|cff00ff00" << (uint32)bot->GetLevel() << "|h|cffffffff lvl), ";
+    out << " (|h|cff00ff00" << (uint32)bot->getLevel() << "|h|cffffffff lvl), ";
     out << "|h|cff00ff00" << botAI->GetEquipGearScore(bot/*, false, false*/) << "|h|cffffffff GS (";
 
     ItemCountByQuality visitor;

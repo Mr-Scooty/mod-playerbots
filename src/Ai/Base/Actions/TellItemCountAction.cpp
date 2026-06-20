@@ -19,8 +19,8 @@ bool TellItemCountAction::Execute(Event event)
     for (Item* item : found)
     {
         ItemTemplate const* proto = item->GetTemplate();
-        itemMap[proto->ItemId] += item->GetCount();
-        soulbound[proto->ItemId] = item->IsSoulBound();
+        itemMap[proto->GetId()] += item->GetCount();
+        soulbound[proto->GetId()] = item->IsSoulBound();
     }
 
     botAI->TellMaster("=== Inventory ===");

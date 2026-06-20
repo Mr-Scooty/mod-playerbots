@@ -21,17 +21,17 @@ public:
 
         ItemTemplate const* proto = item->GetTemplate();
 
-        if (proto->Class != ITEM_CLASS_CONSUMABLE)
+        if (proto->GetClass() != ITEM_CLASS_CONSUMABLE)
             return true;
 
-        if (proto->SubClass != ITEM_SUBCLASS_ELIXIR && proto->SubClass != ITEM_SUBCLASS_FLASK &&
-            proto->SubClass != ITEM_SUBCLASS_SCROLL && proto->SubClass != ITEM_SUBCLASS_FOOD &&
-            proto->SubClass != ITEM_SUBCLASS_CONSUMABLE_OTHER && proto->SubClass != ITEM_SUBCLASS_ITEM_ENHANCEMENT)
+        if (proto->GetSubClass() != ITEM_SUBCLASS_ELIXIR && proto->GetSubClass() != ITEM_SUBCLASS_FLASK &&
+            proto->GetSubClass() != ITEM_SUBCLASS_SCROLL && proto->GetSubClass() != ITEM_SUBCLASS_FOOD &&
+            proto->GetSubClass() != ITEM_SUBCLASS_CONSUMABLE_OTHER && proto->GetSubClass() != ITEM_SUBCLASS_ITEM_ENHANCEMENT)
             return true;
 
         for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; i++)
         {
-            uint32 spellId = proto->Spells[i].SpellId;
+            uint32 spellId = proto->GetEffect(i).SpellID;
             if (!spellId)
                 continue;
 
@@ -43,10 +43,10 @@ public:
             if (itemForSpell && itemForSpell->IsInWorld() && itemForSpell->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT))
                 return true;
 
-            if (items.find(proto->SubClass) == items.end())
-                items[proto->SubClass] = std::vector<Item*>();
+            if (items.find(proto->GetSubClass()) == items.end())
+                items[proto->GetSubClass()] = std::vector<Item*>();
 
-            items[proto->SubClass].push_back(item);
+            items[proto->GetSubClass()].push_back(item);
             break;
         }
 

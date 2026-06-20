@@ -13,9 +13,9 @@ class PlayerbotAI;
 
 struct CreatureData;
 
-enum ArenaType : uint8;
-enum BattlegroundQueueTypeId : uint8;
-enum BattlegroundBracketId : uint8;
+#include "Battleground.h"
+#include "DBCEnums.h"
+#include "SharedDefines.h"
 
 class BGJoinAction : public Action
 {

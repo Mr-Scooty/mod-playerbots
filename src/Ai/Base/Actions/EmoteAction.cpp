@@ -8,6 +8,10 @@
 #include "Event.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "WorldSession.h"
+#include "DBCStores.h"
+#include "ObjectAccessor.h"
+#include "ChatPackets.h"
 
 std::map<std::string, uint32> EmoteActionBase::emotes;
 std::map<std::string, uint32> EmoteActionBase::textEmotes;
@@ -108,11 +112,12 @@ bool EmoteActionBase::Emote(Unit* target, uint32 type, bool textEmote)
 
     if (textEmote)
     {
-        WorldPacket data(SMSG_TEXT_EMOTE);
-        data << type;
-        data << GetNumberOfEmoteVariants((TextEmotes)type, bot->getRace(), bot->getGender());
-        data << ((bot->GetTarget() && urand(0, 1)) ? bot->GetTarget() : ObjectGuid::Empty);
-        bot->GetSession()->HandleTextEmoteOpcode(data);
+        // 4.3.4: drive the typed SendTextEmote handler directly
+        WorldPackets::Chat::SendTextEmote packet{WorldPacket(CMSG_SEND_TEXT_EMOTE)};
+        packet.EmoteID = type;
+        packet.SoundIndex = GetNumberOfEmoteVariants((TextEmotes)type, bot->getRace(), bot->getGender());
+        packet.Target = (bot->GetTarget() && urand(0, 1)) ? bot->GetTarget() : ObjectGuid::Empty;
+        bot->GetSession()->HandleSendTextEmoteOpcode(packet);
     }
     else
         bot->HandleEmoteCommand(type);
@@ -631,11 +636,11 @@ bool EmoteActionBase::ReceiveEmote(Player* source, uint32 emote, bool verbal)
 
     if (textEmote)
     {
-        WorldPacket data(SMSG_TEXT_EMOTE);
-        data << textEmote;
-        data << GetNumberOfEmoteVariants((TextEmotes)textEmote, bot->getRace(), bot->getGender());
-        data << ((source && urand(0, 1)) ? source->GetGUID() : ObjectGuid::Empty);
-        bot->GetSession()->HandleTextEmoteOpcode(data);
+        WorldPackets::Chat::SendTextEmote packet{WorldPacket(CMSG_SEND_TEXT_EMOTE)};
+        packet.EmoteID = textEmote;
+        packet.SoundIndex = GetNumberOfEmoteVariants((TextEmotes)textEmote, bot->getRace(), bot->getGender());
+        packet.Target = (source && urand(0, 1)) ? source->GetGUID() : ObjectGuid::Empty;
+        bot->GetSession()->HandleSendTextEmoteOpcode(packet);
     }
     else
     {
@@ -672,7 +677,7 @@ bool EmoteAction::Execute(Event event)
              (namlen > 1 && strstri(bot->GetName().c_str(), nam.c_str()))))
         {
             /*LOG_INFO("playerbots", "Bot {} {}:{} <{}> received SMSG_TEXT_EMOTE {} from player {} <{}>",
-                bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                 bot->GetName(), text_emote, pSource->GetGUID().ToString().c_str(), pSource->GetName());*/
 
             emote = text_emote;
@@ -696,7 +701,7 @@ bool EmoteAction::Execute(Event event)
                  (urand(0, 1) && bot->HasInArc(static_cast<float>(M_PI), pSource, 10.0f))))
             {
                 /*LOG_INFO("playerbots", "Bot {} {}:{} <{}> received SMSG_EMOTE {} from player {} <{}>",
-                    bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                    bot->GetGUID().ToString().c_str(), bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->getLevel(),
                    bot->GetName(), emoteId, pSource->GetGUID().ToString().c_str(), pSource->GetName());*/
 
                 std::vector<uint32> types;
@@ -706,18 +711,18 @@ bool EmoteAction::Execute(Event event)
                     if (!em)
                         continue;
 
-                    if (em->textid == EMOTE_ONESHOT_TALK)
+                    if (em->EmoteID == EMOTE_ONESHOT_TALK)
                         continue;
 
-                    if (em->textid == EMOTE_ONESHOT_QUESTION)
+                    if (em->EmoteID == EMOTE_ONESHOT_QUESTION)
                         continue;
 
-                    if (em->textid == EMOTE_ONESHOT_EXCLAMATION)
+                    if (em->EmoteID == EMOTE_ONESHOT_EXCLAMATION)
                         continue;
 
-                    if (em->textid == emoteId)
+                    if (em->EmoteID == emoteId)
                     {
-                        types.push_back(em->Id);
+                        types.push_back(em->ID);
                     }
                 }
 
@@ -750,11 +755,11 @@ bool EmoteAction::Execute(Event event)
 
     if (!param.empty() && textEmotes.find(param) != textEmotes.end())
     {
-        WorldPacket data(SMSG_TEXT_EMOTE);
-        data << textEmotes[param];
-        data << GetNumberOfEmoteVariants((TextEmotes)textEmotes[param], bot->getRace(), bot->getGender());
-        data << ((bot->GetTarget() && urand(0, 1)) ? bot->GetTarget() : ObjectGuid::Empty);
-        bot->GetSession()->HandleTextEmoteOpcode(data);
+        WorldPackets::Chat::SendTextEmote packet{WorldPacket(CMSG_SEND_TEXT_EMOTE)};
+        packet.EmoteID = textEmotes[param];
+        packet.SoundIndex = GetNumberOfEmoteVariants((TextEmotes)textEmotes[param], bot->getRace(), bot->getGender());
+        packet.Target = (bot->GetTarget() && urand(0, 1)) ? bot->GetTarget() : ObjectGuid::Empty;
+        bot->GetSession()->HandleSendTextEmoteOpcode(packet);
         return true;
     }
 
@@ -836,8 +841,8 @@ uint32 TalkAction::GetRandomEmote(Unit* unit, bool textEmote)
             types.push_back(TEXT_EMOTE_TALKEX);
             types.push_back(TEXT_EMOTE_TALKQ);
 
-            if (unit && (unit->HasNpcFlag(UNIT_NPC_FLAG_TRAINER) ||
-                         unit->HasNpcFlag(UNIT_NPC_FLAG_QUESTGIVER)))
+            if (unit && (unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_TRAINER) ||
+                         unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER)))
             {
                 types.push_back(TEXT_EMOTE_SALUTE);
             }
@@ -863,8 +868,8 @@ uint32 TalkAction::GetRandomEmote(Unit* unit, bool textEmote)
         types.push_back(EMOTE_ONESHOT_EXCLAMATION);
         types.push_back(EMOTE_ONESHOT_QUESTION);
 
-        if (unit && (unit->HasNpcFlag(UNIT_NPC_FLAG_TRAINER) ||
-                     unit->HasNpcFlag(UNIT_NPC_FLAG_QUESTGIVER)))
+        if (unit && (unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_TRAINER) ||
+                     unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER)))
         {
             types.push_back(EMOTE_ONESHOT_SALUTE);
         }

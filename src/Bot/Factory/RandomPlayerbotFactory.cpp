@@ -9,12 +9,17 @@
 #include "ArenaTeamMgr.h"
 #include "DatabaseEnv.h"
 #include "PlayerbotAI.h"
-#include "RaceMgr.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SocialMgr.h"
 #include "Timer.h"
 #include "Log.h"
+#include "WorldSession.h"
+#include "CharacterCache.h"
+#include "DBCStores.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "World.h"
 
 constexpr RandomPlayerbotFactory::NameRaceAndGender RandomPlayerbotFactory::CombineRaceAndGender(uint8 race,
                                                                                                 uint8 gender)
@@ -46,6 +51,9 @@ bool RandomPlayerbotFactory::IsValidRaceClassCombination(uint8 race, uint8 cls, 
     if (expansion < EXPANSION_THE_BURNING_CRUSADE && (race == RACE_BLOODELF || race == RACE_DRAENEI))
         return false;
 
+    if (expansion < EXPANSION_CATACLYSM && (race == RACE_GOBLIN || race == RACE_WORGEN))
+        return false;
+
     // skip expansion classes if not playing with expansion
     if (expansion < EXPANSION_WRATH_OF_THE_LICH_KING && cls == CLASS_DEATH_KNIGHT)
         return false;
@@ -61,7 +69,7 @@ Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls
     const bool alliance = static_cast<bool>(urand(0, 1));
 
     std::vector<uint8> raceOptions;
-    for (uint8 race = RACE_HUMAN; race < sRaceMgr->GetMaxRaces(); ++race)
+    for (uint8 race = RACE_HUMAN; race < MAX_RACES; ++race)
     {
         // skip disabled with config races
         if ((1 << (race - 1)) & sWorld->getIntConfig(CONFIG_CHARACTER_CREATING_DISABLED_RACEMASK))
@@ -112,40 +120,85 @@ Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls
         return nullptr;
     }
 
-    std::vector<uint8> skinColors, facialHairTypes;
-    std::vector<std::pair<uint8, uint8>> faces, hairs;
+    // ShatterCore: build a CharacterCreateInfo-valid appearance. TrinityCore 4.3.4's Player::ValidateAppearance
+    // (create=true) requires every CharSection to carry SECTION_FLAG_PLAYER, rejects DK-only sections for non-DK,
+    // and cross-checks colors: FACE must share the SKIN color (skin tone) and FACIAL_HAIR must share the HAIR color.
+    // The original AzerothCore logic ignored flags/cross-colors (3.3.5a tolerated it; 4.3.4 rejects it -> every bot
+    // failed Player::Create with "invalid appearance attributes").
+    std::vector<uint8> skinColors;
+    std::vector<std::pair<uint8, uint8>> faces, hairs, facialHairSections; // (VariationIndex, ColorIndex)
+    bool const isDeathKnight = (cls == CLASS_DEATH_KNIGHT);
     for (CharSectionsEntry const* charSection : sCharSectionsStore)
     {
-        if (charSection->Race != race || charSection->Gender != gender)
+        if (charSection->RaceID != race || charSection->SexID != gender)
+            continue;
+        if (!(charSection->Flags & SECTION_FLAG_PLAYER))
+            continue;
+        if ((charSection->Flags & SECTION_FLAG_DEATH_KNIGHT) && !isDeathKnight)
             continue;
 
-        switch (charSection->GenType)
+        switch (charSection->BaseSection)
         {
             case SECTION_TYPE_SKIN:
-                skinColors.push_back(charSection->Color);
+                skinColors.push_back(charSection->ColorIndex);
                 break;
             case SECTION_TYPE_FACE:
-                faces.push_back(std::pair<uint8, uint8>(charSection->Type, charSection->Color));
+                faces.emplace_back(charSection->VariationIndex, charSection->ColorIndex);
                 break;
             case SECTION_TYPE_FACIAL_HAIR:
-                facialHairTypes.push_back(charSection->Type);
+                facialHairSections.emplace_back(charSection->VariationIndex, charSection->ColorIndex);
                 break;
             case SECTION_TYPE_HAIR:
-                hairs.push_back(std::pair<uint8, uint8>(charSection->Type, charSection->Color));
+                hairs.emplace_back(charSection->VariationIndex, charSection->ColorIndex);
                 break;
         }
     }
 
-    //uint8 skinColor = skinColors[urand(0, skinColors.size() - 1)]; //not used, line marked for removal.
-    std::pair<uint8, uint8> face = faces[urand(0, faces.size() - 1)];
-    std::pair<uint8, uint8> hair = hairs[urand(0, hairs.size() - 1)];
+    if (skinColors.empty() || faces.empty() || hairs.empty())
+    {
+        LOG_ERROR("playerbots", "No player CharSections for race {} gender {} (skins={} faces={} hairs={}); skipping bot",
+                  uint32(race), uint32(gender), uint32(skinColors.size()), uint32(faces.size()), uint32(hairs.size()));
+        return nullptr;
+    }
+
+    // Pick a skin tone, then a FACE that exists for that tone (FACE.ColorIndex must equal the skin tone).
+    uint8 skinColor = skinColors[urand(0, skinColors.size() - 1)];
+    std::vector<uint8> facesForSkin;
+    for (auto const& f : faces)
+        if (f.second == skinColor)
+            facesForSkin.push_back(f.first);
+
+    uint8 faceId;
+    if (!facesForSkin.empty())
+        faceId = facesForSkin[urand(0, facesForSkin.size() - 1)];
+    else
+    {
+        // No face registered for that tone: take any face and adopt its tone (still a valid SKIN+FACE pair).
+        std::pair<uint8, uint8> const& f = faces[urand(0, faces.size() - 1)];
+        faceId = f.first;
+        skinColor = f.second;
+    }
+
+    // Hair (style + color), then a FACIAL_HAIR that matches the chosen hair color.
+    std::pair<uint8, uint8> const& hair = hairs[urand(0, hairs.size() - 1)];
+    uint8 hairStyle = hair.first;
+    uint8 hairColor = hair.second;
 
     bool excludeCheck = (race == RACE_TAUREN) || (race == RACE_DRAENEI) ||
                         (gender == GENDER_FEMALE && race != RACE_NIGHTELF && race != RACE_UNDEAD_PLAYER);
-    uint8 facialHair = excludeCheck ? 0 : facialHairTypes[urand(0, facialHairTypes.size() - 1)];
+    uint8 facialHair = 0;
+    if (!excludeCheck)
+    {
+        std::vector<uint8> facialForColor;
+        for (auto const& fh : facialHairSections)
+            if (fh.second == hairColor)
+                facialForColor.push_back(fh.first);
+        if (!facialForColor.empty())
+            facialHair = facialForColor[urand(0, facialForColor.size() - 1)];
+    }
 
     std::unique_ptr<CharacterCreateInfo> characterInfo = std::make_unique<CharacterCreateInfo>(
-        name, race, cls, gender, face.second, face.first, hair.first, hair.second, facialHair);
+        name, race, cls, gender, skinColor, faceId, hairStyle, hairColor, facialHair);
 
     Player* player = new Player(session);
     player->GetMotionMaster()->Initialize();
@@ -164,7 +217,7 @@ Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls
 
     if (cls == CLASS_DEATH_KNIGHT)
     {
-        player->learnSpell(50977, false);
+        player->LearnSpell(50977, false);
     }
 
     LOG_DEBUG("playerbots", "Random bot created - name: \"{}\", race: {}, class: {}",
@@ -193,7 +246,7 @@ std::string const RandomPlayerbotFactory::CreateRandomBotName(NameRaceAndGender 
 
         Field* fields = result->Fetch();
         botName = fields[0].Get<std::string>();
-        if (ObjectMgr::CheckPlayerName(botName) == CHAR_NAME_SUCCESS)  // Checks for reservation & profanity, too
+        if (ObjectMgr::CheckPlayerName(botName, DEFAULT_LOCALE, true) == CHAR_NAME_SUCCESS)  // Checks for reservation & profanity, too
         {
             CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
             stmt->SetData(0, botName);
@@ -260,7 +313,7 @@ std::string const RandomPlayerbotFactory::CreateRandomBotName(NameRaceAndGender 
         // Capitalize first letter
         botName[0] -= 32;
 
-        if (ObjectMgr::CheckPlayerName(botName) != CHAR_NAME_SUCCESS) // Checks for reservation & profanity, too
+        if (ObjectMgr::CheckPlayerName(botName, DEFAULT_LOCALE, true) != CHAR_NAME_SUCCESS) // Checks for reservation & profanity, too
         {
             botName.clear();
             continue;
@@ -285,7 +338,7 @@ std::string const RandomPlayerbotFactory::CreateRandomBotName(NameRaceAndGender 
         {
             botName += (i == 0 ? 'A' : 'a') + rand() % 26;
         }
-        if (ObjectMgr::CheckPlayerName(botName) != CHAR_NAME_SUCCESS)  // Checks for reservation & profanity, too
+        if (ObjectMgr::CheckPlayerName(botName, DEFAULT_LOCALE, true) != CHAR_NAME_SUCCESS)  // Checks for reservation & profanity, too
         {
             botName.clear();
             continue;
@@ -421,7 +474,7 @@ uint32 RandomPlayerbotFactory::CalculateTotalAccountCount()
 
 uint32 RandomPlayerbotFactory::CalculateAvailableCharsPerAccount()
 {
-    bool noDK = sPlayerbotAIConfig.disableDeathKnightLogin || sWorld->getIntConfig(CONFIG_EXPANSION) != EXPANSION_WRATH_OF_THE_LICH_KING;
+    bool noDK = sPlayerbotAIConfig.disableDeathKnightLogin || sWorld->getIntConfig(CONFIG_EXPANSION) < EXPANSION_WRATH_OF_THE_LICH_KING;
 
     uint32 availableChars = noDK ? 9 : 10;
 
@@ -680,7 +733,7 @@ void RandomPlayerbotFactory::CreateRandomBots()
                 Field* fields = result->Fetch();
                 std::string name = fields[0].Get<std::string>();
                 NameRaceAndGender raceAndGender = static_cast<NameRaceAndGender>(fields[1].Get<uint8>());
-                if (sObjectMgr->CheckPlayerName(name) == CHAR_NAME_SUCCESS)
+                if (ObjectMgr::CheckPlayerName(name, DEFAULT_LOCALE, true) == CHAR_NAME_SUCCESS)
                 {
                     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
                     stmt->SetData(0, name);
@@ -697,8 +750,7 @@ void RandomPlayerbotFactory::CreateRandomBots()
         LOG_DEBUG("playerbots", "Creating random bot characters for account: [{}/{}]", accountNumber + 1, totalAccountCount);
         RandomPlayerbotFactory factory;
 
-        WorldSession* session = new WorldSession(accountId, "", 0x0, nullptr, SEC_PLAYER, EXPANSION_WRATH_OF_THE_LICH_KING,
-                                                time_t(0), LOCALE_enUS, 0, false, false, 0, true);
+        WorldSession* session = new WorldSession(accountId, "", 0, nullptr, SEC_PLAYER, EXPANSION_CATACLYSM, time_t(0), LOCALE_enUS, 0, false, /*isBot*/ true);
         sessionBots.push_back(session);
 
         for (uint8 cls = CLASS_WARRIOR; cls < MAX_CLASSES - count; ++cls)
@@ -718,10 +770,10 @@ void RandomPlayerbotFactory::CreateRandomBots()
                 continue;
             }
 
-            playerBot->SaveToDB(true, false);
+            playerBot->SaveToDB(true);
             sCharacterCache->AddCharacterCacheEntry(playerBot->GetGUID(), accountId, playerBot->GetName(),
                                                     playerBot->getGender(), playerBot->getRace(),
-                                                    playerBot->getClass(), playerBot->GetLevel());
+                                                    playerBot->getClass(), playerBot->getLevel());
             playerBot->CleanupsBeforeDelete();
             delete playerBot;
             bot_creation++;
@@ -813,7 +865,7 @@ void RandomPlayerbotFactory::CreateRandomArenaTeams(ArenaType type, uint32 count
         {
             Player* player = ObjectAccessor::FindConnectedPlayer(captain);
 
-            if (!arenateam && player && player->GetLevel() >= 70)
+            if (!arenateam && player && player->getLevel() >= 70)
                 availableCaptains.push_back(captain);
         }
     }
@@ -839,7 +891,7 @@ void RandomPlayerbotFactory::CreateRandomArenaTeams(ArenaType type, uint32 count
             continue;
         }
 
-        if (player->GetLevel() < 70)
+        if (player->getLevel() < 70)
         {
             LOG_ERROR("playerbots", "Bot {} must be level 70 to create an arena team", captain.ToString().c_str());
             continue;

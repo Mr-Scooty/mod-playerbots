@@ -8,6 +8,7 @@
 #include "Event.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
+#include "DBCStores.h"
 
 void TellPosition(PlayerbotAI* botAI, std::string const name, PositionInfo pos)
 {
@@ -18,7 +19,7 @@ void TellPosition(PlayerbotAI* botAI, std::string const name, PositionInfo pos)
     {
         float x = pos.x;
         float y = pos.y;
-        Map2ZoneCoordinates(x, y, botAI->GetBot()->GetZoneId());
+        sDBCManager.Map2ZoneCoordinates(x, y, botAI->GetBot()->GetZoneId());
         out << " is set to " << x << "," << y;
     }
     else

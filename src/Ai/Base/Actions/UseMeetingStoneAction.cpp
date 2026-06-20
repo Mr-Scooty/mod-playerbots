@@ -14,6 +14,8 @@
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
+#include "MotionMaster.h"
+#include "SpellHistory.h"
 
 bool UseMeetingStoneAction::Execute(Event event)
 {
@@ -94,8 +96,8 @@ bool SummonAction::SummonUsingGos(Player* summoner, Player* player, bool preserv
 {
     std::list<GameObject*> targets;
     AnyGameObjectInObjectRangeCheck u_check(summoner, sPlayerbotAIConfig.sightDistance);
-    Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(summoner, targets, u_check);
-    Cell::VisitObjects(summoner, searcher, sPlayerbotAIConfig.sightDistance);
+    Trinity::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(summoner, targets, u_check);
+    Cell::VisitAllObjects(summoner, searcher, sPlayerbotAIConfig.sightDistance);
 
     for (GameObject* go : targets)
     {
@@ -116,13 +118,13 @@ bool SummonAction::SummonUsingNpcs(Player* summoner, Player* player, bool preser
         return false;
 
     std::list<Unit*> targets;
-    Acore::AnyUnitInObjectRangeCheck u_check(summoner, sPlayerbotAIConfig.sightDistance);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(summoner, targets, u_check);
-    Cell::VisitObjects(summoner, searcher, sPlayerbotAIConfig.sightDistance);
+    Trinity::AnyUnitInObjectRangeCheck u_check(summoner, sPlayerbotAIConfig.sightDistance);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(summoner, targets, u_check);
+    Cell::VisitAllObjects(summoner, searcher, sPlayerbotAIConfig.sightDistance);
 
     for (Unit* unit : targets)
     {
-        if (unit && unit->HasNpcFlag(UNIT_NPC_FLAG_INNKEEPER))
+        if (unit && unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_INNKEEPER))
         {
             if (!player->HasItemCount(6948, 1, false))
             {
@@ -133,7 +135,7 @@ bool SummonAction::SummonUsingNpcs(Player* summoner, Player* player, bool preser
                 return false;
             }
 
-            if (player->HasSpellCooldown(8690))
+            if (player->GetSpellHistory()->HasCooldown(8690))
             {
                 botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
                     player == bot ? "meeting_stone_hearthstone_not_ready_self" : "meeting_stone_hearthstone_not_ready_you",
@@ -207,7 +209,7 @@ bool SummonAction::Teleport(Player* summoner, Player* player, bool preserveAuras
                     return false;
                 }
 
-                if (bot->isDead() && !bot->HasPlayerFlag(PLAYER_FLAGS_GHOST) &&
+                if (bot->isDead() && !bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST) &&
                     !sPlayerbotAIConfig.allowSummonWhenBotIsDead)
                 {
                     botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -234,8 +236,8 @@ bool SummonAction::Teleport(Player* summoner, Player* player, bool preserveAuras
                 AI_VALUE(LastMovement&, "last movement").clear();
 
                 if (!preserveAuras)
-                    player->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED |
-                                                          AURA_INTERRUPT_FLAG_CHANGE_MAP);
+                    player->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld |
+                                                          SpellAuraInterruptFlags::LeaveWorld);
                 player->TeleportTo(mapId, x, y, z, 0);
                 if (player->GetPet())
                     player->GetPet()->NearTeleportTo(x, y, z, player->GetOrientation());

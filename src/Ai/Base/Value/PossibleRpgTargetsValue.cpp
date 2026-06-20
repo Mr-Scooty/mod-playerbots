@@ -48,9 +48,9 @@ PossibleRpgTargetsValue::PossibleRpgTargetsValue(PlayerbotAI* botAI, float range
 
 void PossibleRpgTargetsValue::FindUnits(std::list<Unit*>& targets)
 {
-    Acore::AnyUnitInObjectRangeCheck u_check(bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnitInObjectRangeCheck u_check(bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool PossibleRpgTargetsValue::AcceptUnit(Unit* unit)
@@ -64,12 +64,12 @@ bool PossibleRpgTargetsValue::AcceptUnit(Unit* unit)
     if (ServerFacade::instance().GetDistance2d(bot, unit) <= sPlayerbotAIConfig.tooCloseDistance)
         return false;
 
-    if (unit->HasNpcFlag(UNIT_NPC_FLAG_SPIRITHEALER))
+    if (unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPIRITHEALER))
         return false;
 
     for (uint32 npcFlag : allowedNpcFlags)
     {
-        if (unit->HasNpcFlag(static_cast<NPCFlags>(npcFlag)))
+        if (unit->HasFlag(UNIT_NPC_FLAGS, static_cast<NPCFlags>(npcFlag)))
             return true;
     }
 
@@ -151,9 +151,9 @@ GuidVector PossibleNewRpgTargetsValue::Calculate()
 
 void PossibleNewRpgTargetsValue::FindUnits(std::list<Unit*>& targets)
 {
-    Acore::AnyUnitInObjectRangeCheck u_check(bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnitInObjectRangeCheck u_check(bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool PossibleNewRpgTargetsValue::AcceptUnit(Unit* unit)
@@ -164,12 +164,12 @@ bool PossibleNewRpgTargetsValue::AcceptUnit(Unit* unit)
     if (unit->IsHostileTo(bot) || unit->IsPlayer())
         return false;
 
-    if (unit->HasNpcFlag(UNIT_NPC_FLAG_SPIRITHEALER))
+    if (unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPIRITHEALER))
         return false;
 
     for (uint32 npcFlag : allowedNpcFlags)
     {
-        if (unit->HasNpcFlag(static_cast<NPCFlags>(npcFlag)))
+        if (unit->HasFlag(UNIT_NPC_FLAGS, static_cast<NPCFlags>(npcFlag)))
             return true;
     }
 
@@ -182,8 +182,8 @@ GuidVector PossibleNewRpgGameObjectsValue::Calculate()
 {
     std::list<GameObject*> targets;
     AnyGameObjectInObjectRangeCheck u_check(bot, range);
-    Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 
     std::vector<std::pair<ObjectGuid, float>> guidDistancePairs;
     for (GameObject* go : targets)

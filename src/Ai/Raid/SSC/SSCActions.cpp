@@ -13,6 +13,7 @@
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
 #include "RtiTargetValue.h"
+#include "ItemEnchantmentMgr.h"
 
 using namespace SerpentShrineCavernHelpers;
 
@@ -2545,7 +2546,7 @@ void LadyVashjPassTheTaintedCoreAction::ScheduleTransferCoreAfterImbue(
             if (canStore == EQUIP_ERR_OK)
             {
                 receiverPlayer->StoreNewItem(dest, ITEM_TAINTED_CORE, true,
-                    Item::GenerateItemRandomPropertyId(ITEM_TAINTED_CORE));
+                    GenerateItemRandomPropertyId(ITEM_TAINTED_CORE));
             }
         }
 
@@ -2584,9 +2585,9 @@ bool LadyVashjPassTheTaintedCoreAction::UseCoreOnNearestGenerator(const uint32 i
 
     for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
     {
-        if (core->GetTemplate()->Spells[i].SpellId > 0)
+        if (core->GetTemplate()->GetEffect(i).SpellID > 0)
         {
-            spellId = core->GetTemplate()->Spells[i].SpellId;
+            spellId = core->GetTemplate()->GetEffect(i).SpellID;
             break;
         }
     }

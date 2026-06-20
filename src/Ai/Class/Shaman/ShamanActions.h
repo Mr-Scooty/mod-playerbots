@@ -310,6 +310,33 @@ public:
     bool isUseful() override;
 };
 
+// ShatterCore 4.3.4: Unleash Elements -- weapon-imbue burst (Unleash Flame/Wind/Life). Cast by name; the bot's
+// spellbook resolves the imbue-appropriate effect. Targets the current enemy (offensive variants).
+class CastUnleashElementsAction : public CastSpellAction
+{
+public:
+    CastUnleashElementsAction(PlayerbotAI* botAI) :
+        CastSpellAction(botAI, "unleash elements") {}
+};
+
+// ShatterCore 4.3.4: Earthquake -- Elemental ground-target channelled AoE.
+class CastEarthquakeAction : public CastSpellAction
+{
+public:
+    CastEarthquakeAction(PlayerbotAI* botAI) :
+        CastSpellAction(botAI, "earthquake") {}
+
+    ActionThreatType getThreatType() override { return ActionThreatType::Aoe; }
+};
+
+// ShatterCore 4.3.4: Spiritwalker's Grace -- lets the shaman cast while moving (utility CD, self-buff).
+class CastSpiritwalkersGraceAction : public CastBuffSpellAction
+{
+public:
+    CastSpiritwalkersGraceAction(PlayerbotAI* botAI) :
+        CastBuffSpellAction(botAI, "spiritwalker's grace") {}
+};
+
 // Healing Actions
 
 class CastLesserHealingWaveAction : public CastHealingSpellAction
@@ -345,6 +372,53 @@ class CastChainHealAction : public HealPartyMemberAction
 public:
     CastChainHealAction(PlayerbotAI* botAI) :
         HealPartyMemberAction(botAI, "chain heal", 15.0f, HealingManaEfficiency::HIGH) {}
+};
+
+// ShatterCore 4.3.4: Greater Healing Wave -- big, expensive tank heal (replaces old single-target nuke heal).
+class CastGreaterHealingWaveAction : public CastHealingSpellAction
+{
+public:
+    CastGreaterHealingWaveAction(PlayerbotAI* botAI) :
+        CastHealingSpellAction(botAI, "greater healing wave") {}
+};
+
+class CastGreaterHealingWaveOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastGreaterHealingWaveOnPartyAction(PlayerbotAI* botAI) :
+        HealPartyMemberAction(botAI, "greater healing wave", 50.0f, HealingManaEfficiency::LOW) {}
+};
+
+// ShatterCore 4.3.4: Healing Surge -- fast, expensive emergency heal (the Cataclysm "Healing Wave" replacement for
+// 3.3.5's Lesser Healing Wave fast-cast role; used for triage saves).
+class CastHealingSurgeAction : public CastHealingSpellAction
+{
+public:
+    CastHealingSurgeAction(PlayerbotAI* botAI) :
+        CastHealingSpellAction(botAI, "healing surge") {}
+};
+
+class CastHealingSurgeOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastHealingSurgeOnPartyAction(PlayerbotAI* botAI) :
+        HealPartyMemberAction(botAI, "healing surge", 25.0f, HealingManaEfficiency::LOW) {}
+};
+
+// ShatterCore 4.3.4: Healing Rain -- ground-target raid AoE HoT for stacked groups.
+class CastHealingRainAction : public CastSpellAction
+{
+public:
+    CastHealingRainAction(PlayerbotAI* botAI) :
+        CastSpellAction(botAI, "healing rain") {}
+};
+
+// ShatterCore 4.3.4: Nature's Swiftness -- next nature cast (e.g. Greater Healing Wave) is instant (emergency CD).
+class CastNaturesSwiftnessAction : public CastBuffSpellAction
+{
+public:
+    CastNaturesSwiftnessAction(PlayerbotAI* botAI) :
+        CastBuffSpellAction(botAI, "nature's swiftness") {}
 };
 
 class CastRiptideAction : public CastHealingSpellAction

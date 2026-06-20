@@ -12,6 +12,8 @@
 #include "ReputationMgr.h"
 
 #include "SharedDefines.h"
+#include "DBCStores.h"
+#include "ObjectAccessor.h"
 
 std::string TellReputationAction::BuildReputationLine(FactionEntry const* entry)
 {
@@ -20,7 +22,7 @@ std::string TellReputationAction::BuildReputationLine(FactionEntry const* entry)
     int32 reputation = repMgr.GetReputation(entry->ID);
 
     std::ostringstream out;
-    out << entry->name[0] << ": |cff";
+    out << entry->Name << ": |cff";
 
     switch (rank)
     {
@@ -114,7 +116,7 @@ bool TellReputationAction::Execute(Event event)
 
     FactionTemplateEntry const* factionTemplate = unit->GetFactionTemplateEntry();
 
-    FactionEntry const* entry = sFactionStore.LookupEntry(factionTemplate->faction);
+    FactionEntry const* entry = sFactionStore.LookupEntry(factionTemplate->Faction);
     if (!entry)
         return false;
 

@@ -9,6 +9,7 @@
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 bool LeaveGroupAction::Execute(Event event)
 {
@@ -143,14 +144,14 @@ bool LeaveFarAwayAction::isUseful()
 
     if (bot->GetGuildId() == groupLeader->GetGuildId())
     {
-        if (bot->GetLevel() > groupLeader->GetLevel() + 5)
+        if (bot->getLevel() > groupLeader->getLevel() + 5)
         {
             if (AI_VALUE(bool, "should get money"))
                 return false;
         }
     }
 
-    if (abs(int32(groupLeader->GetLevel() - bot->GetLevel())) > 4)
+    if (abs(int32(groupLeader->getLevel() - bot->getLevel())) > 4)
         return true;
 
     if (bot->GetMapId() != groupLeader->GetMapId() || bot->GetDistance2d(groupLeader) >= 2 * sPlayerbotAIConfig.rpgDistance)

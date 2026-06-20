@@ -77,7 +77,7 @@ public:
 class CastMangleCatAction : public CastMeleeSpellAction
 {
 public:
-    CastMangleCatAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "mangle (cat)") {}
+    CastMangleCatAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "mangle") {}
 
     bool isUseful() override
     {
@@ -153,6 +153,21 @@ class CastDashAction : public CastBuffSpellAction
 {
 public:
     CastDashAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "dash") {}
+};
+
+// ShatterCore (4.3.4): Skull Bash (Cat) -- baseline interrupt + charge replacing the old reliance on Bash.
+class CastSkullBashCatAction : public CastSpellAction
+{
+public:
+    CastSkullBashCatAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "skull bash") {}
+};
+
+// ShatterCore (4.3.4 Cat): Thrash (Cat) -- AoE bleed used as cat cleave filler at 4+ targets.
+class CastThrashCatAction : public CastMeleeSpellAction
+{
+public:
+    CastThrashCatAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "thrash") {}
+    ActionThreatType getThreatType() override { return ActionThreatType::Aoe; }
 };
 
 class CastRavageAction : public CastMeleeSpellAction

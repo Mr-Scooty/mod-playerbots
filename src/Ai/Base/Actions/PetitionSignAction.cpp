@@ -8,6 +8,11 @@
 #include "ArenaTeam.h"
 #include "Event.h"
 #include "Playerbots.h"
+#include "DatabaseEnv.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
+#include "Battleground.h"
 
 bool PetitionSignAction::Execute(Event event)
 {

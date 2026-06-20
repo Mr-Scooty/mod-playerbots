@@ -6,12 +6,15 @@
 #include "DebugAction.h"
 
 #include "ChooseTravelTargetAction.h"
-#include "MapMgr.h"
+#include "MapManager.h"
 #include "TravelMgr.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "SpellMgr.h"
 #include "Spell.h"
+#include "TemporarySummon.h"
+#include "PhasingHandler.h"
+#include "Map.h"
 
 bool DebugAction::Execute(Event event)
 {
@@ -28,12 +31,12 @@ bool DebugAction::Execute(Event event)
         uint32 i = 0;
         for (auto p : WorldPosition().getCreaturesNear())
         {
-            WorldPosition pos(p->mapid, p->posX, p->posY, p->posZ, p->orientation);
+            WorldPosition pos(p->mapId, p->spawnPoint.GetPositionX(), p->spawnPoint.GetPositionY(), p->spawnPoint.GetPositionZ(), p->spawnPoint.GetOrientation());
 
             uint32 areaId = 0;
             uint32 zoneId = 0;
-            sMapMgr->GetZoneAndAreaId(PHASEMASK_NORMAL, zoneId, areaId, pos.GetMapId(), pos.GetPositionX(), pos.GetPositionY(),
-                                      pos.GetPositionZ());
+            if (Map* lookupMap = sMapMgr->FindMap(pos.GetMapId(), 0))
+                lookupMap->GetZoneAndAreaId(PhasingHandler::GetEmptyPhaseShift(), zoneId, areaId, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ());
 
             std::ostringstream out;
             out << zoneId << "," << areaId << "," << (pos.getAreaName().empty() ? "none" : pos.getAreaName()) << ",";
@@ -471,7 +474,7 @@ bool DebugAction::Execute(Event event)
     else if (text.find("spell ") != std::string::npos)
     {
         uint32 spellEffect = stoi(text.substr(6));
-        master->SendPlaySpellVisual(bot->GetGUID(), spellEffect);
+        bot->SendPlaySpellVisualKit(spellEffect, 0, 0);
         return true;
     }
     else if (text.find("tspellmap") != std::string::npos)
@@ -614,11 +617,9 @@ bool DebugAction::Execute(Event event)
 
                 if (wpCreature)
                 {
-                    WorldPacket data(SMSG_PLAY_SPELL_IMPACT, 8 + 4);  // visual effect on player
-                    data << wpCreature->GetGUID();
-                    data << uint32(effect);  // index from SpellVisualKit.dbc
-                    // wpCreature->SendMessageToSet(&data, true);
-                    datMap.push_back(data);
+                    // 4.3.4: SMSG_PLAY_SPELL_IMPACT no longer exists; the debug visual
+                    // would need SMSG_PLAY_SPELL_VISUAL_KIT with the new layout
+                    (void)effect;
                 }
             }
         }
@@ -852,7 +853,7 @@ bool DebugAction::Execute(Event event)
                     if (!target)
                         target = master;
 
-                    master->SendPlaySpellVisual(caster->GetGUID(), 5036);
+                    caster->SendPlaySpellVisualKit(5036, 0, 0);
                     FakeSpell(effect, realCaster, caster, target->GetGUID(), hits, miss, WorldPosition(caster),
                               WorldPosition(target));
 
@@ -923,121 +924,10 @@ bool DebugAction::Execute(Event event)
 void DebugAction::FakeSpell(uint32 spellId, Unit* truecaster, Unit* caster, ObjectGuid target, GuidVector otherTargets,
                             GuidVector missTargets, WorldPosition source, WorldPosition dest, bool forceDest)
 {
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-    {
-        uint32 castFlags = CAST_FLAG_HAS_TRAJECTORY;
-
-        if (spellInfo->HasAttribute(SPELL_ATTR0_USES_RANGED_SLOT) ||
-            spellInfo->HasAttribute(SPELL_ATTR0_CU_NEEDS_AMMO_DATA))
-            castFlags |= CAST_FLAG_PROJECTILE;
-
-        WorldPacket data(SMSG_SPELL_START, (8 + 8 + 4 + 2 + 4));
-
-        data << truecaster->GetPackGUID();  // truecaster
-
-        if (caster)
-            data << caster->GetPackGUID();  // m_caster->GetPackGUID();
-        else
-            data << ObjectGuid::Empty;
-
-        data << uint32(spellId);    // spellId
-        data << uint16(castFlags);  // cast flags
-        data << uint32(1000.0f);    // delay?
-
-        SpellCastTargets m_targets;
-
-        m_targets.Write(data);
-
-        // projectile info
-        if (castFlags & CAST_FLAG_PROJECTILE)
-        {
-            data << uint32(5996);
-            data << uint32(INVTYPE_AMMO);
-        }
-
-        if (caster)
-            caster->SendMessageToSet(&data, true);
-        else
-            truecaster->SendMessageToSet(&data, true);
-    }
-
-    {
-        SpellCastTargets m_targets;
-
-        if ((spellInfo && spellInfo->Targets & TARGET_FLAG_DEST_LOCATION) || forceDest)
-            m_targets.SetDst(dest);
-
-        if ((spellInfo && spellInfo->Targets & TARGET_FLAG_SOURCE_LOCATION) || forceDest)
-            m_targets.SetSrc(source.GetPositionX(), source.GetPositionY(), source.GetPositionZ());
-
-        if (!forceDest && target)
-            if (!spellInfo ||
-                !(spellInfo->Targets & TARGET_FLAG_DEST_LOCATION && spellInfo->Targets & TARGET_FLAG_SOURCE_LOCATION))
-                m_targets.SetUnitTarget(botAI->GetUnit(target));
-
-        uint32 castFlags = CAST_FLAG_UNKNOWN_9;
-
-        if (spellInfo->HasAttribute(SPELL_ATTR0_USES_RANGED_SLOT) ||
-            spellInfo->HasAttribute(SPELL_ATTR0_CU_NEEDS_AMMO_DATA))
-            castFlags |= CAST_FLAG_PROJECTILE;  // arrows/bullets visual
-
-        if (spellInfo->HasEffect(SPELL_EFFECT_ACTIVATE_RUNE))
-            castFlags |= CAST_FLAG_RUNE_LIST;  // rune cooldowns list
-
-        if (m_targets.HasTraj())
-            castFlags |= CAST_FLAG_ADJUST_MISSILE;
-
-        if (!spellInfo->StartRecoveryTime)
-            castFlags |= CAST_FLAG_NO_GCD;
-
-        WorldPacket data(SMSG_SPELL_GO, 53);  // guess size
-
-        data << truecaster->GetPackGUID();  // truecaster
-
-        if (caster)
-            data << caster->GetPackGUID();  // m_caster->GetPackGUID();
-        else
-            data << ObjectGuid::Empty;
-
-        data << uint32(spellId);    // spellId
-        data << uint16(castFlags);  // cast flags
-
-        // WriteSpellGoTargets
-        uint32 hits = otherTargets.size() + (target ? 1 : 0);
-
-        data << uint8(hits);  // Hits
-
-        if (target)
-            data << target;
-
-        // Hit targets here.
-        for (auto otherTarget : otherTargets)
-            data << otherTarget;
-
-        data << (uint8)missTargets.size();  // miss
-
-        for (auto missTarget : missTargets)
-        {
-            data << missTarget;
-
-            data << uint8(SPELL_MISS_RESIST);  // Miss condition
-            data << uint8(SPELL_MISS_NONE);    // Miss condition
-        }
-
-        m_targets.Write(data);
-
-        // projectile info
-        if (castFlags & CAST_FLAG_PROJECTILE)
-        {
-            data << uint32(5996);
-            data << uint32(INVTYPE_AMMO);
-        }
-
-        if (caster)
-            caster->SendMessageToSet(&data, true);
-        else
-            truecaster->SendMessageToSet(&data, true);
-    }
+    // 4.3.4 port: the raw WotLK SMSG_SPELL_GO layout is not valid for 4.3.4
+    // clients; this debug visual is disabled until rewritten with typed packets.
+    (void)spellId; (void)truecaster; (void)caster; (void)target;
+    (void)otherTargets; (void)missTargets; (void)source; (void)dest; (void)forceDest;
 }
 
 void DebugAction::addAura(uint32 spellId, Unit* target)

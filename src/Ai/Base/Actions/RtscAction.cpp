@@ -19,7 +19,7 @@ bool RTSCAction::Execute(Event event)
 
     if (command != "reset" && !master->HasSpell(RTSC_MOVE_SPELL))
     {
-        master->learnSpell(RTSC_MOVE_SPELL, false);
+        master->LearnSpell(RTSC_MOVE_SPELL, false);
         botAI->TellMasterNoFacing("RTS control enabled.");
         botAI->TellMasterNoFacing("Aedm (Awesome energetic do move) spell trained.");
     }
@@ -27,7 +27,7 @@ bool RTSCAction::Execute(Event event)
     {
         if (master->HasSpell(RTSC_MOVE_SPELL))
         {
-            master->removeSpell(RTSC_MOVE_SPELL, SPEC_MASK_ALL, false);
+            master->RemoveSpell(RTSC_MOVE_SPELL);
             botAI->TellMasterNoFacing("RTS control spell removed.");
         }
 
@@ -46,7 +46,7 @@ bool RTSCAction::Execute(Event event)
     if (command == "select" && !selected)
     {
         SET_AI_VALUE(bool, "RTSC selected", true);
-        master->SendPlaySpellVisual(bot->GetGUID(), 5036);
+        bot->SendPlaySpellVisualKit(5036, 0, 0);
         return true;
     }
     else if (command == "cancel")
@@ -54,7 +54,7 @@ bool RTSCAction::Execute(Event event)
         RESET_AI_VALUE(bool, "RTSC selected");
         RESET_AI_VALUE(std::string, "RTSC next spell action");
         if (selected)
-            master->SendPlaySpellVisual(bot->GetGUID(), 6372);
+            bot->SendPlaySpellVisualKit(6372, 0, 0);
         return true;
     }
     else if (command == "toggle")
@@ -62,12 +62,12 @@ bool RTSCAction::Execute(Event event)
         if (!selected)
         {
             SET_AI_VALUE(bool, "RTSC selected", true);
-            master->SendPlaySpellVisual(bot->GetGUID(), 5036);
+            bot->SendPlaySpellVisualKit(5036, 0, 0);
         }
         else
         {
             SET_AI_VALUE(bool, "RTSC selected", false);
-            master->SendPlaySpellVisual(bot->GetGUID(), 6372);
+            bot->SendPlaySpellVisualKit(6372, 0, 0);
         }
 
         return true;

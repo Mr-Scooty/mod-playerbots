@@ -8,6 +8,7 @@
 #include "Event.h"
 #include "Playerbots.h"
 #include "PlayerbotSpellRepository.h"
+#include "Log.h"
 
 using SpellListEntry = std::pair<uint32, std::string>;
 
@@ -34,10 +35,10 @@ static bool CompareSpells(SpellListEntry const& lhSpell, SpellListEntry const& r
     {
         // Defensive check: if DBC data is broken and spell names are nullptr,
         // fall back to id ordering instead of risking a crash in std::strcmp.
-        if (!lhSpellInfo->SpellName[0] || !rhSpellInfo->SpellName[0])
+        if (!lhSpellInfo->SpellName || !rhSpellInfo->SpellName)
             return lhSpell.first < rhSpell.first;
 
-        return std::strcmp(lhSpellInfo->SpellName[0], rhSpellInfo->SpellName[0]) > 0;
+        return std::strcmp(lhSpellInfo->SpellName, rhSpellInfo->SpellName) > 0;
     }
     return lhsKey > rhsKey;
 }
@@ -123,11 +124,9 @@ std::vector<std::pair<uint32, std::string>> ListSpellsAction::GetSpellList(std::
     std::vector<SpellListEntry> spells;
     for (PlayerSpellMap::iterator itr = bot->GetSpellMap().begin(); itr != bot->GetSpellMap().end(); ++itr)
     {
-        if (itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+        if (itr->second.state == PLAYERSPELL_REMOVED || !itr->second.active)
             continue;
 
-        if (!(itr->second->specMask & bot->GetActiveSpecMask()))
-            continue;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
         if (!spellInfo)
@@ -140,11 +139,11 @@ std::vector<std::pair<uint32, std::string>> ListSpellsAction::GetSpellList(std::
         if (skill != SKILL_NONE && (!skillLine || skillLine->SkillLine != skill))
             continue;
 
-        std::string const comp = spellInfo->SpellName[0];
+        std::string const comp = spellInfo->SpellName;
         if (!(ignoreList.find(comp) == std::string::npos && alreadySeenList.find(comp) == std::string::npos))
             continue;
 
-        if (!filter.empty() && !strstri(spellInfo->SpellName[0], filter.c_str()))
+        if (!filter.empty() && !strstri(spellInfo->SpellName, filter.c_str()))
             continue;
 
         bool first = true;
@@ -209,8 +208,8 @@ std::vector<std::pair<uint32, std::string>> ListSpellsAction::GetSpellList(std::
 
                         out << chat->FormatItem(proto);
 
-                        if ((minLevel || maxLevel) && (!proto->RequiredLevel || proto->RequiredLevel < minLevel ||
-                                                       proto->RequiredLevel > maxLevel))
+                        if ((minLevel || maxLevel) && (!proto->GetRequiredLevel() || proto->GetRequiredLevel() < minLevel ||
+                                                       proto->GetRequiredLevel() > maxLevel))
                         {
                             filtered = true;
                             break;
@@ -264,7 +263,7 @@ std::vector<std::pair<uint32, std::string>> ListSpellsAction::GetSpellList(std::
             LOG_ERROR("playerbots", "?! {}", itr->first);
 
         spells.emplace_back(itr->first, out.str());
-        alreadySeenList += spellInfo->SpellName[0];
+        alreadySeenList += spellInfo->SpellName;
         alreadySeenList += ",";
     }
 

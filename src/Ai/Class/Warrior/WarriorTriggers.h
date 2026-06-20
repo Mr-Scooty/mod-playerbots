@@ -34,6 +34,8 @@ public:
 
 CAN_CAST_TRIGGER(RevengeAvailableTrigger, "revenge");
 CAN_CAST_TRIGGER(OverpowerAvailableTrigger, "overpower");
+// ShatterCore (4.3.4 Protection): Shield Slam on cooldown -- the primary threat strike (Sword and Board resets it).
+CAN_CAST_TRIGGER(ShieldSlamAvailableTrigger, "shield slam");
 BUFF_TRIGGER(RampageAvailableTrigger, "rampage");
 BUFF_TRIGGER_A(BloodrageBuffTrigger, "bloodrage");
 CAN_CAST_TRIGGER(VictoryRushTrigger, "victory rush");
@@ -63,6 +65,15 @@ DEFLECT_TRIGGER(SpellReflectionTrigger, "spell reflection");
 HAS_AURA_TRIGGER(SuddenDeathTrigger, "sudden death");
 HAS_AURA_TRIGGER(SlamInstantTrigger, "slam!");
 HAS_AURA_TRIGGER(TasteForBloodTrigger, "taste for blood");
+// ShatterCore (4.3.4 Fury): Raging Blow requires the warrior to be Enraged (self aura). When Enraged, allow it.
+HAS_AURA_TRIGGER(EnrageTrigger, "enrage");
+// ShatterCore (4.3.4 Fury): Bloodsurge proc -- instant, free Slam.
+HAS_AURA_TRIGGER(BloodsurgeTrigger, "bloodsurge");
+
+// ShatterCore (4.3.4 Arms/Fury): Colossus Smash off cooldown -- weave the armor-ignore window on CD.
+CAN_CAST_TRIGGER(ColossusSmashAvailableTrigger, "colossus smash");
+// Raging Blow is only castable while Enraged; rely on the engine's CanCast (which checks the Enrage requirement).
+CAN_CAST_TRIGGER(RagingBlowAvailableTrigger, "raging blow");
 
 class RendDebuffTrigger : public DebuffTrigger
 {

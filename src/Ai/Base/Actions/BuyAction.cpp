@@ -49,10 +49,14 @@ bool BuyAction::Execute(Event event)
             if (!tItems)
                 continue;
 
-            VendorItemList m_items_sorted = tItems->m_items;
+            // ShatterCore stores VendorItem by value; collect pointers for sorting
+            std::vector<VendorItem const*> m_items_sorted;
+            m_items_sorted.reserve(tItems->m_items.size());
+            for (VendorItem const& vendorItem : tItems->m_items)
+                m_items_sorted.push_back(&vendorItem);
 
             m_items_sorted.erase(std::remove_if(m_items_sorted.begin(), m_items_sorted.end(),
-                                                [](VendorItem* i)
+                                                [](VendorItem const* i)
                                                 {
                                                     ItemTemplate const* proto = sObjectMgr->GetItemTemplate(i->item);
                                                     return !proto;
@@ -67,7 +71,7 @@ bool BuyAction::Execute(Event event)
             calculator.SetOverflowPenalty(false);
 
             std::sort(m_items_sorted.begin(), m_items_sorted.end(),
-                [&calculator](VendorItem* i, VendorItem* j)
+                [&calculator](VendorItem const* i, VendorItem const* j)
                 {
                     ItemTemplate const* item1 = sObjectMgr->GetItemTemplate(i->item);
                     ItemTemplate const* item2 = sObjectMgr->GetItemTemplate(j->item);
@@ -75,14 +79,14 @@ bool BuyAction::Execute(Event event)
                     if (!item1 || !item2)
                         return false;
 
-                    float score1 = calculator.CalculateItem(item1->ItemId);
-                    float score2 = calculator.CalculateItem(item2->ItemId);
+                    float score1 = calculator.CalculateItem(item1->GetId());
+                    float score2 = calculator.CalculateItem(item2->GetId());
 
                     // Fallback to itemlevel if either score is 0
                     if (score1 == 0 || score2 == 0)
                     {
-                        score1 = item1->ItemLevel;
-                        score2 = item2->ItemLevel;
+                        score1 = item1->GetBaseItemLevel();
+                        score2 = item2->GetBaseItemLevel();
                     }
                     return score1 > score2; // Sort in descending order (highest score first)
                 });
@@ -96,7 +100,7 @@ bool BuyAction::Execute(Event event)
                 if (!proto)
                     continue;
 
-                if (proto->Class == ITEM_CLASS_CONSUMABLE || proto->Class == ITEM_CLASS_PROJECTILE)
+                if (proto->GetClass() == ITEM_CLASS_CONSUMABLE || proto->GetClass() == ITEM_CLASS_PROJECTILE)
                 {
                     maxPurchases = 10;  // Allow up to 10 purchases if it's a consumable or projectile
                 }
@@ -105,10 +109,10 @@ bool BuyAction::Execute(Event event)
                 {
                     ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", tItem->item);
 
-                    uint32 invType = proto->InventoryType;
+                    uint32 invType = proto->GetInventoryType();
 
                     // Calculate item score
-                    float newScore = calculator.CalculateItem(proto->ItemId);
+                    float newScore = calculator.CalculateItem(proto->GetId());
 
                     // Skip if we already bought a better item for this slot
                     if (bestPurchasedItemScore.find(invType) != bestPurchasedItemScore.end() &&
@@ -126,14 +130,14 @@ bool BuyAction::Execute(Event event)
                     {
                         ItemTemplate const* oldItemProto = oldItem->GetTemplate();
                         if (oldItemProto)
-                            oldScore = calculator.CalculateItem(oldItemProto->ItemId);
+                            oldScore = calculator.CalculateItem(oldItemProto->GetId());
                     }
 
                     // Skip if the bot already has a better or equal item equipped
                     if (oldScore > newScore)
                         break;
 
-                    uint32 price = proto->BuyPrice;
+                    uint32 price = proto->GetBuyPrice();
                     price = uint32(floor(price * bot->GetReputationPriceDiscount(pCreature)));
 
                     NeedMoneyFor needMoneyFor = NeedMoneyFor::none;
@@ -221,7 +225,7 @@ bool BuyAction::BuyItem(VendorItemData const* tItems, ObjectGuid vendorguid, Ite
     if (!tItems || !proto)
         return false;
 
-    uint32 itemId = proto->ItemId;
+    uint32 itemId = proto->GetId();
     uint32 oldCount = bot->GetItemCount(itemId, false);
 
     for (uint32 slot = 0; slot < tItems->GetItemCount(); ++slot)

@@ -25,6 +25,7 @@
 #include "SpellMgr.h"
 #include "WarlockAiObjectContext.h"
 #include "WarriorAiObjectContext.h"
+#include "DBCStores.h"
 
 AiObjectContext* AiFactory::createAiObjectContext(Player* player, PlayerbotAI* botAI)
 {
@@ -57,9 +58,19 @@ AiObjectContext* AiFactory::createAiObjectContext(Player* player, PlayerbotAI* b
 
 uint8 AiFactory::GetPlayerSpecTab(Player* bot)
 {
+    // 4.3.4: players explicitly pick a primary talent tree at level 10 -
+    // use it directly instead of inferring the spec from point counts
+    if (uint32 primaryTree = bot->GetPrimaryTalentTree(bot->GetActiveSpec()))
+    {
+        uint32 const* talentTabIds = sDBCManager.GetTalentTabPages(bot->getClass());
+        for (uint8 i = 0; i < 3; ++i)
+            if (talentTabIds[i] == primaryTree)
+                return i;
+    }
+
     std::map<uint8, uint32> tabs = GetPlayerSpecTabs(bot);
 
-    if (bot->GetLevel() >= 10 && ((tabs[0] + tabs[1] + tabs[2]) > 0))
+    if (bot->getLevel() >= 10 && ((tabs[0] + tabs[1] + tabs[2]) > 0))
     {
         int8 tab = -1;
         uint32 max = 0;
@@ -100,30 +111,31 @@ uint8 AiFactory::GetPlayerSpecTab(Player* bot)
 std::map<uint8, uint32> AiFactory::GetPlayerSpecTabs(Player* bot)
 {
     std::map<uint8, uint32> tabs = {{0, 0}, {0, 0}, {0, 0}};
-    const PlayerTalentMap& talentMap = bot->GetTalentMap();
-    for (PlayerTalentMap::const_iterator i = talentMap.begin(); i != talentMap.end(); ++i)
+    // ShatterCore: 4.3.4 GetTalentMap takes the spec index and returns a per-spec
+    // map keyed by talent spell id, so iterate the active spec directly (the old
+    // GetActiveSpecMask()/PlayerTalent::specMask filter no longer exists).
+    PlayerTalentMap const* talentMap = bot->GetTalentMap(bot->GetActiveSpec());
+    for (PlayerTalentMap::const_iterator i = talentMap->begin(); i != talentMap->end(); ++i)
     {
         uint32 spellId = i->first;
-        if ((bot->GetActiveSpecMask() & i->second->specMask) == 0)
-        {
+        if (i->second->state == PLAYERSPELL_REMOVED)
             continue;
-        }
-        TalentSpellPos const* talentPos = GetTalentSpellPos(spellId);
+        TalentSpellPos const* talentPos = sDBCManager.GetTalentSpellPos(spellId);
         if (!talentPos)
             continue;
         TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentPos->talent_id);
         if (!talentInfo)
             continue;
 
-        uint32 const* talentTabIds = GetTalentTabPages(bot->getClass());
+        uint32 const* talentTabIds = sDBCManager.GetTalentTabPages(bot->getClass());
 
         const SpellInfo* spellInfo = sSpellMgr->GetSpellInfo(spellId);
         int rank = spellInfo ? spellInfo->GetRank() : 1;
-        if (talentInfo->TalentTab == talentTabIds[0])
+        if (talentInfo->TabID == talentTabIds[0])
             tabs[0] += rank;
-        if (talentInfo->TalentTab == talentTabIds[1])
+        if (talentInfo->TabID == talentTabIds[1])
             tabs[1] += rank;
-        if (talentInfo->TalentTab == talentTabIds[2])
+        if (talentInfo->TabID == talentTabIds[2])
             tabs[2] += rank;
     }
     return tabs;
@@ -453,7 +465,7 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     {
         BattlegroundTypeId bgType = player->GetBattlegroundTypeId();
         if (bgType == BATTLEGROUND_RB)
-            bgType = player->GetBattleground()->GetBgTypeID(true);
+            bgType = player->GetBattleground()->GetTypeID(true);
 
         if (bgType == BATTLEGROUND_WS)
             engine->addStrategy("warsong", false);
@@ -506,7 +518,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
             if (tab == PALADIN_TAB_PROTECTION)
             {
                 nonCombatEngine->addStrategiesNoInit("bthreat", "tank assist", "pull", "barmor", nullptr);
-                if (player->GetLevel() >= 20)
+                if (player->getLevel() >= 20)
                     nonCombatEngine->addStrategy("bsanc", false);
                 else
                     nonCombatEngine->addStrategy("bmight", false);
@@ -535,7 +547,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
         case CLASS_DRUID:
             if (tab == DRUID_TAB_FERAL)
             {
-                if (player->GetLevel() >= 20 && !player->HasAura(16931) /*thick hide*/)
+                if (player->getLevel() >= 20 && !player->HasAura(16931) /*thick hide*/)
                     nonCombatEngine->addStrategy("dps assist", false);
                 else
                     nonCombatEngine->addStrategiesNoInit("tank assist", "pull", nullptr);
@@ -673,7 +685,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
 
         BattlegroundTypeId bgType = player->GetBattlegroundTypeId();
         if (bgType == BATTLEGROUND_RB)
-            bgType = player->GetBattleground()->GetBgTypeID(true);
+            bgType = player->GetBattleground()->GetTypeID(true);
 
         if ((bgType <= BATTLEGROUND_EY || bgType == BATTLEGROUND_IC) &&
             !player->InArena())  // do not add for not supported bg or arena

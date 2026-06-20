@@ -33,12 +33,12 @@ namespace
         {
             ItemTemplate const* proto = &kv.second;
 
-            if (!proto || proto->Class != ITEM_CLASS_GLYPH)
+            if (!proto || proto->GetClass() != ITEM_CLASS_GLYPH)
                 continue;
 
             for (uint32 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
             {
-                uint32 spellId = proto->Spells[i].SpellId;
+                uint32 spellId = proto->GetEffect(i).SpellID;
                 if (!spellId)
                     continue;
 
@@ -85,7 +85,7 @@ bool TellGlyphsAction::Execute(Event event)
 
     for (uint8 slot = 0; slot < MAX_GLYPH_SLOT_INDEX; ++slot)
     {
-        uint32 glyphId = bot->GetGlyph(slot);
+        uint32 glyphId = bot->GetGlyph(bot->GetActiveSpec(), slot);
         if (!glyphId)
             continue;
 

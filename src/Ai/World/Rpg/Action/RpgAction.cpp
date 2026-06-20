@@ -14,6 +14,7 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "RpgSubActions.h"
+#include "ObjectAccessor.h"
 
 bool RpgAction::Execute(Event /*event*/)
 {

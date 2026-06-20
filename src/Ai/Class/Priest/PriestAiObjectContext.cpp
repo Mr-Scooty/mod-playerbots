@@ -104,6 +104,10 @@ public:
         creators["silence on enemy healer"] = &PriestTriggerFactoryInternal::silence_on_enemy_healer;
         creators["shadowfiend"] = &PriestTriggerFactoryInternal::shadowfiend;
         creators["mind sear channel check"] = &PriestTriggerFactoryInternal::mind_sear_channel_check;
+        creators["shadow orbs available"] = &PriestTriggerFactoryInternal::shadow_orbs_available;
+        creators["shadow word: death execute"] = &PriestTriggerFactoryInternal::shadow_word_death_execute;
+        creators["chakra serenity"] = &PriestTriggerFactoryInternal::chakra_serenity;
+        creators["chakra sanctuary"] = &PriestTriggerFactoryInternal::chakra_sanctuary;
     }
 
 private:
@@ -146,6 +150,10 @@ private:
     static Trigger* chastise(PlayerbotAI* botAI) { return new ChastiseTrigger(botAI); }
     static Trigger* binding_heal(PlayerbotAI* botAI) { return new BindingHealTrigger(botAI); }
     static Trigger* mind_sear_channel_check(PlayerbotAI* botAI) { return new MindSearChannelCheckTrigger(botAI); }
+    static Trigger* shadow_orbs_available(PlayerbotAI* botAI) { return new ShadowOrbsAvailableTrigger(botAI); }
+    static Trigger* shadow_word_death_execute(PlayerbotAI* botAI) { return new ShadowWordDeathExecuteTrigger(botAI); }
+    static Trigger* chakra_serenity(PlayerbotAI* botAI) { return new ChakraSerenityTrigger(botAI); }
+    static Trigger* chakra_sanctuary(PlayerbotAI* botAI) { return new ChakraSanctuaryTrigger(botAI); }
 };
 
 class PriestAiObjectContextInternal : public NamedObjectContext<Action>
@@ -235,6 +243,12 @@ public:
         creators["divine hymn"] = &PriestAiObjectContextInternal::divine_hymn;
         creators["mind sear"] = &PriestAiObjectContextInternal::mind_sear;
         creators["guardian spirit on party"] = &PriestAiObjectContextInternal::guardian_spirit_on_party;
+        creators["mind spike"] = &PriestAiObjectContextInternal::mind_spike;
+        creators["archangel"] = &PriestAiObjectContextInternal::archangel;
+        creators["shadow word: death execute"] = &PriestAiObjectContextInternal::shadow_word_death_execute;
+        creators["penance"] = &PriestAiObjectContextInternal::penance;
+        creators["holy word: serenity on party"] = &PriestAiObjectContextInternal::holy_word_serenity_on_party;
+        creators["holy word: sanctuary"] = &PriestAiObjectContextInternal::holy_word_sanctuary;
     }
 
 private:
@@ -337,6 +351,26 @@ private:
     static Action* divine_hymn(PlayerbotAI* ai) { return new CastDivineHymnAction(ai); }
     static Action* mind_sear(PlayerbotAI* ai) { return new CastMindSearAction(ai); }
     static Action* guardian_spirit_on_party(PlayerbotAI* ai) { return new CastGuardianSpiritOnPartyAction(ai); }
+    static Action* mind_spike(PlayerbotAI* ai) { return new CastMindSpikeAction(ai); }
+    static Action* archangel(PlayerbotAI* ai) { return new CastArchangelAction(ai); }
+    static Action* shadow_word_death_execute(PlayerbotAI* ai) { return new CastShadowWordDeathExecuteAction(ai); }
+    static Action* penance(PlayerbotAI* ai) { return new CastPenanceAction(ai); }
+    static Action* holy_word_serenity_on_party(PlayerbotAI* ai) { return new CastHolyWordSerenityOnPartyAction(ai); }
+    static Action* holy_word_sanctuary(PlayerbotAI* ai) { return new CastHolyWordSanctuaryAction(ai); }
+};
+
+// ShatterCore 4.3.4 Shadow: Shadow Orbs live as aura stacks, so the value is added in the Priest's OWN value
+// context (the shared ValueContext only handles plain POWER_* pools).
+class PriestValueContextInternal : public NamedObjectContext<UntypedValue>
+{
+public:
+    PriestValueContextInternal()
+    {
+        creators["shadow orbs"] = &PriestValueContextInternal::shadow_orbs;
+    }
+
+private:
+    static UntypedValue* shadow_orbs(PlayerbotAI* botAI) { return new ShadowOrbsValue(botAI); }
 };
 
 SharedNamedObjectContextList<Strategy> PriestAiObjectContext::sharedStrategyContexts;
@@ -379,4 +413,5 @@ void PriestAiObjectContext::BuildSharedTriggerContexts(SharedNamedObjectContextL
 void PriestAiObjectContext::BuildSharedValueContexts(SharedNamedObjectContextList<UntypedValue>& valueContexts)
 {
     AiObjectContext::BuildSharedValueContexts(valueContexts);
+    valueContexts.Add(new PriestValueContextInternal());
 }

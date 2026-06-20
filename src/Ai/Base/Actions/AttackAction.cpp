@@ -16,6 +16,7 @@
 #include "SharedDefines.h"
 #include "Unit.h"
 #include "WaitForAttackStrategy.h"
+#include "MotionMaster.h"
 
 bool AttackAction::Execute(Event /*event*/)
 {
@@ -87,7 +88,7 @@ bool AttackAction::Attack(Unit* target, bool /*with_pet*/ /*true*/)
 
     // Check if bot OR target is in prohibited zone/area (skip for duels)
     if ((target->IsPlayer() || target->IsPet()) &&
-        (!bot->duel || bot->duel->Opponent != target) &&
+        (!bot->duel || bot->duel->opponent != target) &&
         (sPlayerbotAIConfig.IsPvpProhibited(bot->GetZoneId(), bot->GetAreaId()) ||
         sPlayerbotAIConfig.IsPvpProhibited(target->GetZoneId(), target->GetAreaId())))
     {
@@ -179,7 +180,7 @@ bool AttackAction::Attack(Unit* target, bool /*with_pet*/ /*true*/)
     context->GetValue<LootObjectStack*>("available loot")->Get()->Add(guid);
 
     LastMovement& lastMovement = AI_VALUE(LastMovement&, "last movement");
-    bool moveControlled = bot->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_CONTROLLED) != NULL_MOTION_TYPE;
+    bool moveControlled = bot->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_CONTROLLED) != MAX_MOTION_TYPE;
     if (lastMovement.priority < MovementPriority::MOVEMENT_COMBAT && bot->isMoving() && !moveControlled)
     {
         AI_VALUE(LastMovement&, "last movement").clear();

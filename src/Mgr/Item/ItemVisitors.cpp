@@ -17,12 +17,12 @@ bool FindUsableItemVisitor::Visit(Item* item)
 
 bool FindPotionVisitor::Accept(ItemTemplate const* proto)
 {
-    if (proto->Class == ITEM_CLASS_CONSUMABLE &&
-        (proto->SubClass == ITEM_SUBCLASS_POTION || proto->SubClass == ITEM_SUBCLASS_FLASK))
+    if (proto->GetClass() == ITEM_CLASS_CONSUMABLE &&
+        (proto->GetSubClass() == ITEM_SUBCLASS_POTION || proto->GetSubClass() == ITEM_SUBCLASS_FLASK))
     {
         for (uint8 j = 0; j < MAX_ITEM_PROTO_SPELLS; j++)
         {
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->Spells[j].SpellId);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->GetEffect(j).SpellID);
             if (!spellInfo)
                 return false;
 
@@ -41,7 +41,7 @@ bool FindMountVisitor::Accept(ItemTemplate const* proto)
 {
     for (uint8 j = 0; j < MAX_ITEM_PROTO_SPELLS; j++)
     {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->Spells[j].SpellId);
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->GetEffect(j).SpellID);
         if (!spellInfo)
             return false;
 
@@ -57,11 +57,11 @@ bool FindMountVisitor::Accept(ItemTemplate const* proto)
 
 bool FindPetVisitor::Accept(ItemTemplate const* proto)
 {
-    if (proto->Class == ITEM_CLASS_MISC)
+    if (proto->GetClass() == ITEM_CLASS_MISCELLANEOUS)
     {
         for (uint8 j = 0; j < MAX_ITEM_PROTO_SPELLS; j++)
         {
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->Spells[j].SpellId);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proto->GetEffect(j).SpellID);
             if (!spellInfo)
                 return false;
 
@@ -83,7 +83,7 @@ FindItemUsageVisitor::FindItemUsageVisitor(Player* bot, ItemUsage usage) : FindU
 
 bool FindItemUsageVisitor::Accept(ItemTemplate const* proto)
 {
-    if (AI_VALUE2(ItemUsage, "item usage", proto->ItemId) == usage)
+    if (AI_VALUE2(ItemUsage, "item usage", proto->GetId()) == usage)
         return true;
 
     return false;
@@ -91,5 +91,9 @@ bool FindItemUsageVisitor::Accept(ItemTemplate const* proto)
 
 bool FindUsableNamedItemVisitor::Accept(ItemTemplate const* proto)
 {
-    return proto && !proto->Name1.empty() && strstri(proto->Name1.c_str(), name.c_str());
+    // ShatterCore: ItemTemplate::GetName returns char const*, not std::string.
+    if (!proto)
+        return false;
+    char const* protoName = proto->GetName(DEFAULT_LOCALE);
+    return protoName && *protoName && strstri(protoName, name.c_str());
 }

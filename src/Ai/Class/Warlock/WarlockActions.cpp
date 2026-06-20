@@ -18,6 +18,8 @@
 #include "Timer.h"
 #include <unordered_map>
 #include <mutex>
+#include "Bag.h"
+#include "ItemEnchantmentMgr.h"
 
 const int ITEM_SOUL_SHARD = 6265;
 
@@ -129,7 +131,7 @@ bool CreateSoulShardAction::Execute(Event /*event*/)
     uint32 count = 1;
     if (bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, ITEM_SOUL_SHARD, count) == EQUIP_ERR_OK)
     {
-        bot->StoreNewItem(dest, ITEM_SOUL_SHARD, true, Item::GenerateItemRandomPropertyId(ITEM_SOUL_SHARD));
+        bot->StoreNewItem(dest, ITEM_SOUL_SHARD, true, GenerateItemRandomPropertyId(ITEM_SOUL_SHARD));
         SQLTransaction<CharacterDatabaseConnection> trans = CharacterDatabase.BeginTransaction();
         bot->SaveInventoryAndGoldToDB(trans);
         CharacterDatabase.CommitTransaction(trans);
@@ -202,7 +204,7 @@ bool DestroySoulShardAction::Execute(Event /*event*/)
             {
                 if (Item* pItem = pBag->GetItemByPos(j))
                 {
-                    if (pItem->GetTemplate()->ItemId == ITEM_SOUL_SHARD)
+                    if (pItem->GetTemplate()->GetId() == ITEM_SOUL_SHARD)
                     {
                         bot->DestroyItem(pItem->GetBagSlot(), pItem->GetSlot(), true);
                         return true;  // Only destroy one!
@@ -216,7 +218,7 @@ bool DestroySoulShardAction::Execute(Event /*event*/)
     {
         if (Item* pItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
-            if (pItem->GetTemplate()->ItemId == ITEM_SOUL_SHARD)
+            if (pItem->GetTemplate()->GetId() == ITEM_SOUL_SHARD)
             {
                 bot->DestroyItem(pItem->GetBagSlot(), pItem->GetSlot(), true);
                 return true;

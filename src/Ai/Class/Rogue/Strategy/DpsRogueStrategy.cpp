@@ -78,8 +78,10 @@ DpsRogueStrategy::DpsRogueStrategy(PlayerbotAI* botAI) : MeleeCombatStrategy(bot
 
 std::vector<NextAction> DpsRogueStrategy::getDefaultActions()
 {
+    // 4.3.4 Combat single-target filler: Sinister Strike is the energy-spending combo builder. High-priority
+    // maintenance (Slice and Dice, Revealing Strike) and finishers (Rupture/Eviscerate) come from InitTriggers.
     return {
-        NextAction("killing spree", ACTION_DEFAULT + 0.1f),
+        NextAction("sinister strike", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
 }
@@ -88,6 +90,16 @@ void DpsRogueStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     MeleeCombatStrategy::InitTriggers(triggers);
 
+    // ShatterCore 4.3.4 Combat rotation (class reference doc section 6.2). High-priority maintenance and spenders
+    // are trigger nodes; the Sinister Strike filler comes from getDefaultActions(). Priority order:
+    //   1. Slice and Dice (maintain always -- top melee-haste finisher).
+    //   2. Revealing Strike (maintain debuff -- +finisher damage; Bandit's Guile builder).
+    //   3. Rupture / Eviscerate at 5 CP (Rupture as the bleed, else Eviscerate as the damage finisher).
+    //   4. Eviscerate on a nearly-dead combo-pointed target (dump CP before it dies).
+    //   5. Sinister Strike builder (getDefaultActions).
+    // Cooldowns: Adrenaline Rush via RogueBoostStrategy; Killing Spree as an execute-ish burst when at 0 CP.
+
+    // Stealth opener (Garrote/Ambush) when we have the energy and are still hidden.
     triggers.push_back(
         new TriggerNode(
             "high energy available",
@@ -98,39 +110,63 @@ void DpsRogueStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         )
     );
 
-    triggers.push_back(
-        new TriggerNode(
-            "high energy available",
-            {
-                NextAction("sinister strike", ACTION_NORMAL + 3)
-            }
-        )
-    );
-
+    // Maintain Slice and Dice -- top priority melee-haste buff for Combat.
     triggers.push_back(
         new TriggerNode(
             "slice and dice",
             {
-                NextAction("slice and dice", ACTION_HIGH + 2)
+                NextAction("slice and dice", ACTION_HIGH + 5)
             }
         )
     );
 
+    // Maintain Revealing Strike debuff before dumping finishers (Combat +35% finisher damage).
+    triggers.push_back(
+        new TriggerNode(
+            "revealing strike",
+            {
+                NextAction("revealing strike", ACTION_HIGH + 4)
+            }
+        )
+    );
+
+    // Spend combo points at 5: keep Rupture rolling, otherwise Eviscerate as the main damage finisher.
     triggers.push_back(
         new TriggerNode(
             "combo points 5 available",
             {
-                NextAction("rupture", ACTION_HIGH + 1),
-                NextAction("eviscerate", ACTION_HIGH)
+                NextAction("rupture", ACTION_HIGH + 3),
+                NextAction("eviscerate", ACTION_HIGH + 2)
             }
         )
     );
 
+    // Dump combo points on a target about to die.
     triggers.push_back(
         new TriggerNode(
             "target with combo points almost dead",
             {
-                NextAction("eviscerate", ACTION_HIGH + 2)
+                NextAction("eviscerate", ACTION_HIGH + 6)
+            }
+        )
+    );
+
+    // Adrenaline Rush burst (energy-regen cooldown).
+    triggers.push_back(
+        new TriggerNode(
+            "adrenaline rush",
+            {
+                NextAction("adrenaline rush", ACTION_HIGH + 1)
+            }
+        )
+    );
+
+    // Killing Spree burst when we have no combo points to spend (avoid clipping a finisher).
+    triggers.push_back(
+        new TriggerNode(
+            "combo points not full",
+            {
+                NextAction("killing spree", ACTION_NORMAL + 2)
             }
         )
     );

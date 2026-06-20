@@ -16,8 +16,8 @@ GuidVector NearestGameObjects::Calculate()
 {
     std::list<GameObject*> targets;
     AnyGameObjectInObjectRangeCheck u_check(bot, range);
-    Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 
     GuidVector result;
     for (GameObject* go : targets)
@@ -33,8 +33,8 @@ GuidVector NearestTrapWithDamageValue::Calculate()
 {
     std::list<GameObject*> targets;
     AnyGameObjectInObjectRangeCheck u_check(bot, range);
-    Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 
     GuidVector result;
     for (GameObject* go : targets)
@@ -53,7 +53,7 @@ GuidVector NearestTrapWithDamageValue::Calculate()
         {
             continue;
         }
-        uint32 spellId = goInfo->trap.spellId;
+        uint32 spellId = goInfo->trap.spell;
         if (!spellId)
         {
             continue;

@@ -7,6 +7,7 @@
 
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
+#include "ObjectAccessor.h"
 
 uint8 AoeHealValue::Calculate()
 {

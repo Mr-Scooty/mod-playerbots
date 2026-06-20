@@ -21,12 +21,9 @@ namespace
 {
     inline char const* BracketName(uint8 slot)
     {
-        switch (slot)
-        {
-            case ARENA_SLOT_2v2: return "2v2";
-            case ARENA_SLOT_3v3: return "3v3";
-            default:             return "5v5"; // ARENA_SLOT_5v5
-        }
+        if (slot == ArenaTeam::GetSlotByType(ARENA_TEAM_2v2)) return "2v2";
+        if (slot == ArenaTeam::GetSlotByType(ARENA_TEAM_3v3)) return "3v3";
+        return "5v5";
     }
 }
 
@@ -51,8 +48,8 @@ bool TellPvpStatsAction::Execute(Event event)
 
     // PVP currencies
     std::map<std::string, std::string> currencyPlaceholders;
-    currencyPlaceholders["%arena_points"] = std::to_string(bot->GetArenaPoints());
-    currencyPlaceholders["%honor_points"] = std::to_string(bot->GetHonorPoints());
+    currencyPlaceholders["%arena_points"] = std::to_string(bot->GetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, true));
+    currencyPlaceholders["%honor_points"] = std::to_string(bot->GetCurrency(CURRENCY_TYPE_HONOR_POINTS, true));
 
     std::string const currencyText = PlayerbotTextMgr::instance().GetBotTextOrDefault(
         "pvp_currency",

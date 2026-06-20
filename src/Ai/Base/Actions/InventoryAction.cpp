@@ -9,6 +9,8 @@
 #include "ItemCountValue.h"
 #include "ItemVisitors.h"
 #include "Playerbots.h"
+#include "Bag.h"
+#include "TradeData.h"
 
 namespace
 {
@@ -54,7 +56,7 @@ void InventoryAction::IterateItemsInBags(IterateItemsVisitor* visitor)
             if (!visitor->Visit(pItem))
                 return;
 
-    for (uint32 i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
+    for (uint32 i = 0; i < 0; ++i) // 4.3.4: keyring removed
         if (Item* pItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (!visitor->Visit(pItem))
                 return;
@@ -116,17 +118,17 @@ void InventoryAction::IterateItemsInBank(IterateItemsVisitor* visitor)
 
 bool compare_items(ItemTemplate const* proto1, ItemTemplate const* proto2)
 {
-    if (proto1->Class != proto2->Class)
-        return proto1->Class > proto2->Class;
+    if (proto1->GetClass() != proto2->GetClass())
+        return proto1->GetClass() > proto2->GetClass();
 
-    if (proto1->SubClass != proto2->SubClass)
-        return proto1->SubClass < proto2->SubClass;
+    if (proto1->GetSubClass() != proto2->GetSubClass())
+        return proto1->GetSubClass() < proto2->GetSubClass();
 
-    if (proto1->Quality != proto2->Quality)
-        return proto1->Quality < proto2->Quality;
+    if (proto1->GetQuality() != proto2->GetQuality())
+        return proto1->GetQuality() < proto2->GetQuality();
 
-    if (proto1->ItemLevel != proto2->ItemLevel)
-        return proto1->ItemLevel > proto2->ItemLevel;
+    if (proto1->GetBaseItemLevel() != proto2->GetBaseItemLevel())
+        return proto1->GetBaseItemLevel() > proto2->GetBaseItemLevel();
 
     return false;
 }
@@ -149,10 +151,10 @@ void InventoryAction::TellItems(std::map<uint32, uint32> itemMap, std::map<uint3
     uint32 oldClass = -1;
     for (ItemTemplate const* proto : items)
     {
-        if (proto->Class != oldClass)
+        if (proto->GetClass() != oldClass)
         {
-            oldClass = proto->Class;
-            switch (proto->Class)
+            oldClass = proto->GetClass();
+            switch (proto->GetClass())
             {
                 case ITEM_CLASS_CONSUMABLE:
                     botAI->TellMaster("--- consumable ---");
@@ -187,13 +189,13 @@ void InventoryAction::TellItems(std::map<uint32, uint32> itemMap, std::map<uint3
                 case ITEM_CLASS_KEY:
                     botAI->TellMaster("--- keys ---");
                     break;
-                case ITEM_CLASS_MISC:
+                case ITEM_CLASS_MISCELLANEOUS:
                     botAI->TellMaster("--- other ---");
                     break;
             }
         }
 
-        TellItem(proto, itemMap[proto->ItemId], soulbound[proto->ItemId]);
+        TellItem(proto, itemMap[proto->GetId()], soulbound[proto->GetId()]);
     }
 }
 
@@ -290,7 +292,7 @@ std::vector<Item*> InventoryAction::parseItems(std::string const text, IterateIt
     {
         if (Item* const pItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED))
         {
-            FindAmmoVisitor visitor(bot, pItem->GetTemplate()->SubClass);
+            FindAmmoVisitor visitor(bot, pItem->GetTemplate()->GetSubClass());
             IterateItems(&visitor, ITERATE_ITEMS_IN_BAGS);
             found.insert(visitor.GetResult().begin(), visitor.GetResult().end());
         }

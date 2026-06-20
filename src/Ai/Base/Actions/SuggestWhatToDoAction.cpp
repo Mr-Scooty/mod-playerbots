@@ -20,6 +20,7 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "Channel.h"
+#include "World.h"
 
 enum eTalkType
 {
@@ -97,7 +98,7 @@ void SuggestWhatToDoAction::specificQuest()
 
 void SuggestWhatToDoAction::grindMaterials()
 {
-    /*if (bot->GetLevel() <= 5)
+    /*if (bot->getLevel() <= 5)
         return;
 
     auto result = CharacterDatabase.Query("SELECT distinct category, multiplier FROM ahbot_category where category not
@@ -189,7 +190,7 @@ void SuggestWhatToDoAction::grindReputation()
     std::vector<std::string> allowedFactions;
     for (auto it : factions)
     {
-        if ((int)bot->GetLevel() >= it.second) allowedFactions.push_back(it.first);
+        if ((int)bot->getLevel() >= it.second) allowedFactions.push_back(it.first);
     }
 
     if (allowedFactions.empty()) return;
@@ -225,17 +226,17 @@ public:
     bool Visit(Item* item) override
     {
         ItemTemplate const* proto = item->GetTemplate();
-        if (proto->Quality != quality)
+        if (proto->GetQuality() != quality)
             return true;
 
-        if (proto->Class == ITEM_CLASS_TRADE_GOODS && proto->Bonding == NO_BIND)
+        if (proto->GetClass() == ITEM_CLASS_TRADE_GOODS && proto->GetBonding() == BIND_NONE)
         {
-            if (proto->Quality == ITEM_QUALITY_NORMAL && item->GetCount() > 1 &&
+            if (proto->GetQuality() == ITEM_QUALITY_NORMAL && item->GetCount() > 1 &&
                 item->GetCount() == item->GetMaxStackCount())
-                stacks.push_back(proto->ItemId);
+                stacks.push_back(proto->GetId());
 
-            items.push_back(proto->ItemId);
-            count[proto->ItemId] += item->GetCount();
+            items.push_back(proto->GetId());
+            count[proto->GetId()] += item->GetCount();
         }
 
         return true;
@@ -307,7 +308,7 @@ bool SuggestDungeonAction::Execute(Event /*event*/)
     std::vector<std::string> allowedInstances;
     for (auto it : instances)
     {
-        if (bot->GetLevel() >= it.second) allowedInstances.push_back(it.first);
+        if (bot->getLevel() >= it.second) allowedInstances.push_back(it.first);
     }
 
     if (allowedInstances.empty()) return false;
@@ -366,7 +367,7 @@ bool SuggestTradeAction::Execute(Event /*event*/)
     if (!proto)
         return false;
 
-    uint32 price = proto->SellPrice * sRandomPlayerbotMgr.GetSellMultiplier(bot) * count;
+    uint32 price = proto->GetSellPrice() * sRandomPlayerbotMgr.GetSellMultiplier(bot) * count;
     if (!price)
         return false;
 

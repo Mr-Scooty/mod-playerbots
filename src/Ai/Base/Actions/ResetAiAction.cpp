@@ -17,31 +17,12 @@ bool ResetAiAction::Execute(Event event)
     if (!event.getPacket().empty())
     {
         WorldPacket packet = event.getPacket();
-        if (packet.GetOpcode() == SMSG_GROUP_LIST)
+        if (packet.GetOpcode() == SMSG_PARTY_UPDATE)
         {
-            uint8 groupType;
-            Group::MemberSlot slot;
-            packet >> groupType;
-            packet >> slot.group;
-            packet >> slot.flags;
-            packet >> slot.roles;
-            if (groupType & GROUPTYPE_LFG)
-            {
-                uint8 status;
-                uint32 dungeon;
-                packet >> status;
-                packet >> dungeon;
-            }
-            ObjectGuid guid;
-            uint32 counter;
-            uint32 membersCount;
-            packet >> guid;
-            packet >> counter;
-            packet >> membersCount;
-            if (membersCount != 0)
-            {
+            // 4.3.4: SMSG_PARTY_UPDATE has a different (bit-packed) layout - query
+            // the group state directly instead of parsing the packet
+            if (bot->GetGroup() && bot->GetGroup()->GetMembersCount() != 0)
                 return false;
-            }
         }
     }
     if (Player* master = botAI->GetMaster())

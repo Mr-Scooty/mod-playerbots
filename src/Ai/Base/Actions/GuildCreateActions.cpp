@@ -13,6 +13,12 @@
 #include "RandomPlayerbotFactory.h"
 #include "ServerFacade.h"
 #include "SharedDefines.h"
+#include "WorldSession.h"
+#include "Guild.h"
+#include "DBCStores.h"
+#include "DatabaseEnv.h"
+#include "ObjectAccessor.h"
+#include "World.h"
 
 bool BuyPetitionAction::Execute(Event /*event*/)
 {
@@ -190,7 +196,7 @@ bool PetitionOfferNearbyAction::Execute(Event /*event*/)
             continue;
 
         // Parse rpg target to quest action.
-        WorldPacket p(CMSG_QUESTGIVER_ACCEPT_QUEST);
+        WorldPacket p(CMSG_QUEST_GIVER_ACCEPT_QUEST);
         p << i;
         p.rpos(0);
 
@@ -285,7 +291,7 @@ bool PetitionTurnInAction::isUseful()
     bool inCity = false;
     if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetZoneId()))
     {
-        if (zone->flags & AREA_FLAG_CAPITAL)
+        if (zone->GetFlags().HasFlag(AreaFlags::LinkedChat)) // capital city
             inCity = true;
     }
 
@@ -322,7 +328,7 @@ bool BuyTabardAction::isUseful()
     bool inCity = false;
     if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetZoneId()))
     {
-        if (zone->flags & AREA_FLAG_CAPITAL)
+        if (zone->GetFlags().HasFlag(AreaFlags::LinkedChat)) // capital city
             inCity = true;
     }
 

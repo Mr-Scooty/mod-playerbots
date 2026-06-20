@@ -8,6 +8,8 @@
 #include "Event.h"
 #include "RandomPlayerbotMgr.h"
 #include "PlayerbotAI.h"
+#include "DatabaseEnv.h"
+#include "WorldSession.h"
 
 bool HireAction::Execute(Event /*event*/)
 {
@@ -34,15 +36,15 @@ bool HireAction::Execute(Event /*event*/)
         return false;
     }
 
-    if (bot->GetLevel() > master->GetLevel())
+    if (bot->getLevel() > master->getLevel())
     {
         botAI->TellMaster("You cannot hire higher level characters than you");
         return false;
     }
 
     uint32 discount = RandomPlayerbotMgr::instance().GetTradeDiscount(bot, master);
-    uint32 m = 1 + (bot->GetLevel() / 10);
-    uint32 moneyReq = m * 5000 * bot->GetLevel();
+    uint32 m = 1 + (bot->getLevel() / 10);
+    uint32 moneyReq = m * 5000 * bot->getLevel();
     if (discount < moneyReq)
     {
         std::ostringstream out;

@@ -8,6 +8,7 @@
 #include "Event.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 bool SetHomeAction::Execute(Event /*event*/)
 {
@@ -25,7 +26,7 @@ bool SetHomeAction::Execute(Event /*event*/)
     }
 
     if (Unit* unit = botAI->GetUnit(selection))
-        if (unit->HasNpcFlag(UNIT_NPC_FLAG_INNKEEPER))
+        if (unit->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_INNKEEPER))
         {
             Creature* creature = botAI->GetCreature(selection);
             bot->GetSession()->SendBindPoint(creature);

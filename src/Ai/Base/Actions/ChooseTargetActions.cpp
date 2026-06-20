@@ -14,6 +14,7 @@
 #include "PossibleRpgTargetsValue.h"
 #include "PvpTriggers.h"
 #include "ServerFacade.h"
+#include "MotionMaster.h"
 
 bool AttackEnemyPlayerAction::isUseful()
 {

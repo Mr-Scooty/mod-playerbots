@@ -90,10 +90,24 @@ void HolyHealPriestStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     GenericPriestStrategy::InitTriggers(triggers);
 
+    // ShatterCore 4.3.4 Holy: enter/maintain a Chakra stance. Default to Serenity (single-target tank-healing
+    // stance: turns the Holy Word into the instant Serenity heal and buffs Heal/Greater Heal/Renew). Casting a
+    // single-target heal enters Serenity, so this is a low-priority "establish stance" node. Holy Word: Serenity
+    // (the matching instant) is then used on cooldown for critical single-target heals.
+    triggers.push_back(
+        new TriggerNode(
+            "chakra serenity",
+            {
+                NextAction("heal", ACTION_LIGHT_HEAL + 0)
+            }
+        )
+    );
+
     triggers.push_back(
         new TriggerNode(
             "group heal setting",
             {
+                NextAction("holy word: sanctuary", ACTION_MEDIUM_HEAL + 10),
                 NextAction("prayer of mending on party", ACTION_MEDIUM_HEAL + 9),
                 NextAction("circle of healing on party", ACTION_MEDIUM_HEAL + 8)
             }
@@ -116,7 +130,8 @@ void HolyHealPriestStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         new TriggerNode(
             "party member critical health",
             {
-                NextAction("guardian spirit on party", ACTION_CRITICAL_HEAL + 6),
+                NextAction("guardian spirit on party", ACTION_CRITICAL_HEAL + 7),
+                NextAction("holy word: serenity on party", ACTION_CRITICAL_HEAL + 6),
                 NextAction("power word: shield on party", ACTION_CRITICAL_HEAL + 5),
                 NextAction("prayer of mending on party", ACTION_CRITICAL_HEAL + 3),
                 NextAction("greater heal on party", ACTION_MEDIUM_HEAL + 2),
@@ -129,6 +144,7 @@ void HolyHealPriestStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         new TriggerNode(
             "party member low health",
             {
+                NextAction("holy word: serenity on party", ACTION_MEDIUM_HEAL + 5),
                 NextAction("circle of healing on party", ACTION_MEDIUM_HEAL + 4),
                 NextAction("prayer of mending on party", ACTION_MEDIUM_HEAL + 3),
                 NextAction("greater heal on party", ACTION_MEDIUM_HEAL + 2),

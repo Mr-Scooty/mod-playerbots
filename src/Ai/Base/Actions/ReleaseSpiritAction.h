@@ -9,6 +9,8 @@
 #include "Action.h"
 #include "ReviveFromCorpseAction.h"
 
+struct WorldSafeLocsEntry;
+
 class PlayerbotAI;
 
 class ReleaseSpiritAction : public Action
@@ -52,7 +54,7 @@ public:
 
 private:
     int64 CalculateDeadTime() const;
-    void PerformGraveyardTeleport(const GraveyardStruct* graveyard) const;
+    void PerformGraveyardTeleport(WorldSafeLocsEntry const* graveyard) const;
 };
 
 // SelfResurrectAction action registration

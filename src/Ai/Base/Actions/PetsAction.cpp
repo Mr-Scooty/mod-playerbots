@@ -5,13 +5,13 @@
 
 #include "PetsAction.h"
 
-#include "CharmInfo.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "SharedDefines.h"
+#include "MotionMaster.h"
 
 bool PetsAction::Execute(Event event)
 {
@@ -37,7 +37,7 @@ bool PetsAction::Execute(Event event)
     if (pet)
         targets.push_back(pet);
 
-    for (Unit::ControlSet::const_iterator itr = bot->m_Controlled.begin(); itr != bot->m_Controlled.end(); ++itr)
+    for (Unit::ControlList::const_iterator itr = bot->m_Controlled.begin(); itr != bot->m_Controlled.end(); ++itr)
     {
         Creature* creature = dynamic_cast<Creature*>(*itr);
         if (!creature)
@@ -154,7 +154,7 @@ bool PetsAction::Execute(Event event)
         }
         if (sPlayerbotAIConfig.IsPvpProhibited(bot->GetZoneId(), bot->GetAreaId()) &&
             (targetUnit->IsPlayer() || targetUnit->IsPet()) &&
-            (!bot->duel || bot->duel->Opponent != targetUnit))
+            (!bot->duel || bot->duel->opponent != targetUnit))
         {
             std::string text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
                 "pet_pvp_prohibited_error", "I cannot command my pet to attack players in PvP prohibited areas.", {});
@@ -178,7 +178,7 @@ bool PetsAction::Execute(Event event)
                 if (petCreature->GetVictim())
                     petCreature->AttackStop();
 
-                if (!petCreature->IsPlayer() && petCreature->ToCreature()->IsAIEnabled)
+                if (!petCreature->IsPlayer() && petCreature->ToCreature()->IsAIEnabled())
                 {
                     // For AI-enabled creatures (NPC pets/guardians): issue attack command and set flags.
                     charmInfo->SetIsCommandAttack(true);
@@ -241,10 +241,10 @@ bool PetsAction::Execute(Event event)
         {
             // If not already in controlled motion, stop movement and set to idle.
             bool controlledMotion =
-                target->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_CONTROLLED) != NULL_MOTION_TYPE;
+                target->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_CONTROLLED) != MAX_MOTION_TYPE;
             if (!controlledMotion)
             {
-                target->StopMovingOnCurrentPos();
+                target->StopMoving();
                 target->GetMotionMaster()->Clear(false);
                 target->GetMotionMaster()->MoveIdle();
             }
@@ -259,12 +259,8 @@ bool PetsAction::Execute(Event event)
                 charmInfo->SetIsFollowing(false);
                 charmInfo->SetIsReturning(false);
                 charmInfo->SetIsAtStay(!controlledMotion);
-                charmInfo->SaveStayPosition(controlledMotion);
-                if (target->ToPet())
-                    target->ToPet()->ClearCastWhenWillAvailable();
-
-                charmInfo->SetForcedSpell(0);
-                charmInfo->SetForcedTargetGUID();
+                charmInfo->SaveStayPosition();
+                // 4.3.4: AC-only pet cast-queue extensions do not exist
             }
         }
         if (sPlayerbotAIConfig.petChatCommandDebug == 1)
@@ -289,9 +285,7 @@ bool PetsAction::Execute(Event event)
     for (Creature* target : targets)
     {
         target->SetReactState(react);
-        CharmInfo* charmInfo = target->GetCharmInfo();
-        if (charmInfo)
-            charmInfo->SetPlayerReactState(react);
+        // 4.3.4: CharmInfo has no separate player-visible react state
     }
 
     // Inform the master of the new stance if debug is enabled.

@@ -17,6 +17,12 @@
 #include "Playerbots.h"
 #include "PossibleRpgTargetsValue.h"
 #include "SocialMgr.h"
+#include "WorldSession.h"
+#include "DBCStores.h"
+#include "Log.h"
+#include "NPCPackets.h"
+#include "TradeData.h"
+#include "TradePackets.h"  // ShatterCore: structured trade packets
 
 void RpgHelper::OnExecute(std::string nextAction)
 {
@@ -129,9 +135,9 @@ bool RpgEmoteAction::Execute(Event /*event*/)
 {
     uint32 type = TalkAction::GetRandomEmote(rpg->guidP().GetUnit());
 
-    WorldPacket p1;
-    p1 << rpg->guid();
-    bot->GetSession()->HandleGossipHelloOpcode(p1);
+    WorldPackets::NPC::Hello helloPacket{WorldPacket(CMSG_GOSSIP_HELLO)};
+    helloPacket.Unit = rpg->guid();
+    bot->GetSession()->HandleGossipHelloOpcode(helloPacket);
 
     bot->HandleEmoteCommand(type);
 
@@ -163,7 +169,7 @@ bool RpgTaxiAction::Execute(Event /*event*/)
     for (uint32 i = 0; i < sTaxiPathStore.GetNumRows(); ++i)
     {
         TaxiPathEntry const* entry = sTaxiPathStore.LookupEntry(i);
-        if (entry && entry->from == node && (bot->m_taxi.IsTaximaskNodeKnown(entry->to) || bot->isTaxiCheater()))
+        if (entry && entry->FromTaxiNode == node && (bot->m_taxi.IsTaximaskNodeKnown(entry->ToTaxiNode) || bot->isTaxiCheater()))
         {
             nodes.push_back(i);
         }
@@ -183,8 +189,8 @@ bool RpgTaxiAction::Execute(Event /*event*/)
     if (!entry)
         return false;
 
-    TaxiNodesEntry const* nodeFrom = sTaxiNodesStore.LookupEntry(entry->from);
-    TaxiNodesEntry const* nodeTo = sTaxiNodesStore.LookupEntry(entry->to);
+    TaxiNodesEntry const* nodeFrom = sTaxiNodesStore.LookupEntry(entry->FromTaxiNode);
+    TaxiNodesEntry const* nodeTo = sTaxiNodesStore.LookupEntry(entry->ToTaxiNode);
 
     Creature* flightMaster = bot->GetNPCIfCanInteractWith(guidP, UNIT_NPC_FLAG_FLIGHTMASTER);
     if (!flightMaster)
@@ -194,14 +200,14 @@ bool RpgTaxiAction::Execute(Event /*event*/)
         return false;
     }
 
-    if (!bot->ActivateTaxiPathTo({entry->from, entry->to}, flightMaster, 0))
+    if (!bot->ActivateTaxiPathTo({entry->FromTaxiNode, entry->ToTaxiNode}, flightMaster, 0))
     {
         LOG_ERROR("playerbots", "Bot {} cannot fly {} ({} location available)", bot->GetName(), path, nodes.size());
         return false;
     }
 
     LOG_INFO("playerbots", "Bot {} <{}> is flying from {} to {} ({} location available)",
-             bot->GetGUID().ToString().c_str(), bot->GetName(), nodeFrom->name[0], nodeTo->name[0], nodes.size());
+             bot->GetGUID().ToString().c_str(), bot->GetName(), nodeFrom->Name, nodeTo->Name, nodes.size());
 
     bot->SetMoney(money);
 
@@ -231,7 +237,7 @@ std::string const RpgStartQuestAction::ActionName() { return "accept all quests"
 
 Event RpgStartQuestAction::ActionEvent(Event /*event*/)
 {
-    WorldPacket p(CMSG_QUESTGIVER_ACCEPT_QUEST);
+    WorldPacket p(CMSG_QUEST_GIVER_ACCEPT_QUEST);
     p << rpg->guid();
     p.rpos(0);
     return Event("rpg action", p);
@@ -241,7 +247,7 @@ std::string const RpgEndQuestAction::ActionName() { return "talk to quest giver"
 
 Event RpgEndQuestAction::ActionEvent(Event /*event*/)
 {
-    WorldPacket p(CMSG_QUESTGIVER_COMPLETE_QUEST);
+    WorldPacket p(CMSG_QUEST_GIVER_COMPLETE_QUEST);
     p << rpg->guid();
     p.rpos(0);
     return Event("rpg action", p);
@@ -280,15 +286,17 @@ bool RpgTrainAction::isPossible()
     if (!cinfo)
         return false;
 
-    Trainer::Trainer* trainer = sObjectMgr->GetTrainer(cinfo->Entry);
+    Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(cinfo->Entry);
     if (!trainer)
         return false;
 
     if (!trainer->IsTrainerValidForPlayer(bot))
         return false;
 
-    FactionTemplateEntry const* factionTemplate = sFactionTemplateStore.LookupEntry(cinfo->faction);
-    float reputationDiscount = bot->GetReputationPriceDiscount(factionTemplate);
+    // ShatterCore: GetReputationPriceDiscount takes a Creature const* (derives the faction
+    // template internally). Resolve the live trainer creature; fall back to no discount if absent.
+    Creature* trainerCreature = gp.GetCreature();
+    float reputationDiscount = trainerCreature ? bot->GetReputationPriceDiscount(trainerCreature) : 1.0f;
     uint32 currentGold = AI_VALUE2(uint32, "free money for", (uint32)NeedMoneyFor::spells);
 
     for (auto& spell : trainer->GetSpells())
@@ -446,10 +454,9 @@ bool RpgTradeUsefulAction::Execute(Event /*event*/)
             {
                 // bot->Say("End trade with" + chat->FormatWorldobject(player), (bot->GetTeamId() == TEAM_ALLIANCE ?
                 // LANG_COMMON : LANG_ORCISH));
-                WorldPacket p;
-                uint32 status = TRADE_STATUS_TRADE_ACCEPT;
-                p << status;
-                bot->GetSession()->HandleAcceptTradeOpcode(p);
+                // ShatterCore: structured packet; AcceptTrade carries StateIndex (default 0), no status payload
+                WorldPackets::Trade::AcceptTrade acceptPacket{WorldPacket(CMSG_ACCEPT_TRADE)};
+                bot->GetSession()->HandleAcceptTradeOpcode(acceptPacket);
             }
         }
         else
@@ -474,7 +481,7 @@ bool RpgDuelAction::isUseful()
 
     // Players can only fight a duel with each other outside (=not inside dungeons and not in capital cities)
     AreaTableEntry const* casterAreaEntry = sAreaTableStore.LookupEntry(bot->GetAreaId());
-    if (casterAreaEntry && !(casterAreaEntry->flags & AREA_FLAG_ALLOW_DUELS))
+    if (casterAreaEntry && !(casterAreaEntry->Flags & uint32(AreaFlags::AllowDueling)))
     {
         // Dueling isn't allowed here
         return false;

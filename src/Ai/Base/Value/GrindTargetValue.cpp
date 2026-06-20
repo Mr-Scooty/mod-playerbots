@@ -10,6 +10,7 @@
 #include "ReputationMgr.h"
 #include "ServerFacade.h"
 #include "SharedDefines.h"
+#include "ObjectAccessor.h"
 
 Unit* GrindTargetValue::Calculate()
 {
@@ -68,7 +69,7 @@ Unit* GrindTargetValue::FindTargetForGrinding(uint32 assistCount)
             bot->GetReactionTo(unit) >= REP_NEUTRAL)
             continue;
 
-        if (!bot->IsHostileTo(unit) && unit->GetNpcFlags() != UNIT_NPC_FLAG_NONE)
+        if (!bot->IsHostileTo(unit) && unit->GetUInt32Value(UNIT_NPC_FLAGS) != UNIT_NPC_FLAG_NONE)
             continue;
 
         if (!bot->isHonorOrXPTarget(unit))
@@ -92,7 +93,7 @@ Unit* GrindTargetValue::FindTargetForGrinding(uint32 assistCount)
             continue;
         }
 
-        if (!bot->InBattleground() && (int)unit->GetLevel() - (int)bot->GetLevel() > 4 && !unit->GetGUID().IsPlayer())
+        if (!bot->InBattleground() && (int)unit->getLevel() - (int)bot->getLevel() > 4 && !unit->GetGUID().IsPlayer())
             continue;
 
         if (Creature* creature = unit->ToCreature())
@@ -170,7 +171,7 @@ bool GrindTargetValue::needForQuest(Unit* target)
         {
             const QuestStatusData* questStatus = &bot->getQuestStatusMap()[questId];
 
-            if (questTemplate->GetQuestLevel() > bot->GetLevel() + 5)
+            if (questTemplate->GetQuestLevel() > bot->getLevel() + 5)
                 continue;
 
             for (int j = 0; j < QUEST_OBJECTIVES_COUNT; j++)

@@ -9,6 +9,10 @@
 #include "GuildTaskMgr.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotAI.h"
+#include "WorldSession.h"
+#include "DatabaseEnv.h"
+#include "Mail.h"
+#include "ObjectAccessor.h"
 
 bool CheckMailAction::Execute(Event /*event*/)
 {

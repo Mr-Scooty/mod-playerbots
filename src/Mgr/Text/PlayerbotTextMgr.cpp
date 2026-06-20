@@ -3,12 +3,13 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 #include "DatabaseEnv.h"
-#include "WorldSessionMgr.h"
+#include "World.h"
 #include "Random.h"
 // Required due to a poor implementation by AC
 #include "QueryResult.h"
 
 #include "PlayerbotTextMgr.h"
+#include "Log.h"
 
 void PlayerbotTextMgr::replaceAll(std::string& str, const std::string& from, const std::string& to)
 {
@@ -38,7 +39,11 @@ void PlayerbotTextMgr::LoadBotTexts()
             text[0] = fields[1].Get<std::string>();
             uint8 sayType = fields[2].Get<uint8>();
             uint8 replyType = fields[3].Get<uint8>();
-            for (uint8 i = 1; i < TOTAL_LOCALES; ++i)
+            // ShatterCore: ai_playerbot_texts stores 8 locale columns (text_loc1..text_loc8) and the query
+            // (PLAYERBOTS_SEL_TEXT) returns 12 fields total. 4.3.4 TOTAL_LOCALES is 12 (adds NONE/ptBR/itIT)
+            // vs 9 in 3.3.5a, so iterating to TOTAL_LOCALES read fields[12..14] -- past the result set -- which
+            // produced a garbage-length Field and an intermittent SIGSEGV on boot. Bound to the 8 stored locales.
+            for (uint8 i = 1; i < OLD_TOTAL_LOCALES; ++i)
             {
                 text[i] = fields[i + 3].Get<std::string>();
             }
@@ -204,7 +209,7 @@ void PlayerbotTextMgr::AddLocalePriority(uint32 locale)
 uint32 PlayerbotTextMgr::GetLocalePriority()
 {
     // if no real players online, reset top locale
-    uint32 const activeSessions = sWorldSessionMgr->GetActiveSessionCount();
+    uint32 const activeSessions = sWorld->GetActiveSessionCount();
     if (!activeSessions)
     {
         ResetLocalePriority();

@@ -10,6 +10,7 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "SocialMgr.h"
+#include "DBCStores.h"
 
 bool NoRpgTargetTrigger::IsActive() { return !AI_VALUE(GuidPosition, "rpg target"); }
 
@@ -352,7 +353,7 @@ bool RpgDuelTrigger::IsActive()
         return false;
 
     // Less spammy duels
-    if (bot->GetLevel() < 3)
+    if (bot->getLevel() < 3)
         return false;
 
     if (botAI->HasRealPlayerMaster())
@@ -376,10 +377,10 @@ bool RpgDuelTrigger::IsActive()
     if (!player)
         return false;
 
-    if (player->GetLevel() > bot->GetLevel() + 3)
+    if (player->getLevel() > bot->getLevel() + 3)
         return false;
 
-    if (bot->GetLevel() > player->GetLevel() + 10)
+    if (bot->getLevel() > player->getLevel() + 10)
         return false;
 
     // caster or target already have requested duel
@@ -387,7 +388,7 @@ bool RpgDuelTrigger::IsActive()
         return false;
 
     AreaTableEntry const* targetAreaEntry = sAreaTableStore.LookupEntry(player->GetAreaId());
-    if (targetAreaEntry && !(targetAreaEntry->flags & AREA_FLAG_ALLOW_DUELS))
+    if (targetAreaEntry && !(targetAreaEntry->Flags & uint32(AreaFlags::AllowDueling)))
     {
         // Dueling isn't allowed here
         return false;

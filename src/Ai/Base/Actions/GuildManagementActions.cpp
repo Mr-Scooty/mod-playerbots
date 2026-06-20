@@ -10,6 +10,9 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "BroadcastHelper.h"
+#include "WorldSession.h"
+#include "ObjectAccessor.h"
+#include "World.h"
 
 Player* GuidManageAction::GetPlayer(Event event)
 {
@@ -173,7 +176,7 @@ bool GuildManageNearbyAction::Execute(Event /*event*/)
         if (!sPlayerbotAIConfig.randomBotGuildNearby)
             return false;
 
-        if (guild->GetMemberSize() > 1000)
+        if (guild->GetMembersCount() > 1000)
             return false;
 
         if ((guild->GetRankRights(botMember->GetRankId()) & GR_RIGHT_INVITE) == 0)
@@ -205,12 +208,12 @@ bool GuildManageNearbyAction::Execute(Event /*event*/)
         {
             /* std::map<std::string, std::string> placeholders;
             placeholders["%name"] = player->GetName();
-            placeholders["%members"] = std::to_string(guild->GetMemberSize());
+            placeholders["%members"] = std::to_string(guild->GetMembersCount());
             placeholders["%guildname"] = guild->GetName();
             AreaTableEntry const* current_area = botAI->GetCurrentArea();
             AreaTableEntry const* current_zone = botAI->GetCurrentZone();
-            placeholders["%area_name"] = current_area ? current_area->area_name[BroadcastHelper::GetLocale()] : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
-            placeholders["%zone_name"] = current_zone ? current_zone->area_name[BroadcastHelper::GetLocale()] : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
+            placeholders["%area_name"] = current_area ? current_area->AreaName[BroadcastHelper::GetLocale()] : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
+            placeholders["%zone_name"] = current_zone ? current_zone->AreaName[BroadcastHelper::GetLocale()] : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
 
             std::vector<std::string> lines;
 
@@ -302,7 +305,7 @@ bool GuildLeaveAction::Execute(Event event)
         return false;
     }
 
-    WorldPackets::Guild::GuildLeave data = WorldPacket(CMSG_GUILD_LEAVE);
+    WorldPacket data(CMSG_GUILD_LEAVE, 0);
     bot->GetSession()->HandleGuildLeaveOpcode(data);
     return true;
 }

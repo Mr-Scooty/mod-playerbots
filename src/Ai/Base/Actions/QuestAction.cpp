@@ -17,6 +17,12 @@
 #include "ReputationMgr.h"
 #include "ServerFacade.h"
 #include "BroadcastHelper.h"
+#include "WorldSession.h"
+#include "DBCStores.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
+#include "GossipDef.h"
+#include "QuestPackets.h"
 
 bool QuestAction::Execute(Event event)
 {
@@ -234,11 +240,11 @@ bool QuestAction::AcceptQuest(Quest const* quest, ObjectGuid questGiver)
         out << "Bags are full";
     else
     {
-        WorldPacket p(CMSG_QUESTGIVER_ACCEPT_QUEST);
-        uint32 unk1 = 0;
-        p << questGiver << questId << unk1;
-        p.rpos(0);
-        bot->GetSession()->HandleQuestgiverAcceptQuestOpcode(p);
+        // 4.3.4: drive the typed accept-quest handler directly
+        WorldPackets::Quest::QuestGiverAcceptQuest packet{WorldPacket(CMSG_QUEST_GIVER_ACCEPT_QUEST)};
+        packet.QuestGiverGUID = questGiver;
+        packet.QuestID = questId;
+        bot->GetSession()->HandleQuestgiverAcceptQuestOpcode(packet);
 
         if (bot->GetQuestStatus(questId) == QUEST_STATUS_NONE && sPlayerbotAIConfig.syncQuestWithPlayer)
         {
@@ -433,7 +439,7 @@ bool QuestItemPushResultAction::Execute(Event event)
 
 bool QuestUpdateFailedAction::Execute(Event /*event*/)
 {
-    //opcode SMSG_QUESTUPDATE_FAILED is never sent...(yet?)
+    //opcode SMSG_QUEST_UPDATE_FAILED is never sent...(yet?)
     return false;
 }
 

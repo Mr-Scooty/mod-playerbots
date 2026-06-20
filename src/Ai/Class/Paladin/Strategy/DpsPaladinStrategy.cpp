@@ -112,11 +112,14 @@ DpsPaladinStrategy::DpsPaladinStrategy(PlayerbotAI* botAI) : GenericPaladinStrat
 
 std::vector<NextAction> DpsPaladinStrategy::getDefaultActions()
 {
+    // ShatterCore 4.3.4 Retribution filler priority (used when no higher-priority trigger node fires):
+    // Holy Power generator (Crusader Strike -- the rotation spine) > execute > single Judgement > Exorcism filler
+    // > Consecration > melee. CS must out-rank the others so Holy Power keeps flowing to Templar's Verdict/Inquisition.
     return {
-        NextAction("hammer of wrath", ACTION_DEFAULT + 0.6f),
-        NextAction("judgement of wisdom", ACTION_DEFAULT + 0.5f),
-        NextAction("crusader strike", ACTION_DEFAULT + 0.4f),
-        NextAction("divine storm", ACTION_DEFAULT + 0.3f),
+        NextAction("crusader strike", ACTION_DEFAULT + 0.6f),    // Holy Power generator -- the rotation spine
+        NextAction("hammer of wrath", ACTION_DEFAULT + 0.5f),    // execute filler (target < 20%)
+        NextAction("judgement", ACTION_DEFAULT + 0.4f),          // single 4.3.4 Judgement (no more Judgement of Wisdom)
+        NextAction("exorcism", ACTION_DEFAULT + 0.3f),           // filler when no Art of War proc
         NextAction("consecration", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
@@ -126,54 +129,32 @@ void DpsPaladinStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     GenericPaladinStrategy::InitTriggers(triggers);
 
-    triggers.push_back(
-        new TriggerNode(
-            "art of war",
-            {
-                NextAction("exorcism", ACTION_DEFAULT + 0.2f)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "seal",
-            {
-                NextAction("seal of corruption", ACTION_HIGH)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "low mana",
-            {
-                NextAction("seal of wisdom", ACTION_HIGH + 5)
-            }
-        )
-    );
+    // ShatterCore 4.3.4 Retribution rotation (class reference doc section 4.3). The trigger nodes below are the
+    // high-priority maintenance/spender steps; the single-target fillers (Crusader Strike to build Holy Power,
+    // Hammer of Wrath execute, Judgement, etc.) come from getDefaultActions().
 
-    triggers.push_back(
-        new TriggerNode(
-            "avenging wrath",
-            {
-                NextAction("avenging wrath", ACTION_HIGH + 2)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "medium aoe",
-            {
-                NextAction("divine storm", ACTION_HIGH + 4),
-                NextAction("consecration", ACTION_HIGH + 3)
-            }
-        )
-    );
-    triggers.push_back(
-        new TriggerNode(
-            "enemy out of melee",
-            {
-                NextAction("reach melee", ACTION_HIGH + 1)
-            }
-        )
-    );
+    // Maintain Seal of Truth (Cataclysm seal; replaces WotLK Seal of Corruption + Seal of Wisdom swapping).
+    triggers.push_back(new TriggerNode("seal", { NextAction("seal of truth", ACTION_HIGH + 5) }));
+
+    // Maintain Inquisition (Holy Power spender, +30% Holy damage) -- recast when it drops; takes precedence
+    // over Templar's Verdict so the damage buff stays up.
+    triggers.push_back(new TriggerNode("inquisition", { NextAction("inquisition", ACTION_HIGH + 4) }));
+
+    // Spend Holy Power at 3 charges with Templar's Verdict (the single-target finisher).
+    triggers.push_back(new TriggerNode("holy power three", { NextAction("templar's verdict", ACTION_HIGH + 3) }));
+
+    // Avenging Wrath burst cooldown.
+    triggers.push_back(new TriggerNode("avenging wrath", { NextAction("avenging wrath", ACTION_HIGH + 2) }));
+
+    // Free instant Exorcism on The Art of War proc.
+    triggers.push_back(new TriggerNode("art of war", { NextAction("exorcism", ACTION_HIGH + 2) }));
+
+    // AoE: Divine Storm (Holy-Power-free in 4.3) + Consecration.
+    triggers.push_back(new TriggerNode("medium aoe", {
+        NextAction("divine storm", ACTION_HIGH + 1),
+        NextAction("consecration", ACTION_HIGH)
+    }));
+
+    // Close to melee range when the target steps out.
+    triggers.push_back(new TriggerNode("enemy out of melee", { NextAction("reach melee", ACTION_HIGH + 1) }));
 }

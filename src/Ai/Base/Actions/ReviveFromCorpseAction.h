@@ -8,6 +8,8 @@
 
 #include "MovementActions.h"
 
+struct WorldSafeLocsEntry;
+
 class PlayerbotAI;
 
 struct GraveyardStruct;
@@ -34,7 +36,7 @@ class SpiritHealerAction : public MovementAction
 public:
     SpiritHealerAction(PlayerbotAI* botAI, std::string const name = "spirit healer") : MovementAction(botAI, name) {}
 
-    GraveyardStruct const* GetGrave(bool startZone);
+    WorldSafeLocsEntry const* GetGrave(bool startZone);
     bool Execute(Event event) override;
     bool isUseful() override;
 };

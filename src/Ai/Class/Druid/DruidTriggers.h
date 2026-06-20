@@ -48,6 +48,14 @@ public:
     ThornsOnMainTankTrigger(PlayerbotAI* botAI) : BuffOnMainTankTrigger(botAI, "thorns", false, 2 * 2000) {}
 };
 
+// ShatterCore (4.3.4 Resto): keep Lifebloom rolling on the tank. The action's isUseful() enforces the 3-stack /
+// refresh-before-expiry rule; this trigger just fires the maintenance check while in a combat heal rotation.
+class LifebloomOnMainTankTrigger : public BuffOnMainTankTrigger
+{
+public:
+    LifebloomOnMainTankTrigger(PlayerbotAI* botAI) : BuffOnMainTankTrigger(botAI, "lifebloom", true, 2 * 1000) {}
+};
+
 class ThornsTrigger : public BuffTrigger
 {
 public:
@@ -153,6 +161,20 @@ class BashInterruptSpellTrigger : public InterruptSpellTrigger
 {
 public:
     BashInterruptSpellTrigger(PlayerbotAI* botAI) : InterruptSpellTrigger(botAI, "bash") {}
+};
+
+// ShatterCore (4.3.4): Skull Bash is the new baseline Bear/Cat interrupt (replaces Bash for kicks). Separate
+// spell names per form in the 4.3.4 spellbook.
+class SkullBashBearInterruptTrigger : public InterruptSpellTrigger
+{
+public:
+    SkullBashBearInterruptTrigger(PlayerbotAI* botAI) : InterruptSpellTrigger(botAI, "skull bash") {}
+};
+
+class SkullBashCatInterruptTrigger : public InterruptSpellTrigger
+{
+public:
+    SkullBashCatInterruptTrigger(PlayerbotAI* botAI) : InterruptSpellTrigger(botAI, "skull bash") {}
 };
 
 class BerserkTrigger : public BoostTrigger
@@ -290,6 +312,67 @@ public:
     StarfallTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "starfall") {}
 };
 
+// ShatterCore (4.3.4 Balance): Starsurge off cooldown -- high-priority instant nuke (also free on Shooting Stars).
+class StarsurgeTrigger : public SpellNoCooldownTrigger
+{
+public:
+    StarsurgeTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "starsurge") {}
+};
+
+// ShatterCore (4.3.4 Balance): Sunfire is the Solar-Eclipse Moonfire. Maintain only while Solar Eclipse is up.
+class SunfireTrigger : public DebuffTrigger
+{
+public:
+    SunfireTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "sunfire", 1, true) {}
+    bool IsActive() override
+    {
+        return botAI->HasAura("eclipse (solar)", bot) && DebuffTrigger::IsActive();
+    }
+};
+
+class SunfireOnAttackerTrigger : public DebuffOnAttackerTrigger
+{
+public:
+    SunfireOnAttackerTrigger(PlayerbotAI* botAI) : DebuffOnAttackerTrigger(botAI, "sunfire", true) {}
+    bool IsActive() override { return botAI->HasAura("eclipse (solar)", bot) && BuffTrigger::IsActive(); }
+};
+
+// ShatterCore (4.3.4 Bear): Thrash on cooldown -- maintain the AoE bleed (re-apply when missing or about to fall).
+class ThrashTrigger : public DebuffTrigger
+{
+public:
+    ThrashTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "thrash", 1, true) {}
+    bool IsActive() override
+    {
+        if (!bot->IsInCombat() || !botAI->HasAnyAuraOf(bot, "bear form", "dire bear form", nullptr))
+            return false;
+        return DebuffTrigger::IsActive();
+    }
+};
+
+// ShatterCore (4.3.4 Bear): Pulverize when Lacerate is at 3 stacks and the Pulverize crit buff is missing/expiring.
+class PulverizeTrigger : public Trigger
+{
+public:
+    PulverizeTrigger(PlayerbotAI* botAI) : Trigger(botAI, "pulverize") {}
+    bool IsActive() override
+    {
+        if (!bot->IsInCombat() || !botAI->HasAnyAuraOf(bot, "bear form", "dire bear form", nullptr))
+            return false;
+
+        Unit* target = GetTarget();
+        if (!target || !target->IsAlive() || !target->IsInWorld())
+            return false;
+
+        Aura* lacerate = botAI->GetAura("lacerate", target, false, false);
+        if (!lacerate || lacerate->GetStackAmount() < 3)
+            return false;
+
+        Aura* pulverize = botAI->GetAura("pulverize", bot);
+        return !pulverize || pulverize->GetDuration() < 4000;
+    }
+};
+
 class ForceOfNatureTrigger : public BoostTrigger
 {
 public:
@@ -299,7 +382,7 @@ public:
 class MangleBearTrigger : public DebuffTrigger
 {
 public:
-    MangleBearTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "mangle (bear)") {}
+    MangleBearTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "mangle") {}
 
     bool IsActive() override
     {
@@ -352,12 +435,12 @@ public:
 class MangleCatTrigger : public DebuffTrigger
 {
 public:
-    MangleCatTrigger(PlayerbotAI* ai) : DebuffTrigger(ai, "mangle (cat)", 1, false, 0.0f) {}
+    MangleCatTrigger(PlayerbotAI* ai) : DebuffTrigger(ai, "mangle", 1, false, 0.0f) {}
     bool IsActive() override
     {
         if (botAI->HasAura("prowl", bot))
             return false;
-        return DebuffTrigger::IsActive() && !botAI->HasAura("mangle (bear)", GetTarget(), false, false, -1, true)
+        return DebuffTrigger::IsActive() && !botAI->HasAura("mangle", GetTarget(), false, false, -1, true)
             && !botAI->HasAura("trauma", GetTarget(), false, false, -1, true);
     }
 };

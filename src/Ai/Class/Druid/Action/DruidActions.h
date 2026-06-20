@@ -7,6 +7,7 @@
 #define _PLAYERBOT_DRUIDACTIONS_H
 
 #include "GenericSpellActions.h"
+#include "NamedObjectContext.h"
 #include "SharedDefines.h"
 #include "Value.h"
 
@@ -190,6 +191,52 @@ class CastStarfireAction : public CastSpellAction
 public:
     CastStarfireAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "starfire") {}
     bool isUseful() override;
+};
+
+// ShatterCore (4.3.4 Balance): Starsurge -- instant nuke on a 15s CD that pushes the Eclipse bar in the current
+// direction; cast on cooldown (and free on Shooting Stars procs). Top filler ahead of Wrath/Starfire.
+class CastStarsurgeAction : public CastSpellAction
+{
+public:
+    CastStarsurgeAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "starsurge") {}
+};
+
+// ShatterCore (4.3.4 Balance): Sunfire is the Solar-Eclipse version of Moonfire (same button in-game; a distinct
+// spell name in the spellbook once Eclipse is active). Maintained as a DoT during Solar Eclipse.
+class CastSunfireAction : public CastDebuffSpellAction
+{
+public:
+    CastSunfireAction(PlayerbotAI* botAI) : CastDebuffSpellAction(botAI, "sunfire", true) {}
+};
+
+class CastSunfireOnAttackerAction : public CastDebuffSpellOnAttackerAction
+{
+public:
+    CastSunfireOnAttackerAction(PlayerbotAI* ai) : CastDebuffSpellOnAttackerAction(ai, "sunfire", true, 0.0f) {}
+    bool isUseful() override { return CastAuraSpellAction::isUseful(); }
+};
+
+// ShatterCore (4.3.4 Balance): Wild Mushroom AoE -- place mushrooms then Detonate. Bots approximate with a single
+// detonate-on-CD step in AoE; kept as a named cast so the rotation can reference it if the spellbook has it.
+class CastWildMushroomAction : public CastSpellAction
+{
+public:
+    CastWildMushroomAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "wild mushroom") {}
+    ActionThreatType getThreatType() override { return ActionThreatType::Aoe; }
+};
+
+class CastWildMushroomDetonateAction : public CastSpellAction
+{
+public:
+    CastWildMushroomDetonateAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "wild mushroom: detonate") {}
+    ActionThreatType getThreatType() override { return ActionThreatType::Aoe; }
+};
+
+// ShatterCore (4.3.4): Stampeding Roar -- group movement-speed cooldown (Bear/Cat); harmless self-buff cast.
+class CastStampedingRoarAction : public CastBuffSpellAction
+{
+public:
+    CastStampedingRoarAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "stampeding roar") {}
 };
 
 class CastEntanglingRootsAction : public CastSpellAction
@@ -396,6 +443,17 @@ public:
     bool isUseful() override;
     Unit* GetTarget() override;
     std::string const getName() override { return "wild growth blanket"; }
+};
+
+// ShatterCore (4.3.4 Balance): the signed Eclipse meter (POWER_ECLIPSE, -100..+100). Negative = Lunar side,
+// positive = Solar side, 0 = neutral. Read with AI_VALUE2(int32, "eclipse", "self target"). This mirrors the
+// HolyPowerValue resource-value pattern but uses a signed int because the Eclipse bar can go negative.
+class EclipseValue : public CalculatedValue<int32>, public Qualified
+{
+public:
+    EclipseValue(PlayerbotAI* botAI, std::string const name = "eclipse") : CalculatedValue<int32>(botAI, name) {}
+
+    int32 Calculate() override;
 };
 
 class EclipseSolarProcTimeValue : public ManualSetValue<time_t>

@@ -20,6 +20,9 @@
 #include "Chat.h"
 #include "GenericBuffUtils.h"
 #include "PlayerbotAI.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "Spell.h"
 
 using ai::buff::MakeAuraQualifierForBuff;
 using ai::spell::HasSpellOrCategoryCooldown;
@@ -62,13 +65,13 @@ namespace
             for (auto const& itr : *itemTemplates)
             {
                 ItemTemplate const& proto = itr.second;
-                if (proto.InventoryType != INVTYPE_TRINKET)
+                if (proto.GetInventoryType() != INVTYPE_TRINKET)
                     continue;
 
                 for (uint8 spellIndex = 0; spellIndex < MAX_ITEM_PROTO_SPELLS; ++spellIndex)
                 {
-                    auto const& spellData = proto.Spells[spellIndex];
-                    markSpellId(spellData.SpellId, spellData.SpellTrigger);
+                    auto const spellData = proto.GetEffect(spellIndex);
+                    markSpellId(spellData.SpellID, spellData.Trigger);
                 }
             }
 
@@ -111,8 +114,8 @@ namespace
             (1u << CR_HIT_TAKEN_MELEE) |
             (1u << CR_HIT_TAKEN_RANGED) |
             (1u << CR_HIT_TAKEN_SPELL) |
-            (1u << CR_CRIT_TAKEN_MELEE) |
-            (1u << CR_CRIT_TAKEN_RANGED) |
+            (1u << CR_RESILIENCE_CRIT_TAKEN) |
+            (1u << CR_RESILIENCE_CRIT_TAKEN) |
             (1u << CR_CRIT_TAKEN_SPELL);
 
         switch (effectInfo.ApplyAuraName)
@@ -155,7 +158,7 @@ bool CastSpellAction::Execute(Event /*event*/)
             if (!spellInfo)
                 continue;
 
-            std::string const namepart = spellInfo->SpellName[0];
+            std::string const namepart = spellInfo->SpellName;
             std::wstring wnamepart;
             if (!Utf8toWStr(namepart, wnamepart))
                 return false;
@@ -330,8 +333,8 @@ bool CastEnchantItemMainHandAction::Execute(Event /*event*/)
 bool CastEnchantItemMainHandAction::isPossible()
 {
     Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-    if (!item || item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_MISC ||
-        item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE ||
+    if (!item || item->GetTemplate()->GetSubClass() == ITEM_SUBCLASS_WEAPON_MISCELLANEOUS ||
+        item->GetTemplate()->GetSubClass() == ITEM_SUBCLASS_WEAPON_FISHING_POLE ||
         item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT))
     {
         return false;
@@ -352,7 +355,7 @@ bool CastEnchantItemOffHandAction::Execute(Event /*event*/)
 bool CastEnchantItemOffHandAction::isPossible()
 {
     Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
-    if (!item || item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_MISC ||
+    if (!item || item->GetTemplate()->GetSubClass() == ITEM_SUBCLASS_WEAPON_MISCELLANEOUS ||
         item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT))
     {
         return false;
@@ -400,7 +403,7 @@ CastShootAction::CastShootAction(
     {
         spell = "shoot";
 
-        switch (pItem->GetTemplate()->SubClass)
+        switch (pItem->GetTemplate()->GetSubClass())
         {
             case ITEM_SUBCLASS_WEAPON_GUN:
                 spell += " gun";
@@ -552,13 +555,13 @@ bool UseTrinketAction::UseTrinket(Item* item)
 
     for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
     {
-        if (item->GetTemplate()->Spells[i].SpellId > 0 &&
-            item->GetTemplate()->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
+        if (item->GetTemplate()->GetEffect(i).SpellID > 0 &&
+            item->GetTemplate()->GetEffect(i).Trigger == ITEM_SPELLTRIGGER_ON_USE)
         {
-            spellId = item->GetTemplate()->Spells[i].SpellId;
-            itemSpellCooldown = item->GetTemplate()->Spells[i].SpellCooldown;
-            itemSpellCategory = item->GetTemplate()->Spells[i].SpellCategory;
-            itemSpellCategoryCooldown = item->GetTemplate()->Spells[i].SpellCategoryCooldown;
+            spellId = item->GetTemplate()->GetEffect(i).SpellID;
+            itemSpellCooldown = item->GetTemplate()->GetEffect(i).Cooldown;
+            itemSpellCategory = item->GetTemplate()->GetEffect(i).Category;
+            itemSpellCategoryCooldown = item->GetTemplate()->GetEffect(i).CategoryCooldown;
             uint64 const itemCooldownKey = (static_cast<uint64>(item->GetEntry()) << 32) | spellId;
             uint32 const now = getMSTime();
 
@@ -646,13 +649,13 @@ bool UseTrinketAction::UseTrinket(Item* item)
     if (!spellId)
         return false;
 
-    WorldPacket packet(CMSG_USE_ITEM);
-    packet << bagIndex << slot << cast_count << spellId << item_guid << glyphIndex << castFlags;
-
-    targetFlag = TARGET_FLAG_NONE;
-    packet << targetFlag << bot->GetPackGUID();
-
-    bot->GetSession()->HandleUseItemOpcode(packet);
+    // 4.3.4: CMSG_USE_ITEM is a bit-packed typed packet - invoke the core item
+    // cast directly instead of hand-writing the WotLK layout
+    {
+        SpellCastTargets targets;
+        targets.SetUnitTarget(bot);
+        bot->CastItemUseSpell(item, targets, cast_count, glyphIndex);
+    }
 
     uint32 const now = getMSTime();
     uint32 const cooldownDelay = bot->GetSpellCooldownDelay(spellId);

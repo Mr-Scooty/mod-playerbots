@@ -8,6 +8,7 @@
 #include "Event.h"
 #include "PlayerbotRepository.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 // Helper function for prefixes used by combat and non-combat strategy commands.
 static void HandleStrategyCommon(PlayerbotAI* botAI, std::string const& text, BotState state)

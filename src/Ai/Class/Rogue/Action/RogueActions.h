@@ -84,6 +84,36 @@ public:
     CastColdBloodAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "cold blood") {}
 };
 
+// Recuperate: 4.3.4 finisher HoT (self). Used as a maintenance self-buff finisher.
+class CastRecuperateAction : public CastBuffSpellAction
+{
+public:
+    CastRecuperateAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "recuperate") {}
+
+    std::string const GetTargetName() override { return "self target"; }
+};
+
+// Revealing Strike: Combat builder/debuff (+finisher damage), built on the current target.
+class CastRevealingStrikeAction : public CastMeleeSpellAction
+{
+public:
+    CastRevealingStrikeAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "revealing strike") {}
+};
+
+// Hemorrhage: Subtlety builder (also a debuff) used when not behind the target.
+class CastHemorrhageAction : public CastMeleeSpellAction
+{
+public:
+    CastHemorrhageAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "hemorrhage") {}
+};
+
+// Vendetta: Assassination single-target damage-amp cooldown applied to the current target.
+class CastVendettaAction : public CastDebuffSpellAction
+{
+public:
+    CastVendettaAction(PlayerbotAI* botAI) : CastDebuffSpellAction(botAI, "vendetta", true, 6.0f) {}
+};
+
 class CastDismantleAction : public CastSpellAction
 {
 public:

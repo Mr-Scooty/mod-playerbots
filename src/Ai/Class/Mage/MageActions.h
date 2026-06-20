@@ -403,4 +403,23 @@ public:
     bool isUseful() override;
 };
 
+// 4.3.4 Flame Orb (82731): fire-and-forget orb cast on cooldown for all specs. The Frost talent
+// "Frostfire Orb" (92283) replaces it for frost mages, so fall through to that name if Flame Orb
+// is not the learned spell. Cast on the current target (the orb travels toward it).
+class CastFlameOrbAction : public CastSpellAction
+{
+public:
+    CastFlameOrbAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "flame orb") {}
+    std::vector<NextAction> getAlternatives() override
+    {
+        return NextAction::merge({ NextAction("frostfire orb") }, CastSpellAction::getAlternatives());
+    }
+};
+
+class CastFrostfireOrbAction : public CastSpellAction
+{
+public:
+    CastFrostfireOrbAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "frostfire orb") {}
+};
+
 #endif

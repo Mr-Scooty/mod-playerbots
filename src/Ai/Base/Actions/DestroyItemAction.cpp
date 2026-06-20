@@ -56,7 +56,7 @@ bool SmartDestroyItemAction::Execute(Event /*event*/)
 
         for (auto& item : items)
         {
-            FindItemByIdVisitor visitor(item->GetTemplate()->ItemId);
+            FindItemByIdVisitor visitor(item->GetTemplate()->GetId());
             DestroyItem(&visitor);
 
             bagSpace = AI_VALUE(uint8, "bag space");
@@ -92,7 +92,7 @@ bool SmartDestroyItemAction::Execute(Event /*event*/)
 
         for (auto& item : items)
         {
-            FindItemByIdVisitor visitor(item->GetTemplate()->ItemId);
+            FindItemByIdVisitor visitor(item->GetTemplate()->GetId());
             DestroyItem(&visitor);
 
             bagSpace = AI_VALUE(uint8, "bag space");

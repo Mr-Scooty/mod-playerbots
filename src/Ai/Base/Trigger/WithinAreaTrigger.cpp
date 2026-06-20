@@ -7,6 +7,7 @@
 
 #include "LastMovementValue.h"
 #include "Playerbots.h"
+#include "DBCStores.h"
 
 bool WithinAreaTrigger::IsActive()
 {
@@ -14,29 +15,29 @@ bool WithinAreaTrigger::IsActive()
     if (!movement.lastAreaTrigger)
         return false;
 
-    AreaTrigger const* at = sObjectMgr->GetAreaTrigger(movement.lastAreaTrigger);
+    AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(movement.lastAreaTrigger);
     if (!at)
         return false;
 
-    if (!sObjectMgr->GetAreaTriggerTeleport(movement.lastAreaTrigger))
+    if (!sObjectMgr->GetAreaTrigger(movement.lastAreaTrigger))
         return false;
 
     return IsPointInAreaTriggerZone(at, bot->GetMapId(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(),
                                     0.5f);
 }
 
-bool WithinAreaTrigger::IsPointInAreaTriggerZone(AreaTrigger const* atEntry, uint32 mapid, float x, float y, float z,
+bool WithinAreaTrigger::IsPointInAreaTriggerZone(AreaTriggerEntry const* atEntry, uint32 mapid, float x, float y, float z,
                                                  float delta)
 {
-    if (mapid != atEntry->map)
+    if (mapid != atEntry->ContinentID)
         return false;
 
-    if (atEntry->radius > 0)
+    if (atEntry->Radius > 0)
     {
         // if we have radius check it
-        float dist2 = (x - atEntry->x) * (x - atEntry->x) + (y - atEntry->y) * (y - atEntry->y) +
-                      (z - atEntry->z) * (z - atEntry->z);
-        if (dist2 > (atEntry->radius + delta) * (atEntry->radius + delta))
+        float dist2 = (x - atEntry->Pos.X) * (x - atEntry->Pos.X) + (y - atEntry->Pos.Y) * (y - atEntry->Pos.Y) +
+                      (z - atEntry->Pos.Z) * (z - atEntry->Pos.Z);
+        if (dist2 > (atEntry->Radius + delta) * (atEntry->Radius + delta))
             return false;
     }
     else
@@ -47,22 +48,22 @@ bool WithinAreaTrigger::IsPointInAreaTriggerZone(AreaTrigger const* atEntry, uin
         // is-in-cube check and we have to calculate only one point instead of 4
 
         // 2PI = 360, keep in mind that ingame orientation is counter-clockwise
-        double rotation = 2 * M_PI - atEntry->orientation;
+        double rotation = 2 * M_PI - atEntry->Box_yaw;
         double sinVal = sin(rotation);
         double cosVal = cos(rotation);
 
-        float playerBoxDistX = x - atEntry->x;
-        float playerBoxDistY = y - atEntry->y;
+        float playerBoxDistX = x - atEntry->Pos.X;
+        float playerBoxDistY = y - atEntry->Pos.Y;
 
-        float rotPlayerX = float(atEntry->x + playerBoxDistX * cosVal - playerBoxDistY * sinVal);
-        float rotPlayerY = float(atEntry->y + playerBoxDistY * cosVal + playerBoxDistX * sinVal);
+        float rotPlayerX = float(atEntry->Pos.X + playerBoxDistX * cosVal - playerBoxDistY * sinVal);
+        float rotPlayerY = float(atEntry->Pos.Y + playerBoxDistY * cosVal + playerBoxDistX * sinVal);
 
         // box edges are parallel to coordiante axis, so we can treat every dimension independently :D
-        float dz = z - atEntry->z;
-        float dx = rotPlayerX - atEntry->x;
-        float dy = rotPlayerY - atEntry->y;
-        if ((fabs(dx) > atEntry->x / 2 + delta) || (fabs(dy) > atEntry->y / 2 + delta) ||
-            (fabs(dz) > atEntry->z / 2 + delta))
+        float dz = z - atEntry->Pos.Z;
+        float dx = rotPlayerX - atEntry->Pos.X;
+        float dy = rotPlayerY - atEntry->Pos.Y;
+        if ((fabs(dx) > atEntry->Pos.X / 2 + delta) || (fabs(dy) > atEntry->Pos.Y / 2 + delta) ||
+            (fabs(dz) > atEntry->Pos.Z / 2 + delta))
         {
             return false;
         }

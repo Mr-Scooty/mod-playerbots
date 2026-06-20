@@ -14,6 +14,9 @@
 #include "Playerbots.h"
 #include "ReputationMgr.h"
 #include "Trainer.h"
+#include "WorldSession.h"
+#include "Bag.h"
+#include "DBCStores.h"
 
 bool TrainerAction::Execute(Event event)
 {
@@ -23,7 +26,7 @@ bool TrainerAction::Execute(Event event)
     if (!target)
         return false;
 
-    Trainer::Trainer* trainer = sObjectMgr->GetTrainer(target->GetEntry());
+    Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(target->GetEntry());
     if (!trainer)
         return false;
 
@@ -60,7 +63,7 @@ bool TrainerAction::isPossible()
     if (!target)
         return false;
 
-    Trainer::Trainer* trainer = sObjectMgr->GetTrainer(target->GetEntry());
+    Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(target->GetEntry());
     if (!trainer)
         return false;
 
@@ -94,7 +97,7 @@ void TrainerAction::Iterate(Creature* creature, bool learnSpells, uint32 spellId
 {
     TellHeader(creature);
 
-    Trainer::Trainer* trainer = sObjectMgr->GetTrainer(creature->GetEntry());
+    Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(creature->GetEntry());
     if (!trainer)
         return;
 
@@ -150,7 +153,7 @@ void TrainerAction::Learn(SpellInfo const* spellInfo, uint32 cost, std::ostrings
     if (spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL))
         bot->CastSpell(bot, spellInfo->Id, true);
     else
-        bot->learnSpell(spellInfo->Id, false);
+        bot->LearnSpell(spellInfo->Id, false);
 
     out << " - learned";
 }
@@ -181,7 +184,7 @@ bool MaintenanceAction::Execute(Event /*event*/)
     }
 
     botAI->TellMaster("I'm maintaining");
-    PlayerbotFactory factory(bot, bot->GetLevel());
+    PlayerbotFactory factory(bot, bot->getLevel());
 
     if (!botAI->IsAlt())
     {
@@ -203,7 +206,7 @@ bool MaintenanceAction::Execute(Event /*event*/)
         factory.InitMounts();
         factory.InitGlyphs(false);
         factory.InitKeyring();
-        if (bot->GetLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
+        if (bot->getLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
             factory.ApplyEnchantAndGemsNew();
     }
     else
@@ -263,7 +266,7 @@ bool MaintenanceAction::Execute(Event /*event*/)
             factory.InitKeyring();
 
         if (sPlayerbotAIConfig.altMaintenanceGemsEnchants &&
-            bot->GetLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
+            bot->getLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
             factory.ApplyEnchantAndGemsNew();
     }
 
@@ -300,10 +303,10 @@ bool BisGearAction::RunAutogearFallback(uint16 effectiveIlvl)
     uint32 gs = effectiveIlvl == 0
                     ? 0
                     : PlayerbotFactory::CalcMixedGearScore(effectiveIlvl, sPlayerbotAIConfig.autoGearQualityLimit);
-    PlayerbotFactory factory(bot, bot->GetLevel(), sPlayerbotAIConfig.autoGearQualityLimit, gs);
+    PlayerbotFactory factory(bot, bot->getLevel(), sPlayerbotAIConfig.autoGearQualityLimit, gs);
     factory.InitEquipment(false, sPlayerbotAIConfig.twoRoundsGearInit);
     factory.InitAmmo();
-    if (bot->GetLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
+    if (bot->getLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
         factory.ApplyEnchantAndGemsNew();
     bot->DurabilityRepairAll(false, 1.0f, false);
     return true;
@@ -442,7 +445,7 @@ bool BisGearAction::Execute(Event event)
         ItemTemplate const* tmpl = item->GetTemplate();
         if (!tmpl)
             return;
-        if (tmpl->Class == ITEM_CLASS_WEAPON || tmpl->Class == ITEM_CLASS_ARMOR)
+        if (tmpl->GetClass() == ITEM_CLASS_WEAPON || tmpl->GetClass() == ITEM_CLASS_ARMOR)
             bot->DestroyItem(bag, slot, true);
     };
     for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
@@ -461,7 +464,7 @@ bool BisGearAction::Execute(Event event)
         uint32 fillGs = ilvl == 0
                             ? 0
                             : PlayerbotFactory::CalcMixedGearScore(ilvl, sPlayerbotAIConfig.autoGearQualityLimit);
-        PlayerbotFactory fillFactory(bot, bot->GetLevel(), sPlayerbotAIConfig.autoGearQualityLimit, fillGs);
+        PlayerbotFactory fillFactory(bot, bot->getLevel(), sPlayerbotAIConfig.autoGearQualityLimit, fillGs);
         fillFactory.InitEquipment(false, sPlayerbotAIConfig.twoRoundsGearInit);
     }
 
@@ -488,12 +491,12 @@ bool BisGearAction::Execute(Event event)
             continue;
 
         // Grant required reputation rank if the item gates on it.
-        if (proto->RequiredReputationFaction && proto->RequiredReputationRank > 0)
+        if (proto->GetRequiredReputationFaction() && proto->GetRequiredReputationRank() > 0)
         {
-            if (FactionEntry const* fac = sFactionStore.LookupEntry(proto->RequiredReputationFaction))
+            if (FactionEntry const* fac = sFactionStore.LookupEntry(proto->GetRequiredReputationFaction()))
             {
-                ReputationRank requiredRank = static_cast<ReputationRank>(proto->RequiredReputationRank);
-                if (bot->GetReputationRank(proto->RequiredReputationFaction) < requiredRank)
+                ReputationRank requiredRank = static_cast<ReputationRank>(proto->GetRequiredReputationRank());
+                if (bot->GetReputationRank(proto->GetRequiredReputationFaction()) < requiredRank)
                 {
                     int32 standing = ReputationMgr::ReputationRankToStanding(
                                          static_cast<ReputationRank>(requiredRank - 1)) + 1;
@@ -537,9 +540,9 @@ bool BisGearAction::Execute(Event event)
         }
     }
 
-    PlayerbotFactory factory(bot, bot->GetLevel(), ITEM_QUALITY_EPIC, 0);
+    PlayerbotFactory factory(bot, bot->getLevel(), ITEM_QUALITY_EPIC, 0);
     factory.InitAmmo();
-    if (bot->GetLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
+    if (bot->getLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
         factory.ApplyEnchantAndGemsNew();
 
     bot->DurabilityRepairAll(false, 1.0f, false);
@@ -553,7 +556,7 @@ bool RemoveGlyphAction::Execute(Event /*event*/)
 {
     for (uint32 slotIndex = 0; slotIndex < MAX_GLYPH_SLOT_INDEX; ++slotIndex)
     {
-        bot->SetGlyph(slotIndex, 0, true);
+        bot->SetGlyph(slotIndex, 0);
     }
     bot->SendTalentsInfoData(false);
     return true;
@@ -579,10 +582,10 @@ bool AutoGearAction::Execute(Event /*event*/)
                     ? 0
                     : PlayerbotFactory::CalcMixedGearScore(sPlayerbotAIConfig.autoGearScoreLimit,
                                                            sPlayerbotAIConfig.autoGearQualityLimit);
-    PlayerbotFactory factory(bot, bot->GetLevel(), sPlayerbotAIConfig.autoGearQualityLimit, gs);
+    PlayerbotFactory factory(bot, bot->getLevel(), sPlayerbotAIConfig.autoGearQualityLimit, gs);
     factory.InitEquipment(true);
     factory.InitAmmo();
-    if (bot->GetLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
+    if (bot->getLevel() >= sPlayerbotAIConfig.minEnchantingBotLevel)
     {
         factory.ApplyEnchantAndGemsNew();
     }

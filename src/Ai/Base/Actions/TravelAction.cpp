@@ -21,9 +21,9 @@ bool TravelAction::Execute(Event /*event*/)
 
     Unit* newTarget = nullptr;
     std::list<Unit*> targets;
-    Acore::AnyUnitInObjectRangeCheck u_check(bot, sPlayerbotAIConfig.sightDistance * 2);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, sPlayerbotAIConfig.sightDistance);
+    Trinity::AnyUnitInObjectRangeCheck u_check(bot, sPlayerbotAIConfig.sightDistance * 2);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, sPlayerbotAIConfig.sightDistance);
 
     for (Unit* unit : targets)
     {
@@ -69,7 +69,7 @@ bool MoveToDarkPortalAction::Execute(Event /*event*/)
             return false;
     }
 
-    if (bot->GetLevel() > 57)
+    if (bot->getLevel() > 57)
     {
         if ((bot->GetTeamId() == TEAM_ALLIANCE && bot->GetQuestStatus(10119) == QUEST_STATUS_NONE) ||
             (bot->GetTeamId() == TEAM_HORDE && bot->GetQuestStatus(9407) == QUEST_STATUS_NONE))
@@ -111,11 +111,11 @@ bool MoveToDarkPortalAction::Execute(Event /*event*/)
     return false;
 }
 
-bool MoveToDarkPortalAction::isUseful() { return bot->GetLevel() > 54; }
+bool MoveToDarkPortalAction::isUseful() { return bot->getLevel() > 54; }
 
 bool DarkPortalAzerothAction::Execute(Event /*event*/)
 {
-    if (bot->GetLevel() > 57)
+    if (bot->getLevel() > 57)
     {
         WorldPacket packet(CMSG_AREATRIGGER);
         packet << 4354;
@@ -126,7 +126,7 @@ bool DarkPortalAzerothAction::Execute(Event /*event*/)
     return false;
 }
 
-bool DarkPortalAzerothAction::isUseful() { return bot->GetLevel() > 57; }
+bool DarkPortalAzerothAction::isUseful() { return bot->getLevel() > 57; }
 
 bool MoveFromDarkPortalAction::Execute(Event /*event*/)
 {

@@ -113,6 +113,9 @@ public:
         creators["blessing"] = &PaladinTriggerFactoryInternal::blessing;
         creators["seal"] = &PaladinTriggerFactoryInternal::seal;
         creators["art of war"] = &PaladinTriggerFactoryInternal::art_of_war;
+        creators["holy power three"] = &PaladinTriggerFactoryInternal::holy_power_three;
+        creators["inquisition"] = &PaladinTriggerFactoryInternal::inquisition;
+        creators["grand crusader"] = &PaladinTriggerFactoryInternal::grand_crusader;
         creators["blessing on party"] = &PaladinTriggerFactoryInternal::blessing_on_party;
         creators["crusader aura"] = &PaladinTriggerFactoryInternal::crusader_aura;
         creators["retribution aura"] = &PaladinTriggerFactoryInternal::retribution_aura;
@@ -171,6 +174,9 @@ private:
     static Trigger* blessing(PlayerbotAI* botAI) { return new BlessingTrigger(botAI); }
     static Trigger* seal(PlayerbotAI* botAI) { return new SealTrigger(botAI); }
     static Trigger* art_of_war(PlayerbotAI* botAI) { return new ArtOfWarTrigger(botAI); }
+    static Trigger* holy_power_three(PlayerbotAI* botAI) { return new HolyPowerAvailableTrigger(botAI, 3); }
+    static Trigger* inquisition(PlayerbotAI* botAI) { return new InquisitionTrigger(botAI); }
+    static Trigger* grand_crusader(PlayerbotAI* botAI) { return new GrandCrusaderTrigger(botAI); }
     static Trigger* blessing_on_party(PlayerbotAI* botAI) { return new BlessingOnPartyTrigger(botAI); }
     static Trigger* crusader_aura(PlayerbotAI* botAI) { return new CrusaderAuraTrigger(botAI); }
     static Trigger* retribution_aura(PlayerbotAI* botAI) { return new RetributionAuraTrigger(botAI); }
@@ -243,6 +249,7 @@ public:
         creators["seal of command"] = &PaladinAiObjectContextInternal::seal_of_command;
         creators["seal of vengeance"] = &PaladinAiObjectContextInternal::seal_of_vengeance;
         creators["seal of corruption"] = &PaladinAiObjectContextInternal::seal_of_corruption;
+        creators["seal of truth"] = &PaladinAiObjectContextInternal::seal_of_truth;
         creators["blessing of might"] = &PaladinAiObjectContextInternal::blessing_of_might;
         creators["blessing of wisdom"] = &PaladinAiObjectContextInternal::blessing_of_wisdom;
         creators["blessing of kings"] = &PaladinAiObjectContextInternal::blessing_of_kings;
@@ -254,6 +261,21 @@ public:
         creators["blessing of sanctuary on party"] = &PaladinAiObjectContextInternal::blessing_of_sanctuary_on_party;
         creators["redemption"] = &PaladinAiObjectContextInternal::redemption;
         creators["crusader strike"] = &PaladinAiObjectContextInternal::crusader_strike;
+        creators["templar's verdict"] = &PaladinAiObjectContextInternal::templars_verdict;
+        creators["inquisition"] = &PaladinAiObjectContextInternal::inquisition;
+        // ShatterCore (4.3.4 Protection/Holy) Holy Power spenders, heals, and utility.
+        creators["shield of the righteous"] = &PaladinAiObjectContextInternal::shield_of_the_righteous;
+        creators["word of glory"] = &PaladinAiObjectContextInternal::word_of_glory;
+        creators["word of glory on party"] = &PaladinAiObjectContextInternal::word_of_glory_on_party;
+        creators["light of dawn"] = &PaladinAiObjectContextInternal::light_of_dawn;
+        creators["light of dawn on party"] = &PaladinAiObjectContextInternal::light_of_dawn_on_party;
+        creators["holy radiance"] = &PaladinAiObjectContextInternal::holy_radiance;
+        creators["holy radiance on party"] = &PaladinAiObjectContextInternal::holy_radiance_on_party;
+        creators["divine light"] = &PaladinAiObjectContextInternal::divine_light;
+        creators["divine light on party"] = &PaladinAiObjectContextInternal::divine_light_on_party;
+        creators["seal of insight"] = &PaladinAiObjectContextInternal::seal_of_insight;
+        creators["rebuke"] = &PaladinAiObjectContextInternal::rebuke;
+        creators["guardian of ancient kings"] = &PaladinAiObjectContextInternal::guardian_of_ancient_kings;
         creators["crusader aura"] = &PaladinAiObjectContextInternal::crusader_aura;
         creators["seal of light"] = &PaladinAiObjectContextInternal::seal_of_light;
         creators["devotion aura"] = &PaladinAiObjectContextInternal::devotion_aura;
@@ -338,6 +360,7 @@ private:
     static Action* seal_of_command(PlayerbotAI* botAI) { return new CastSealOfCommandAction(botAI); }
     static Action* seal_of_vengeance(PlayerbotAI* botAI) { return new CastSealOfVengeanceAction(botAI); }
     static Action* seal_of_corruption(PlayerbotAI* botAI) { return new CastSealOfCorruptionAction(botAI); }
+    static Action* seal_of_truth(PlayerbotAI* botAI) { return new CastSealOfTruthAction(botAI); }
     static Action* blessing_of_sanctuary(PlayerbotAI* botAI) { return new CastBlessingOfSanctuaryAction(botAI); }
     static Action* blessing_of_might(PlayerbotAI* botAI) { return new CastBlessingOfMightAction(botAI); }
     static Action* blessing_of_wisdom(PlayerbotAI* botAI) { return new CastBlessingOfWisdomAction(botAI); }
@@ -361,6 +384,20 @@ private:
     }
     static Action* redemption(PlayerbotAI* botAI) { return new CastRedemptionAction(botAI); }
     static Action* crusader_strike(PlayerbotAI* botAI) { return new CastCrusaderStrikeAction(botAI); }
+    static Action* templars_verdict(PlayerbotAI* botAI) { return new CastTemplarsVerdictAction(botAI); }
+    static Action* inquisition(PlayerbotAI* botAI) { return new CastInquisitionAction(botAI); }
+    static Action* shield_of_the_righteous(PlayerbotAI* botAI) { return new CastShieldOfTheRighteousAction(botAI); }
+    static Action* word_of_glory(PlayerbotAI* botAI) { return new CastWordOfGloryAction(botAI); }
+    static Action* word_of_glory_on_party(PlayerbotAI* botAI) { return new CastWordOfGloryOnPartyAction(botAI); }
+    static Action* light_of_dawn(PlayerbotAI* botAI) { return new CastLightOfDawnAction(botAI); }
+    static Action* light_of_dawn_on_party(PlayerbotAI* botAI) { return new CastLightOfDawnOnPartyAction(botAI); }
+    static Action* holy_radiance(PlayerbotAI* botAI) { return new CastHolyRadianceAction(botAI); }
+    static Action* holy_radiance_on_party(PlayerbotAI* botAI) { return new CastHolyRadianceOnPartyAction(botAI); }
+    static Action* divine_light(PlayerbotAI* botAI) { return new CastDivineLightAction(botAI); }
+    static Action* divine_light_on_party(PlayerbotAI* botAI) { return new CastDivineLightOnPartyAction(botAI); }
+    static Action* seal_of_insight(PlayerbotAI* botAI) { return new CastSealOfInsightAction(botAI); }
+    static Action* rebuke(PlayerbotAI* botAI) { return new CastRebukeAction(botAI); }
+    static Action* guardian_of_ancient_kings(PlayerbotAI* botAI) { return new CastGuardianOfAncientKingsAction(botAI); }
     static Action* crusader_aura(PlayerbotAI* botAI) { return new CastCrusaderAuraAction(botAI); }
     static Action* seal_of_light(PlayerbotAI* botAI) { return new CastSealOfLightAction(botAI); }
     static Action* devotion_aura(PlayerbotAI* botAI) { return new CastDevotionAuraAction(botAI); }

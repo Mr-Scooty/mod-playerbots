@@ -6,8 +6,8 @@
 #include "G3D/Vector2.h"
 #include "GameObject.h"
 #include "GossipDef.h"
-#include "GridTerrainData.h"
-#include "IVMapMgr.h"
+#include "GridMap.h"
+#include "IVMapManager.h"
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
 #include "Object.h"
@@ -24,12 +24,19 @@
 #include "Playerbots.h"
 #include "Position.h"
 #include "QuestDef.h"
+#include "QuestPackets.h"  // ShatterCore: structured quest packets
 #include "Random.h"
 #include "RandomPlayerbotMgr.h"
 #include "SharedDefines.h"
 #include "StatsWeightCalculator.h"
 #include "Timer.h"
 #include "TravelMgr.h"
+#include "Log.h"
+#include "Map.h"
+#include "WorldSession.h"
+#include "World.h"
+#include "DBCStores.h"
+#include "AreaDefines.h"
 
 bool NewRpgBaseAction::MoveFarTo(WorldPosition dest)
 {
@@ -103,7 +110,7 @@ bool NewRpgBaseAction::MoveFarTo(WorldPosition dest)
             bot->GetName(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(), bot->GetMapId(),
             dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ(), dest.GetMapId(), bot->GetZoneId(),
             zone_name);
-        bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
+        bot->RemoveAurasWithInterruptFlags(SpellAuraInterruptFlags::LeaveWorld);
         return bot->TeleportTo(dest);
     }
 
@@ -255,10 +262,12 @@ bool NewRpgBaseAction::MoveRandomNear(float moveStep, MovementPriority priority,
         if (!canReach)
             continue;
 
-        if (!map->CanReachPositionAndGetValidCoords(bot, dx, dy, dz))
+        // ShatterCore: CheckCollisionAndGetValidCoords takes (source, startX, startY, startZ,
+        // destX&, destY&, destZ&); start from bot's current position, dx/dy/dz are in/out dest.
+        if (!map->CheckCollisionAndGetValidCoords(bot, x, y, z, dx, dy, dz))
             continue;
 
-        if (map->IsInWater(bot->GetPhaseMask(), dx, dy, dz, bot->GetCollisionHeight()))
+        if (map->IsInWater(bot->GetPhaseShift(), dx, dy, dz))
             continue;
 
         bool moved = MoveTo(bot->GetMapId(), dx, dy, dz, false, false, false, true, priority);
@@ -362,16 +371,16 @@ bool NewRpgBaseAction::CanInteractWithQuestGiver(Object* questGiver)
 
             // Deathstate checks
             if (!bot->IsAlive() &&
-                !(creature->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_VISIBLE_TO_GHOSTS))
+                !(creature->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_GHOST_VISIBLE))  // ShatterCore: renamed from VISIBLE_TO_GHOSTS
                 return false;
 
             // alive or spirit healer
             if (!creature->IsAlive() &&
-                !(creature->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_INTERACT_WHILE_DEAD))
+                !(creature->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_CAN_INTERACT_WHILE_DEAD))
                 return false;
 
             // appropriate npc type
-            if (!creature->HasNpcFlag(UNIT_NPC_FLAG_QUESTGIVER))
+            if (!creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
                 return false;
 
             // not allow interaction under control, but allow with own pets
@@ -460,11 +469,12 @@ bool NewRpgBaseAction::IsWithinInteractionDist(Object* questGiver)
 
 bool NewRpgBaseAction::AcceptQuest(Quest const* quest, ObjectGuid guid)
 {
-    WorldPacket p(CMSG_QUESTGIVER_ACCEPT_QUEST);
-    uint32 unk1 = 0;
-    p << guid << quest->GetQuestId() << unk1;
-    p.rpos(0);
-    bot->GetSession()->HandleQuestgiverAcceptQuestOpcode(p);
+    // ShatterCore: structured packet (was guid/questId/unk1 byte stream)
+    WorldPackets::Quest::QuestGiverAcceptQuest packet{WorldPacket(CMSG_QUEST_GIVER_ACCEPT_QUEST)};
+    packet.QuestGiverGUID = guid;
+    packet.QuestID = quest->GetQuestId();
+    packet.StartCheat = 0;
+    bot->GetSession()->HandleQuestgiverAcceptQuestOpcode(packet);
 
     return true;
 }
@@ -485,18 +495,19 @@ bool NewRpgBaseAction::TurnInQuest(Quest const* quest, ObjectGuid guid)
 
     bot->PlayDistanceSound(621);
 
-    WorldPacket p(CMSG_QUESTGIVER_CHOOSE_REWARD);
-    p << guid << quest->GetQuestId();
+    // ShatterCore: structured packet (was guid/questId/rewardIndex byte stream)
+    WorldPackets::Quest::QuestGiverChooseReward packet{WorldPacket(CMSG_QUEST_GIVER_CHOOSE_REWARD)};
+    packet.QuestGiverGUID = guid;
+    packet.QuestID = quest->GetQuestId();
     if (quest->GetRewChoiceItemsCount() <= 1)
     {
-        p << 0;
-        bot->GetSession()->HandleQuestgiverChooseRewardOpcode(p);
+        packet.ItemChoiceID = 0;
+        bot->GetSession()->HandleQuestgiverChooseRewardOpcode(packet);
     }
     else
     {
-        uint32 bestId = BestRewardIndex(quest);
-        p << bestId;
-        bot->GetSession()->HandleQuestgiverChooseRewardOpcode(p);
+        packet.ItemChoiceID = BestRewardIndex(quest);
+        bot->GetSession()->HandleQuestgiverChooseRewardOpcode(packet);
     }
 
     return true;
@@ -543,7 +554,7 @@ uint32 NewRpgBaseAction::BestRewardIndex(Quest const* quest)
 bool NewRpgBaseAction::IsQuestWorthDoing(Quest const* quest)
 {
     bool isLowLevelQuest =
-        bot->GetLevel() > (bot->GetQuestLevel(quest) + sWorld->getIntConfig(CONFIG_QUEST_LOW_LEVEL_HIDE_DIFF));
+        bot->getLevel() > (bot->GetQuestLevel(quest) + sWorld->getIntConfig(CONFIG_QUEST_LOW_LEVEL_HIDE_DIFF));
 
     if (isLowLevelQuest)
         return false;
@@ -559,12 +570,12 @@ bool NewRpgBaseAction::IsQuestWorthDoing(Quest const* quest)
 
 bool NewRpgBaseAction::IsQuestCapableDoing(Quest const* quest)
 {
-    bool highLevelQuest = bot->GetLevel() + 3 < bot->GetQuestLevel(quest);
+    bool highLevelQuest = bot->getLevel() + 3 < bot->GetQuestLevel(quest);
     if (highLevelQuest)
         return false;
 
     // Elite quest and dungeon quest etc
-    if (quest->GetType() != 0)
+    if (quest->GetQuestType() != 0)
         return false;
 
     // now we only capable of doing solo quests
@@ -602,8 +613,9 @@ bool NewRpgBaseAction::OrganizeQuestLog()
             bot->GetQuestStatus(questId) == QUEST_STATUS_FAILED)
         {
             LOG_DEBUG("playerbots", "[New RPG] {} drop quest {}", bot->GetName(), questId);
-            WorldPacket packet(CMSG_QUESTLOG_REMOVE_QUEST);
-            packet << (uint8)i;
+            // ShatterCore: structured packet, Entry = quest log slot index
+            WorldPackets::Quest::QuestLogRemoveQuest packet{WorldPacket(CMSG_QUEST_LOG_REMOVE_QUEST)};
+            packet.Entry = (uint8)i;
             bot->GetSession()->HandleQuestLogRemoveQuest(packet);
             if (botAI->GetMaster())
                 botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -632,8 +644,9 @@ bool NewRpgBaseAction::OrganizeQuestLog()
         if (quest->GetZoneOrSort() < 0 || (quest->GetZoneOrSort() > 0 && quest->GetZoneOrSort() != botZoneId))
         {
             LOG_DEBUG("playerbots", "[New RPG] {} drop quest {}", bot->GetName(), questId);
-            WorldPacket packet(CMSG_QUESTLOG_REMOVE_QUEST);
-            packet << (uint8)i;
+            // ShatterCore: structured packet, Entry = quest log slot index
+            WorldPackets::Quest::QuestLogRemoveQuest packet{WorldPacket(CMSG_QUEST_LOG_REMOVE_QUEST)};
+            packet.Entry = (uint8)i;
             bot->GetSession()->HandleQuestLogRemoveQuest(packet);
             if (botAI->GetMaster())
                 botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -657,8 +670,9 @@ bool NewRpgBaseAction::OrganizeQuestLog()
 
         const Quest* quest = sObjectMgr->GetQuestTemplate(questId);
         LOG_DEBUG("playerbots", "[New RPG] {} drop quest {}", bot->GetName(), questId);
-        WorldPacket packet(CMSG_QUESTLOG_REMOVE_QUEST);
-        packet << (uint8)i;
+        // ShatterCore: structured packet, Entry = quest log slot index
+        WorldPackets::Quest::QuestLogRemoveQuest packet{WorldPacket(CMSG_QUEST_LOG_REMOVE_QUEST)};
+        packet.Entry = (uint8)i;
         bot->GetSession()->HandleQuestLogRemoveQuest(packet);
         if (botAI->GetMaster())
             botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
@@ -816,46 +830,48 @@ bool NewRpgBaseAction::GetQuestPOIPosAndObjectiveIdx(uint32 questId, std::vector
     if (!quest)
         return false;
 
-    const QuestPOIVector* poiVector = sObjectMgr->GetQuestPOIVector(questId);
-    if (!poiVector)
+    // ShatterCore: QuestPOIVector/QuestPOI -> QuestPOIWrapper.POIData.QuestPOIBlobDataStats (QuestPOIBlobData).
+    QuestPOIWrapper const* poiWrapper = sObjectMgr->GetQuestPOIWrapper(questId);
+    if (!poiWrapper)
     {
         return false;
     }
+    std::vector<QuestPOIBlobData> const& poiVector = poiWrapper->POIData.QuestPOIBlobDataStats;
 
     const QuestStatusData& q_status = bot->getQuestStatusMap().at(questId);
 
     if (toComplete && q_status.Status == QUEST_STATUS_COMPLETE)
     {
-        for (const QuestPOI& qPoi : *poiVector)
+        for (QuestPOIBlobData const& qPoi : poiVector)
         {
-            if (qPoi.MapId != bot->GetMapId())
+            if (qPoi.MapID != bot->GetMapId())
                 continue;
 
             // not the poi pos to reward quest
             if (qPoi.ObjectiveIndex != -1)
                 continue;
 
-            if (qPoi.points.size() == 0)
+            if (qPoi.QuestPOIBlobPointStats.size() == 0)
                 continue;
 
             float dx = 0, dy = 0;
-            std::vector<float> weights = GenerateRandomWeights(qPoi.points.size());
-            for (size_t i = 0; i < qPoi.points.size(); i++)
+            std::vector<float> weights = GenerateRandomWeights(qPoi.QuestPOIBlobPointStats.size());
+            for (size_t i = 0; i < qPoi.QuestPOIBlobPointStats.size(); i++)
             {
-                const QuestPOIPoint& point = qPoi.points[i];
-                dx += point.x * weights[i];
-                dy += point.y * weights[i];
+                const QuestPOIBlobPoint& point = qPoi.QuestPOIBlobPointStats[i];
+                dx += point.X * weights[i];
+                dy += point.Y * weights[i];
             }
 
             if (bot->GetDistance2d(dx, dy) >= 1500.0f)
                 continue;
 
-            float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(dx, dy));
+            float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(bot->GetPhaseShift(), dx, dy));  // ShatterCore: GetWaterLevel takes PhaseShift
 
             if (dz == INVALID_HEIGHT || dz == VMAP_INVALID_HEIGHT_VALUE)
                 continue;
 
-            if (bot->GetZoneId() != bot->GetMap()->GetZoneId(bot->GetPhaseMask(), dx, dy, dz))
+            if (bot->GetZoneId() != bot->GetMap()->GetZoneId(bot->GetPhaseShift(), dx, dy, dz))
                 continue;
 
             poiInfo.push_back({{dx, dy}, qPoi.ObjectiveIndex});
@@ -892,15 +908,15 @@ bool NewRpgBaseAction::GetQuestPOIPosAndObjectiveIdx(uint32 questId, std::vector
     }
 
     // Get POIs to go
-    for (const QuestPOI& qPoi : *poiVector)
+    for (QuestPOIBlobData const& qPoi : poiVector)
     {
-        if (qPoi.MapId != bot->GetMapId())
+        if (qPoi.MapID != bot->GetMapId())
             continue;
 
         bool inComplete = false;
         for (uint32 objective : incompleteObjectiveIdx)
         {
-            if (qPoi.ObjectiveIndex == objective)
+            if (qPoi.ObjectiveIndex == (int32)objective)
             {
                 inComplete = true;
                 break;
@@ -908,26 +924,26 @@ bool NewRpgBaseAction::GetQuestPOIPosAndObjectiveIdx(uint32 questId, std::vector
         }
         if (!inComplete)
             continue;
-        if (qPoi.points.size() == 0)
+        if (qPoi.QuestPOIBlobPointStats.size() == 0)
             continue;
         float dx = 0, dy = 0;
-        std::vector<float> weights = GenerateRandomWeights(qPoi.points.size());
-        for (size_t i = 0; i < qPoi.points.size(); i++)
+        std::vector<float> weights = GenerateRandomWeights(qPoi.QuestPOIBlobPointStats.size());
+        for (size_t i = 0; i < qPoi.QuestPOIBlobPointStats.size(); i++)
         {
-            const QuestPOIPoint& point = qPoi.points[i];
-            dx += point.x * weights[i];
-            dy += point.y * weights[i];
+            const QuestPOIBlobPoint& point = qPoi.QuestPOIBlobPointStats[i];
+            dx += point.X * weights[i];
+            dy += point.Y * weights[i];
         }
 
         if (bot->GetDistance2d(dx, dy) >= 1500.0f)
             continue;
 
-        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(dx, dy));
+        float dz = std::max(bot->GetMap()->GetHeight(dx, dy, MAX_HEIGHT), bot->GetMap()->GetWaterLevel(bot->GetPhaseShift(), dx, dy));  // ShatterCore: GetWaterLevel takes PhaseShift
 
         if (dz == INVALID_HEIGHT || dz == VMAP_INVALID_HEIGHT_VALUE)
             continue;
 
-        if (bot->GetZoneId() != bot->GetMap()->GetZoneId(bot->GetPhaseMask(), dx, dy, dz))
+        if (bot->GetZoneId() != bot->GetMap()->GetZoneId(bot->GetPhaseShift(), dx, dy, dz))
             continue;
 
         poiInfo.push_back({{dx, dy}, qPoi.ObjectiveIndex});
@@ -944,10 +960,10 @@ bool NewRpgBaseAction::GetQuestPOIPosAndObjectiveIdx(uint32 questId, std::vector
 
 WorldPosition NewRpgBaseAction::SelectRandomGrindPos(Player* bot)
 {
-    const std::vector<WorldLocation>& locs = sTravelMgr.GetLocsPerLevelCache(bot->GetLevel());
+    const std::vector<WorldLocation>& locs = sTravelMgr.GetLocsPerLevelCache(bot->getLevel());
     float hiRange = 500.0f;
     float loRange = 2500.0f;
-    if (bot->GetLevel() < 5)
+    if (bot->getLevel() < 5)
     {
         hiRange /= 3;
         loRange /= 3;
@@ -957,7 +973,7 @@ WorldPosition NewRpgBaseAction::SelectRandomGrindPos(Player* bot)
     bool inCity = false;
     if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetZoneId()))
     {
-        if (zone->flags & AREA_FLAG_CAPITAL)
+        if (zone->GetFlags().HasFlag(AreaFlags::LinkedChat))
             inCity = true;
     }
 
@@ -969,7 +985,7 @@ WorldPosition NewRpgBaseAction::SelectRandomGrindPos(Player* bot)
         if (bot->GetExactDist(loc) > 2500.0f)
             continue;
 
-        if (!inCity && bot->GetMap()->GetZoneId(bot->GetPhaseMask(), loc.GetPositionX(), loc.GetPositionY(),
+        if (!inCity && bot->GetMap()->GetZoneId(bot->GetPhaseShift(), loc.GetPositionX(), loc.GetPositionY(),
                                                 loc.GetPositionZ()) != bot->GetZoneId())
             continue;
 
@@ -1008,7 +1024,7 @@ WorldPosition NewRpgBaseAction::SelectRandomCampPos(Player* bot)
 
     if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetZoneId()))
     {
-        if (zone->flags & AREA_FLAG_CAPITAL)
+        if (zone->GetFlags().HasFlag(AreaFlags::LinkedChat))
             inCity = true;
     }
 
@@ -1018,14 +1034,14 @@ WorldPosition NewRpgBaseAction::SelectRandomCampPos(Player* bot)
         if (bot->GetMapId() != loc.GetMapId())
             continue;
 
-        float range = bot->GetLevel() <= 5 ? 500.0f : 2500.0f;
+        float range = bot->getLevel() <= 5 ? 500.0f : 2500.0f;
         if (bot->GetExactDist(loc) > range)
             continue;
 
         if (bot->GetExactDist(loc) < 50.0f)
             continue;
 
-        if (!inCity && bot->GetMap()->GetZoneId(bot->GetPhaseMask(), loc.GetPositionX(), loc.GetPositionY(),
+        if (!inCity && bot->GetMap()->GetZoneId(bot->GetPhaseShift(), loc.GetPositionX(), loc.GetPositionY(),
                                                 loc.GetPositionZ()) != bot->GetZoneId())
             continue;
 
@@ -1249,10 +1265,10 @@ bool NewRpgBaseAction::CheckRpgStatusAvailable(NewRpgStatus status)
             if (!bot->IsPvP())
                 return false;
             uint32 zoneId = bot->GetZoneId();
-            if (zoneId == AREA_NAGRAND)
+            if (zoneId == 3518) // Nagrand
                 return false;
 
-            OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(zoneId);
+            OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(bot->GetMap(), zoneId);
             return outdoorPvP != nullptr;
         }
         default:

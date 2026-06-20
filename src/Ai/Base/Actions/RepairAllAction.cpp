@@ -24,18 +24,23 @@ bool RepairAllAction::Execute(Event /*event*/)
         bot->SetFacingToObject(unit);
         float discountMod = bot->GetReputationPriceDiscount(unit);
 
-        uint32 botMoney = bot->GetMoney();
+        uint64 botMoney = bot->GetMoney();
         if (botAI->HasCheat(BotCheatMask::gold))
         {
             bot->SetMoney(10000000);
         }
 
-        // Repair weapons first.
-        uint32 totalCost = bot->DurabilityRepair(EQUIPMENT_SLOT_MAINHAND, true, discountMod, false);
-        totalCost += bot->DurabilityRepair(EQUIPMENT_SLOT_RANGED, true, discountMod, false);
-        totalCost += bot->DurabilityRepair(EQUIPMENT_SLOT_OFFHAND, true, discountMod, false);
+        // 4.3.4: DurabilityRepair no longer reports the cost - track spent money instead.
+        uint64 moneyBefore = bot->GetMoney();
 
-        totalCost += bot->DurabilityRepairAll(true, discountMod, false);
+        // Repair weapons first.
+        bot->DurabilityRepair(uint16(EQUIPMENT_SLOT_MAINHAND | (INVENTORY_SLOT_BAG_0 << 8)), true, discountMod);
+        bot->DurabilityRepair(uint16(EQUIPMENT_SLOT_RANGED | (INVENTORY_SLOT_BAG_0 << 8)), true, discountMod);
+        bot->DurabilityRepair(uint16(EQUIPMENT_SLOT_OFFHAND | (INVENTORY_SLOT_BAG_0 << 8)), true, discountMod);
+
+        bot->DurabilityRepairAll(true, discountMod, false);
+
+        uint64 totalCost = moneyBefore > bot->GetMoney() ? moneyBefore - bot->GetMoney() : 0;
 
         if (botAI->HasCheat(BotCheatMask::gold))
         {
@@ -45,7 +50,7 @@ bool RepairAllAction::Execute(Event /*event*/)
         if (totalCost > 0)
         {
             std::ostringstream out;
-            out << "Repair: " << chat->formatMoney(totalCost) << " (" << unit->GetName() << ")";
+            out << "Repair: " << chat->formatMoney(uint32(totalCost)) << " (" << unit->GetName() << ")";
             botAI->TellMasterNoFacing(out.str());
 
             bot->PlayDistanceSound(1116);

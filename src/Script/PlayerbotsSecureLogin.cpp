@@ -1,4 +1,5 @@
 #include "ScriptMgr.h"
+#include "CharacterPackets.h"
 #include "Opcodes.h"
 #include "Player.h"
 #include "ObjectAccessor.h"
@@ -57,9 +58,11 @@ public:
         if (packet.GetOpcode() != CMSG_PLAYER_LOGIN)
             return true;
 
-        WorldPacket pkt(packet);
-        ObjectGuid loginGuid;
-        pkt >> loginGuid;
+        // 4.3.4 CMSG_PLAYER_LOGIN carries a bit-packed guid - parse through the core packet class
+        // ShatterCore: structured WorldPackets need brace-init (avoids most-vexing-parse).
+        WorldPackets::Character::PlayerLogin loginPacket{WorldPacket(packet)};
+        loginPacket.Read();
+        ObjectGuid loginGuid = loginPacket.Guid;
 
         if (!loginGuid)
             return true;

@@ -167,6 +167,10 @@ public:
         creators["earth shock execute"] = &ShamanATriggerFactoryInternal::earth_shock_execute;
         creators["spirit walk ready"] = &ShamanATriggerFactoryInternal::spirit_walk_ready;
         creators["chain lightning no cd"] = &ShamanATriggerFactoryInternal::chain_lightning_no_cd;
+        creators["lava burst no cd"] = &ShamanATriggerFactoryInternal::lava_burst_no_cd;
+        creators["fulmination"] = &ShamanATriggerFactoryInternal::fulmination;
+        creators["no lightning shield"] = &ShamanATriggerFactoryInternal::no_lightning_shield;
+        creators["unleash elements no cd"] = &ShamanATriggerFactoryInternal::unleash_elements_no_cd;
         creators["call of the elements and enemy within melee"] = &ShamanATriggerFactoryInternal::call_of_the_elements_and_enemy_within_melee;
         creators["maelstrom weapon 5 and medium aoe"] = &ShamanATriggerFactoryInternal::maelstrom_weapon_5_and_medium_aoe;
         creators["maelstrom weapon 4 and medium aoe"] = &ShamanATriggerFactoryInternal::maelstrom_weapon_4_and_medium_aoe;
@@ -227,6 +231,10 @@ private:
     static Trigger* earth_shock_execute(PlayerbotAI* botAI) { return new EarthShockExecuteTrigger(botAI); }
     static Trigger* spirit_walk_ready(PlayerbotAI* botAI) { return new SpiritWalkTrigger(botAI); }
     static Trigger* chain_lightning_no_cd(PlayerbotAI* botAI) { return new ChainLightningNoCdTrigger(botAI); }
+    static Trigger* lava_burst_no_cd(PlayerbotAI* botAI) { return new LavaBurstNoCdTrigger(botAI); }
+    static Trigger* fulmination(PlayerbotAI* botAI) { return new FulminationTrigger(botAI); }
+    static Trigger* no_lightning_shield(PlayerbotAI* botAI) { return new NoLightningShieldTrigger(botAI); }
+    static Trigger* unleash_elements_no_cd(PlayerbotAI* botAI) { return new UnleashElementsNoCdTrigger(botAI); }
     static Trigger* call_of_the_elements_and_enemy_within_melee(PlayerbotAI* botAI) { return new CallOfTheElementsAndEnemyWithinMeleeTrigger(botAI); }
     static Trigger* maelstrom_weapon_5_and_medium_aoe(PlayerbotAI* botAI) { return new MaelstromWeapon5AndMediumAoeTrigger(botAI); }
     static Trigger* maelstrom_weapon_4_and_medium_aoe(PlayerbotAI* botAI) { return new MaelstromWeapon4AndMediumAoeTrigger(botAI); }
@@ -305,6 +313,15 @@ public:
         creators["cure toxins poison on party"] = &ShamanAiObjectContextInternal::cure_toxins_poison_on_party;
         creators["cure toxins disease on party"] = &ShamanAiObjectContextInternal::cure_toxins_disease_on_party;
         creators["lava burst"] = &ShamanAiObjectContextInternal::lava_burst;
+        creators["unleash elements"] = &ShamanAiObjectContextInternal::unleash_elements;
+        creators["earthquake"] = &ShamanAiObjectContextInternal::earthquake;
+        creators["spiritwalker's grace"] = &ShamanAiObjectContextInternal::spiritwalkers_grace;
+        creators["greater healing wave"] = &ShamanAiObjectContextInternal::greater_healing_wave;
+        creators["greater healing wave on party"] = &ShamanAiObjectContextInternal::greater_healing_wave_on_party;
+        creators["healing surge"] = &ShamanAiObjectContextInternal::healing_surge;
+        creators["healing surge on party"] = &ShamanAiObjectContextInternal::healing_surge_on_party;
+        creators["healing rain"] = &ShamanAiObjectContextInternal::healing_rain;
+        creators["nature's swiftness"] = &ShamanAiObjectContextInternal::natures_swiftness;
         creators["earth shield on main tank"] = &ShamanAiObjectContextInternal::earth_shield_on_main_tank;
         creators["shamanistic rage"] = &ShamanAiObjectContextInternal::shamanistic_rage;
         creators["feral spirit"] = &ShamanAiObjectContextInternal::feral_spirit;
@@ -396,6 +413,15 @@ private:
     static Action* cure_toxins_poison_on_party(PlayerbotAI* botAI) { return new CastCureToxinsPoisonOnPartyActionSham(botAI); }
     static Action* cure_toxins_disease_on_party(PlayerbotAI* botAI) { return new CastCureToxinsDiseaseOnPartyActionSham(botAI); }
     static Action* lava_burst(PlayerbotAI* botAI) { return new CastLavaBurstAction(botAI); }
+    static Action* unleash_elements(PlayerbotAI* botAI) { return new CastUnleashElementsAction(botAI); }
+    static Action* earthquake(PlayerbotAI* botAI) { return new CastEarthquakeAction(botAI); }
+    static Action* spiritwalkers_grace(PlayerbotAI* botAI) { return new CastSpiritwalkersGraceAction(botAI); }
+    static Action* greater_healing_wave(PlayerbotAI* botAI) { return new CastGreaterHealingWaveAction(botAI); }
+    static Action* greater_healing_wave_on_party(PlayerbotAI* botAI) { return new CastGreaterHealingWaveOnPartyAction(botAI); }
+    static Action* healing_surge(PlayerbotAI* botAI) { return new CastHealingSurgeAction(botAI); }
+    static Action* healing_surge_on_party(PlayerbotAI* botAI) { return new CastHealingSurgeOnPartyAction(botAI); }
+    static Action* healing_rain(PlayerbotAI* botAI) { return new CastHealingRainAction(botAI); }
+    static Action* natures_swiftness(PlayerbotAI* botAI) { return new CastNaturesSwiftnessAction(botAI); }
     static Action* earth_shield_on_main_tank(PlayerbotAI* botAI) { return new CastEarthShieldOnMainTankAction(botAI); }
     static Action* shamanistic_rage(PlayerbotAI* botAI) { return new CastShamanisticRageAction(botAI); }
     static Action* feral_spirit(PlayerbotAI* botAI) { return new CastFeralSpiritAction(botAI); }

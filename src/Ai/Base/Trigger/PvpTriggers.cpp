@@ -13,6 +13,7 @@
 #include "ServerFacade.h"
 #include "BattlegroundAV.h"
 #include "BattlegroundEY.h"
+#include "Log.h"
 
 bool EnemyPlayerNear::IsActive() { return AI_VALUE(Unit*, "enemy player target"); }
 
@@ -23,7 +24,7 @@ bool PlayerHasNoFlag::IsActive()
         if (botAI->GetBot()->GetBattlegroundTypeId() == BattlegroundTypeId::BATTLEGROUND_WS)
         {
             BattlegroundWS* bg = (BattlegroundWS*)botAI->GetBot()->GetBattleground();
-            if (!(bg->GetFlagState(bg->GetOtherTeamId(bot->GetTeamId())) == BG_WS_FLAG_STATE_ON_PLAYER))
+            if (!(bg->GetFlagState(bg->GetOtherTeam(bot->GetTeamId())) == BG_WS_FLAG_STATE_ON_PLAYER))
                 return true;
 
             if (bot->GetGUID() == bg->GetFlagPickerGUID(TEAM_ALLIANCE) ||
@@ -84,7 +85,7 @@ bool BgInviteActiveTrigger::IsActive()
             if (ginfo.IsInvitedToBGInstanceGUID && ginfo.RemoveInviteTime)
             {
                 LOG_INFO("playerbots", "Bot {} <{}> ({} {}) : Invited to BG but not in BG",
-                         bot->GetGUID().ToString().c_str(), bot->GetName(), bot->GetLevel(),
+                         bot->GetGUID().ToString().c_str(), bot->GetName(), bot->getLevel(),
                          bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H");
                 return true;
             }
@@ -103,7 +104,7 @@ bool PlayerIsInBattlegroundWithoutFlag::IsActive()
         if (botAI->GetBot()->GetBattlegroundTypeId() == BattlegroundTypeId::BATTLEGROUND_WS)
         {
             BattlegroundWS* bg = (BattlegroundWS*)botAI->GetBot()->GetBattleground();
-            if (!(bg->GetFlagState(bg->GetOtherTeamId(bot->GetTeamId())) == BG_WS_FLAG_STATE_ON_PLAYER))
+            if (!(bg->GetFlagState(bg->GetOtherTeam(bot->GetTeamId())) == BG_WS_FLAG_STATE_ON_PLAYER))
                 return true;
 
             if (bot->GetGUID() == bg->GetFlagPickerGUID(TEAM_ALLIANCE) ||
@@ -204,7 +205,7 @@ bool TeamHasFlag::IsActive()
 
     ObjectGuid botGuid = bot->GetGUID();
     TeamId teamId = bot->GetTeamId();
-    TeamId enemyTeamId = bg->GetOtherTeamId(teamId);
+    TeamId enemyTeamId = TeamId(bg->GetOtherTeam(teamId));
 
     // If the bot is carrying any flag, don't activate
     if (botGuid == bg->GetFlagPickerGUID(TEAM_ALLIANCE) || botGuid == bg->GetFlagPickerGUID(TEAM_HORDE))
@@ -297,7 +298,7 @@ bool PlayerWantsInBattlegroundTrigger::IsActive()
     if (bot->GetBattleground() && bot->GetBattleground()->GetStatus() == STATUS_IN_PROGRESS)
         return false;
 
-    if (bot->IsDeserter())
+    if (bot->HasAura(26013))
         return false;
 
     return true;
@@ -330,7 +331,7 @@ bool AllianceNoSnowfallGY::IsActive()
     if (BattlegroundAV* av = dynamic_cast<BattlegroundAV*>(bg))
     {
         const BG_AV_NodeInfo& snowfall = av->GetAVNodeInfo(BG_AV_NODES_SNOWFALL_GRAVE);
-        return snowfall.OwnerId != TEAM_ALLIANCE; // Active if the Snowfall Graveyard is NOT fully controlled by the Alliance
+        return snowfall.Owner != TEAM_ALLIANCE; // Active if the Snowfall Graveyard is NOT fully controlled by the Alliance
     }
 
     return false;

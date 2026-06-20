@@ -185,6 +185,16 @@ public:
         creators["curse of weakness"] = &WarlockTriggerFactoryInternal::curse_of_weakness;
         creators["wrong pet"] = &WarlockTriggerFactoryInternal::wrong_pet;
         creators["rain of fire channel check"] = &WarlockTriggerFactoryInternal::rain_of_fire_channel_check;
+        creators["bane of agony"] = &WarlockTriggerFactoryInternal::bane_of_agony;
+        creators["bane of agony on attacker"] = &WarlockTriggerFactoryInternal::bane_of_agony_on_attacker;
+        creators["bane of doom"] = &WarlockTriggerFactoryInternal::bane_of_doom;
+        creators["hand of gul'dan"] = &WarlockTriggerFactoryInternal::hand_of_guldan;
+        creators["soul shard available"] = &WarlockTriggerFactoryInternal::soul_shard_available;
+        creators["target low health 25"] = &WarlockTriggerFactoryInternal::target_low_health_25;
+        creators["dark intent"] = &WarlockTriggerFactoryInternal::dark_intent;
+        creators["demon soul"] = &WarlockTriggerFactoryInternal::demon_soul;
+        creators["conflagrate"] = &WarlockTriggerFactoryInternal::conflagrate;
+        creators["chaos bolt"] = &WarlockTriggerFactoryInternal::chaos_bolt;
     }
 
 private:
@@ -233,6 +243,16 @@ private:
     static Trigger* curse_of_weakness(PlayerbotAI* ai) { return new CurseOfWeaknessTrigger(ai); }
     static Trigger* wrong_pet(PlayerbotAI* ai) { return new WrongPetTrigger(ai); }
     static Trigger* rain_of_fire_channel_check(PlayerbotAI* ai) { return new RainOfFireChannelCheckTrigger(ai); }
+    static Trigger* bane_of_agony(PlayerbotAI* ai) { return new BaneOfAgonyTrigger(ai); }
+    static Trigger* bane_of_agony_on_attacker(PlayerbotAI* ai) { return new BaneOfAgonyOnAttackerTrigger(ai); }
+    static Trigger* bane_of_doom(PlayerbotAI* ai) { return new BaneOfDoomTrigger(ai); }
+    static Trigger* hand_of_guldan(PlayerbotAI* ai) { return new HandOfGuldanTrigger(ai); }
+    static Trigger* soul_shard_available(PlayerbotAI* ai) { return new SoulShardAvailableTrigger(ai); }
+    static Trigger* target_low_health_25(PlayerbotAI* ai) { return new TargetLowHealth25Trigger(ai); }
+    static Trigger* dark_intent(PlayerbotAI* ai) { return new DarkIntentTrigger(ai); }
+    static Trigger* demon_soul(PlayerbotAI* ai) { return new DemonSoulTrigger(ai); }
+    static Trigger* conflagrate(PlayerbotAI* ai) { return new ConflagrateTrigger(ai); }
+    static Trigger* chaos_bolt(PlayerbotAI* ai) { return new ChaosBoltTrigger(ai); }
 };
 
 class WarlockAiObjectContextInternal : public NamedObjectContext<Action>
@@ -308,6 +328,15 @@ public:
         creators["curse of exhaustion"] = &WarlockAiObjectContextInternal::curse_of_exhaustion;
         creators["curse of tongues"] = &WarlockAiObjectContextInternal::curse_of_tongues;
         creators["curse of weakness"] = &WarlockAiObjectContextInternal::curse_of_weakness;
+        creators["bane of agony"] = &WarlockAiObjectContextInternal::bane_of_agony;
+        creators["bane of agony on attacker"] = &WarlockAiObjectContextInternal::bane_of_agony_on_attacker;
+        creators["bane of doom"] = &WarlockAiObjectContextInternal::bane_of_doom;
+        creators["hand of gul'dan"] = &WarlockAiObjectContextInternal::hand_of_guldan;
+        creators["fel flame"] = &WarlockAiObjectContextInternal::fel_flame;
+        creators["soulburn"] = &WarlockAiObjectContextInternal::soulburn;
+        creators["demon soul"] = &WarlockAiObjectContextInternal::demon_soul;
+        creators["dark intent"] = &WarlockAiObjectContextInternal::dark_intent;
+        creators["summon doomguard"] = &WarlockAiObjectContextInternal::summon_doomguard;
     }
 
 private:
@@ -378,6 +407,15 @@ private:
     static Action* curse_of_exhaustion(PlayerbotAI* ai) { return new CastCurseOfExhaustionAction(ai); }
     static Action* curse_of_tongues(PlayerbotAI* ai) { return new CastCurseOfTonguesAction(ai); }
     static Action* curse_of_weakness(PlayerbotAI* ai) { return new CastCurseOfWeaknessAction(ai); }
+    static Action* bane_of_agony(PlayerbotAI* ai) { return new CastBaneOfAgonyAction(ai); }
+    static Action* bane_of_agony_on_attacker(PlayerbotAI* ai) { return new CastBaneOfAgonyOnAttackerAction(ai); }
+    static Action* bane_of_doom(PlayerbotAI* ai) { return new CastBaneOfDoomAction(ai); }
+    static Action* hand_of_guldan(PlayerbotAI* ai) { return new CastHandOfGuldanAction(ai); }
+    static Action* fel_flame(PlayerbotAI* ai) { return new CastFelFlameAction(ai); }
+    static Action* soulburn(PlayerbotAI* ai) { return new CastSoulburnAction(ai); }
+    static Action* demon_soul(PlayerbotAI* ai) { return new CastDemonSoulAction(ai); }
+    static Action* dark_intent(PlayerbotAI* ai) { return new CastDarkIntentAction(ai); }
+    static Action* summon_doomguard(PlayerbotAI* ai) { return new CastSummonDoomguardAction(ai); }
 };
 
 SharedNamedObjectContextList<Strategy> WarlockAiObjectContext::sharedStrategyContexts;

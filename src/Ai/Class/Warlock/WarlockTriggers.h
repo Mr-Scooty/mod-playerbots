@@ -13,6 +13,7 @@
 #include "CureTriggers.h"
 #include "Trigger.h"
 #include <set>
+#include "SpellHistory.h"
 
 class PlayerbotAI;
 
@@ -96,7 +97,7 @@ public:
 
         for (uint32 spellId : soulstoneSpellIds)
         {
-            if (!bot->HasSpellCooldown(spellId))
+            if (!bot->GetSpellHistory()->HasCooldown(spellId))
                 return true;  // Ready to use
         }
 
@@ -252,6 +253,29 @@ public:
     bool IsActive() override { return BuffTrigger::IsActive(); }
 };
 
+// 4.3.4 Banes (renamed Curses in Cataclysm; one Bane + one Curse can coexist on a target).
+// Bane of Agony / Bane of Doom replace the WotLK Curse of Agony / Curse of Doom on the bot's spellbar.
+class BaneOfAgonyTrigger : public DebuffTrigger
+{
+public:
+    BaneOfAgonyTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "bane of agony", 1, true, 0.5f) {}
+    bool IsActive() override { return BuffTrigger::IsActive(); }
+};
+
+class BaneOfAgonyOnAttackerTrigger : public DebuffOnAttackerTrigger
+{
+public:
+    BaneOfAgonyOnAttackerTrigger(PlayerbotAI* botAI) : DebuffOnAttackerTrigger(botAI, "bane of agony", true) {}
+    bool IsActive() override { return BuffTrigger::IsActive(); }
+};
+
+class BaneOfDoomTrigger : public DebuffTrigger
+{
+public:
+    BaneOfDoomTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "bane of doom", 1, true, 0) {}
+    bool IsActive() override { return BuffTrigger::IsActive(); }
+};
+
 class CurseOfExhaustionTrigger : public DebuffTrigger
 {
 public:
@@ -302,6 +326,13 @@ public:
     bool IsActive() override;
 };
 
+// 4.3.4 Demon Soul: self damage cooldown; fire when off cooldown and the buff isn't already up.
+class DemonSoulTrigger : public BoostTrigger
+{
+public:
+    DemonSoulTrigger(PlayerbotAI* ai) : BoostTrigger(ai, "demon soul") {}
+};
+
 class ImmolationAuraActiveTrigger : public HasAuraTrigger
 {
 public:
@@ -331,6 +362,52 @@ class MoltenCoreTrigger : public HasAuraTrigger
 {
 public:
     MoltenCoreTrigger(PlayerbotAI* ai) : HasAuraTrigger(ai, "molten core") {}
+};
+
+// 4.3.4 Demonology: Hand of Gul'dan on cooldown (impact-zone nuke that also applies a DoT).
+// Cast whenever it is off cooldown and we have a valid target.
+class HandOfGuldanTrigger : public SpellCanBeCastTrigger
+{
+public:
+    HandOfGuldanTrigger(PlayerbotAI* ai) : SpellCanBeCastTrigger(ai, "hand of gul'dan") {}
+};
+
+// 4.3.4 Destruction: Conflagrate on cooldown (core requires Immolate to be active on the target).
+class ConflagrateTrigger : public SpellCanBeCastTrigger
+{
+public:
+    ConflagrateTrigger(PlayerbotAI* ai) : SpellCanBeCastTrigger(ai, "conflagrate") {}
+};
+
+// 4.3.4 Destruction: Chaos Bolt on cooldown.
+class ChaosBoltTrigger : public SpellCanBeCastTrigger
+{
+public:
+    ChaosBoltTrigger(PlayerbotAI* ai) : SpellCanBeCastTrigger(ai, "chaos bolt") {}
+};
+
+// 4.3.4: Soul shard available -> Soulburn empower is possible (instant Soul Fire opener, etc.).
+class SoulShardAvailableTrigger : public Trigger
+{
+public:
+    SoulShardAvailableTrigger(PlayerbotAI* ai) : Trigger(ai, "soul shard available") {}
+    bool IsActive() override;
+};
+
+// 4.3.4 Affliction execute window: Drain Soul replaces the filler when target < 25% HP.
+class TargetLowHealth25Trigger : public Trigger
+{
+public:
+    TargetLowHealth25Trigger(PlayerbotAI* ai) : Trigger(ai, "target low health 25") {}
+    bool IsActive() override;
+};
+
+// 4.3.4: Dark Intent buff missing on self (cast on a haste-loving ally; bots default to self).
+class DarkIntentTrigger : public BuffTrigger
+{
+public:
+    DarkIntentTrigger(PlayerbotAI* ai) : BuffTrigger(ai, "dark intent", 5 * 1000) {}
+    bool IsActive() override;
 };
 
 class MetamorphosisNotActiveTrigger : public HasNoAuraTrigger

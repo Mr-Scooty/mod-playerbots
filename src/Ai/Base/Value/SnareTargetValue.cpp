@@ -8,6 +8,8 @@
 #include "AiObjectContext.h"
 #include "PlayerbotAI.h"
 #include "ServerFacade.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 
 Unit* SnareTargetValue::Calculate()
 {

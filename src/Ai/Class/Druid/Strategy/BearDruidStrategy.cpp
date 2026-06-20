@@ -19,8 +19,11 @@ public:
         creators["mangle (bear)"] = &mangle_bear;
         creators["maul"] = &maul;
         creators["bash"] = &bash;
+        creators["skull bash (bear)"] = &skull_bash_bear;
         creators["swipe"] = &swipe;
         creators["lacerate"] = &lacerate;
+        creators["thrash"] = &thrash;
+        creators["pulverize"] = &pulverize;
         creators["demoralizing roar"] = &demoralizing_roar;
         creators["taunt spell"] = &growl;
     }
@@ -96,6 +99,17 @@ private:
         );
     }
 
+    // ShatterCore (4.3.4): Skull Bash is the new baseline Bear interrupt; fall back to Bash on older books.
+    static ActionNode* skull_bash_bear([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "skull bash (bear)",
+            /*P*/ {},
+            /*A*/ { NextAction("bash") },
+            /*C*/ {}
+        );
+    }
+
     static ActionNode* swipe([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode(
@@ -112,6 +126,27 @@ private:
             "lacerate",
             /*P*/ {},
             /*A*/ { NextAction("maul") },
+            /*C*/ {}
+        );
+    }
+
+    static ActionNode* thrash([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "thrash",
+            /*P*/ {},
+            /*A*/ {},
+            /*C*/ {}
+        );
+    }
+
+    // Pulverize consumes Lacerate stacks for a crit buff; if not talented/learned, fall back to Lacerate upkeep.
+    static ActionNode* pulverize([[maybe_unused]] PlayerbotAI* botAI)
+    {
+        return new ActionNode(
+            "pulverize",
+            /*P*/ {},
+            /*A*/ { NextAction("lacerate") },
             /*C*/ {}
         );
     }
@@ -167,6 +202,9 @@ void BearDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             { NextAction("frenzied regeneration", 27.0f) }
         )
     );
+    // ShatterCore 4.3.4 Bear single-target threat priority (class reference 12.2b):
+    // Faerie Fire (Feral) maintain -> Mangle on CD -> Lacerate to 3 stacks -> Pulverize (consume stacks for the
+    // crit buff) -> Thrash on CD -> Demoralizing Roar -> Maul as rage dump (from getDefaultActions()).
     triggers.push_back(new TriggerNode(
         "mangle (bear)", { NextAction("mangle (bear)", 17.5f) }
     ));
@@ -174,7 +212,13 @@ void BearDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         "faerie fire (feral)", { NextAction("faerie fire (feral)", 17.0f) }
     ));
     triggers.push_back(new TriggerNode(
+        "pulverize", { NextAction("pulverize", 16.5f) }
+    ));
+    triggers.push_back(new TriggerNode(
         "lacerate", { NextAction("lacerate", 16.0f) }
+    ));
+    triggers.push_back(new TriggerNode(
+        "thrash", { NextAction("thrash", 15.7f) }
     ));
     triggers.push_back(new TriggerNode(
         "demoralizing roar", { NextAction("demoralizing roar", 15.5f) }
@@ -191,6 +235,7 @@ void BearDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         new TriggerNode(
             "medium aoe",
             {
+                NextAction("thrash",            24.7f),
                 NextAction("demoralizing roar", 24.5f),
                 NextAction("swipe (bear)",      24.0f)
             }
@@ -200,6 +245,12 @@ void BearDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         new TriggerNode(
             "light aoe",
             { NextAction("swipe (bear)", 24.0f) }
+        )
+    );
+    triggers.push_back(
+        new TriggerNode(
+            "skull bash (bear)",
+            { NextAction("skull bash (bear)", 42.5f) }
         )
     );
     triggers.push_back(

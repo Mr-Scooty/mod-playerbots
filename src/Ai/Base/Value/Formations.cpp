@@ -115,13 +115,13 @@ public:
         float angle = GetFollowAngle();
         float x = master->GetPositionX() + cos(angle) * range;
         float y = master->GetPositionY() + sin(angle) * range;
-        float z = master->GetPositionZ() + master->GetHoverHeight();
+        float z = master->GetPositionZ() + master->GetHoverOffset();
         if (!map->CheckCollisionAndGetValidCoords(master, master->GetPositionX(), master->GetPositionY(),
                                                   master->GetPositionZ(), x, y, z))
         {
             x = master->GetPositionX() + cos(angle) * range;
             y = master->GetPositionY() + sin(angle) * range;
-            z = master->GetPositionZ() + master->GetHoverHeight();
+            z = master->GetPositionZ() + master->GetHoverOffset();
             master->UpdateAllowedPositionZ(x, y, z);
         }
         return WorldLocation(master->GetMapId(), x, y, z);
@@ -157,7 +157,7 @@ public:
 
         float x = master->GetPositionX() + std::cos(angle) * range + dx;
         float y = master->GetPositionY() + std::sin(angle) * range + dy;
-        float z = master->GetPositionZ() + master->GetHoverHeight();
+        float z = master->GetPositionZ() + master->GetHoverOffset();
 
         if (!map->CheckCollisionAndGetValidCoords(master, master->GetPositionX(), master->GetPositionY(),
                                                   master->GetPositionZ(), x, y, z))
@@ -165,7 +165,7 @@ public:
             // Recompute a clean fallback and clamp Z
             x = master->GetPositionX() + std::cos(angle) * range + dx;
             y = master->GetPositionY() + std::sin(angle) * range + dy;
-            z = master->GetPositionZ() + master->GetHoverHeight();
+            z = master->GetPositionZ() + master->GetHoverOffset();
 
             master->UpdateAllowedPositionZ(x, y, z);
         }
@@ -396,7 +396,7 @@ public:
             if (!map->CheckCollisionAndGetValidCoords(master, master->GetPositionX(), master->GetPositionY(),
                                                       master->GetPositionZ(), minX, minY, lz))
             {
-                lz = z + master->GetHoverHeight();
+                lz = z + master->GetHoverOffset();
                 master->UpdateAllowedPositionZ(minX, minY, lz);
             }
 
@@ -408,7 +408,7 @@ public:
         {
             x = master->GetPositionX() + cos(angleToBot) * range + cos(followAngle) * followRange;
             y = master->GetPositionY() + sin(angleToBot) * range + sin(followAngle) * followRange;
-            z = master->GetPositionZ() + master->GetHoverHeight();
+            z = master->GetPositionZ() + master->GetHoverOffset();
             master->UpdateAllowedPositionZ(x, y, z);
         }
 

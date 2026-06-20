@@ -7,6 +7,7 @@
 
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "Map.h"
 
 FleeManager::FleeManager(Player* bot, float maxAllowedDistance, float followAngle, bool forceMaxDistance,
                          WorldPosition startPosition)
@@ -104,7 +105,7 @@ void FleeManager::calculatePossibleDestinations(std::vector<FleePoint*>& points)
                 bot->UpdateAllowedPositionZ(x, y, z);
 
                 Map* map = startPosition.getMap();
-                if (map && map->IsInWater(bot->GetPhaseMask(), x, y, z, bot->GetCollisionHeight()))
+                if (map && map->IsInWater(bot->GetPhaseShift(), x, y, z))
                     continue;
 
                 if (!bot->IsWithinLOS(x, y, z) || (target && !target->IsWithinLOS(x, y, z)))

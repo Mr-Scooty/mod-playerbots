@@ -6,6 +6,7 @@
 #include "BudgetValues.h"
 
 #include "Playerbots.h"
+#include "DBCStores.h"
 
 uint32 MaxGearRepairCostValue::Calculate()
 {
@@ -30,19 +31,19 @@ uint32 MaxGearRepairCostValue::Calculate()
 
         ItemTemplate const* ditemProto = item->GetTemplate();
 
-        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->ItemLevel);
+        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->GetBaseItemLevel());
         if (!dcost)
             continue;
 
-        uint32 dQualitymodEntryId = (ditemProto->Quality + 1) * 2;
+        uint32 dQualitymodEntryId = (ditemProto->GetQuality() + 1) * 2;
         DurabilityQualityEntry const* dQualitymodEntry = sDurabilityQualityStore.LookupEntry(dQualitymodEntryId);
         if (!dQualitymodEntry)
             continue;
 
         uint32 dmultiplier =
-            dcost->multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->Class, ditemProto->SubClass)];
+            dcost->Multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->GetClass(), ditemProto->GetSubClass())];
 
-        uint32 costs = uint32(maxDurability * dmultiplier * double(dQualitymodEntry->quality_mod));
+        uint32 costs = uint32(maxDurability * dmultiplier * double(dQualitymodEntry->Data));
 
         totalCost += costs;
     }
@@ -75,18 +76,18 @@ uint32 RepairCostValue::Calculate()
 
         ItemTemplate const* ditemProto = item->GetTemplate();
 
-        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->ItemLevel);
+        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->GetBaseItemLevel());
         if (!dcost)
             continue;
 
-        uint32 dQualitymodEntryId = (ditemProto->Quality + 1) * 2;
+        uint32 dQualitymodEntryId = (ditemProto->GetQuality() + 1) * 2;
         DurabilityQualityEntry const* dQualitymodEntry = sDurabilityQualityStore.LookupEntry(dQualitymodEntryId);
         if (!dQualitymodEntry)
             continue;
 
         uint32 dmultiplier =
-            dcost->multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->Class, ditemProto->SubClass)];
-        uint32 costs = uint32(LostDurability * dmultiplier * double(dQualitymodEntry->quality_mod));
+            dcost->Multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->GetClass(), ditemProto->GetSubClass())];
+        uint32 costs = uint32(LostDurability * dmultiplier * double(dQualitymodEntry->Data));
 
         totalCost += costs;
     }
@@ -106,7 +107,7 @@ uint32 TrainCostValue::Calculate()
         if (!(itr->second.npcflag & UNIT_NPC_FLAG_TRAINER))
             continue;
 
-        Trainer::Trainer* trainer = sObjectMgr->GetTrainer(itr->first);
+        Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(itr->first);
         if (!trainer)
             continue;
 
@@ -142,7 +143,7 @@ uint32 MoneyNeededForValue::Calculate()
 
     uint32 moneyWanted = 0;
 
-    uint32 level = bot->GetLevel();
+    uint32 level = bot->getLevel();
 
     switch (needMoneyFor)
     {

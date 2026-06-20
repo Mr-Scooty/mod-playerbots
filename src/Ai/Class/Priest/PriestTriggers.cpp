@@ -7,6 +7,7 @@
 #include "PlayerbotAI.h"
 #include "Player.h"
 #include "Playerbots.h"
+#include "SpellHistory.h"
 
 bool ShadowProtectionTrigger::IsActive()
 {
@@ -33,7 +34,7 @@ bool InnerFireTrigger::IsActive()
 
 bool ShadowformTrigger::IsActive() { return !botAI->HasAura("shadowform", bot); }
 
-bool ShadowfiendTrigger::IsActive() { return BoostTrigger::IsActive() && !bot->HasSpellCooldown(34433); }
+bool ShadowfiendTrigger::IsActive() { return BoostTrigger::IsActive() && !bot->GetSpellHistory()->HasCooldown(34433); }
 
 BindingHealTrigger::BindingHealTrigger(PlayerbotAI* botAI)
     : PartyMemberLowHealthTrigger(botAI, "binding heal", sPlayerbotAIConfig.lowHealth, 0)
@@ -50,6 +51,39 @@ const std::set<uint32> MindSearChannelCheckTrigger::MIND_SEAR_SPELL_IDS = {
     48045,  // Mind Sear Rank 1
     53023   // Mind Sear Rank 2
 };
+
+uint8 ShadowOrbsValue::Calculate()
+{
+    // Shadow Orbs are stored as stacks of the "shadow orb" buff in 4.3.4 (not a POWER_* pool).
+    Aura* aura = botAI->GetAura("shadow orb", bot);
+    if (!aura)
+        return 0;
+    return static_cast<uint8>(aura->GetStackAmount());
+}
+
+bool ShadowOrbsAvailableTrigger::IsActive()
+{
+    return AI_VALUE2(uint8, "shadow orbs", "self target") >= amount;
+}
+
+bool ShadowWordDeathExecuteTrigger::IsActive()
+{
+    Unit* target = AI_VALUE(Unit*, "current target");
+    return target && AI_VALUE2(uint8, "health", "current target") < 25;
+}
+
+bool ChakraSerenityTrigger::IsActive()
+{
+    // Fire (i.e. need to (re)enter Serenity) when neither Chakra stance is active.
+    return !botAI->HasAura("chakra: serenity", bot) && !botAI->HasAura("chakra: sanctuary", bot) &&
+           !botAI->HasAura("chakra", bot);
+}
+
+bool ChakraSanctuaryTrigger::IsActive()
+{
+    return !botAI->HasAura("chakra: sanctuary", bot) && !botAI->HasAura("chakra: serenity", bot) &&
+           !botAI->HasAura("chakra", bot);
+}
 
 bool MindSearChannelCheckTrigger::IsActive()
 {

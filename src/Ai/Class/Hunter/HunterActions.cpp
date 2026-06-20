@@ -34,16 +34,9 @@ bool CastArcaneShotAction::isUseful()
     if (!target)
         return false;
 
-    if (bot->HasSpell(53301) || bot->HasSpell(60051) ||
-        bot->HasSpell(60052) || bot->HasSpell(60053))  // Explosive Shot spell IDs
-        return false;
-
-    // Armor Penetration rating check - will not cast Arcane Shot above 435 ArP
-    int32 armorPenRating =
-        bot->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1) + bot->GetUInt32Value(CR_ARMOR_PENETRATION);
-    if (armorPenRating > 435)
-        return false;
-
+    // Cataclysm 4.3.4: Arcane Shot is a core instant focus-dump for every spec (BM/MM/SV). The old WotLK
+    // Explosive-Shot exclusion and Armor-Penetration gate are removed; the rotation banks focus for the
+    // spec's priority spender via the "focus for arcane shot" trigger instead.
     return true;
 }
 
@@ -67,12 +60,7 @@ Value<Unit*>* CastFreezingTrap::GetTargetValue()
 
 bool FeedPetAction::Execute(Event /*event*/)
 {
-    if (Pet* pet = bot->GetPet(); pet && pet->getPetType() == HUNTER_PET &&
-        pet->GetHappinessState() != HAPPY)
-    {
-        pet->SetPower(POWER_HAPPINESS, pet->GetMaxPower(Powers(POWER_HAPPINESS)));
-    }
-
+    // 4.3.4: pet happiness/feeding was removed - nothing to do
     return true;
 }
 

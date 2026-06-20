@@ -74,7 +74,7 @@ public:
     bool Visit(Item* item) override
     {
         ItemTemplate const* proto = item->GetTemplate();
-        if (proto && proto->InventoryType == INVTYPE_RELIC && proto->SubClass == subClass)
+        if (proto && proto->GetInventoryType() == INVTYPE_RELIC && proto->GetSubClass() == subClass)
         {
             found = true;
             return false;
@@ -96,7 +96,7 @@ public:
 
     bool Visit(Item* item) override
     {
-        if (item->GetTemplate()->Quality != quality)
+        if (item->GetTemplate()->GetQuality() != quality)
             return true;
 
         if (result.size() >= (size_t)count)
@@ -141,7 +141,7 @@ public:
         if (item->IsSoulBound())
             return true;
 
-        if (item->GetTemplate()->Class != itemClass || item->GetTemplate()->SubClass != itemSubClass)
+        if (item->GetTemplate()->GetClass() != itemClass || item->GetTemplate()->GetSubClass() != itemSubClass)
             return true;
 
         if (result.size() >= (size_t)count)
@@ -167,7 +167,7 @@ public:
 
     bool Visit(Item* item) override
     {
-        if (item->GetTemplate()->ItemId == itemId)
+        if (item->GetTemplate()->GetId() == itemId)
             count += item->GetCount();
 
         return true;
@@ -188,7 +188,7 @@ public:
     bool Visit(Item* item) override
     {
         ItemTemplate const* proto = item->GetTemplate();
-        if (proto && proto->Name1.c_str() && strstri(proto->Name1.c_str(), name.c_str()))
+        if (proto && proto->GetName(DEFAULT_LOCALE) && strstri(proto->GetName(DEFAULT_LOCALE), name.c_str()))
             count += item->GetCount();
 
         return true;
@@ -205,7 +205,7 @@ public:
 
     bool Accept(ItemTemplate const* proto) override
     {
-        return proto && proto->Name1.c_str() && strstri(proto->Name1.c_str(), name.c_str());
+        return proto && proto->GetName(DEFAULT_LOCALE) && strstri(proto->GetName(DEFAULT_LOCALE), name.c_str());
     }
 
 private:
@@ -217,7 +217,7 @@ class FindItemByIdVisitor : public FindItemVisitor
 public:
     FindItemByIdVisitor(uint32 id) : FindItemVisitor(), id(id) {}
 
-    bool Accept(ItemTemplate const* proto) override { return proto->ItemId == id; }
+    bool Accept(ItemTemplate const* proto) override { return proto->GetId() == id; }
 
 private:
     uint32 id;
@@ -228,7 +228,7 @@ class FindItemByIdsVisitor : public FindItemVisitor
 public:
     FindItemByIdsVisitor(ItemIds ids) : FindItemVisitor(), ids(ids) {}
 
-    bool Accept(ItemTemplate const* proto) override { return ids.find(proto->ItemId) != ids.end(); }
+    bool Accept(ItemTemplate const* proto) override { return ids.find(proto->GetId()) != ids.end(); }
 
 private:
     ItemIds ids;
@@ -244,7 +244,7 @@ public:
 
     bool Visit(Item* item) override
     {
-        uint32 id = item->GetTemplate()->ItemId;
+        uint32 id = item->GetTemplate()->GetId();
 
         if (items.find(id) == items.end())
             items[id] = 0;
@@ -280,7 +280,7 @@ public:
 
     bool Visit(Item* item) override
     {
-        ++count[item->GetTemplate()->Quality];
+        ++count[item->GetTemplate()->GetQuality()];
         return true;
     }
 
@@ -309,9 +309,9 @@ public:
 
     bool Accept(ItemTemplate const* proto) override
     {
-        return proto->Class == ITEM_CLASS_CONSUMABLE &&
-               (proto->SubClass == ITEM_SUBCLASS_CONSUMABLE || proto->SubClass == ITEM_SUBCLASS_FOOD) &&
-               proto->Spells[0].SpellCategory == spellCategory && (!conjured || proto->IsConjuredConsumable());
+        return proto->GetClass() == ITEM_CLASS_CONSUMABLE &&
+               (proto->GetSubClass() == ITEM_SUBCLASS_CONSUMABLE || proto->GetSubClass() == ITEM_SUBCLASS_FOOD) &&
+               proto->GetEffect(0).Category == spellCategory && (!conjured || proto->IsConjuredConsumable());
     }
 
 private:
@@ -342,7 +342,7 @@ public:
 
     bool Accept(ItemTemplate const* proto) override
     {
-        if (proto->Class == ITEM_CLASS_PROJECTILE)
+        if (proto->GetClass() == ITEM_CLASS_PROJECTILE)
         {
             uint32 subClass = 0;
             switch (weaponType)
@@ -359,7 +359,7 @@ public:
             if (!subClass)
                 return false;
 
-            if (proto->SubClass == subClass)
+            if (proto->GetSubClass() == subClass)
                 return true;
         }
 
@@ -377,7 +377,7 @@ public:
 
     bool Accept(ItemTemplate const* proto) override
     {
-        if (proto->Class == ITEM_CLASS_QUEST)
+        if (proto->GetClass() == ITEM_CLASS_QUEST)
         {
             return true;
         }
@@ -392,12 +392,12 @@ public:
 
     bool Accept(ItemTemplate const* proto) override
     {
-        if (proto->Class == ITEM_CLASS_RECIPE)
+        if (proto->GetClass() == ITEM_CLASS_RECIPE)
         {
             if (skill == SKILL_NONE)
                 return true;
 
-            switch (proto->SubClass)
+            switch (proto->GetSubClass())
             {
                 case ITEM_SUBCLASS_LEATHERWORKING_PATTERN:
                     return skill == SKILL_LEATHERWORKING;

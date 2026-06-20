@@ -12,6 +12,7 @@
 #include "RtiTargetValue.h"
 #include "ScriptedCreature.h"
 #include "ThreatManager.h"
+#include "ObjectAccessor.h"
 
 Unit* FindTargetStrategy::GetResult() { return result; }
 
@@ -24,7 +25,7 @@ Unit* TargetValue::FindTarget(FindTargetStrategy* strategy)
         if (!unit)
             continue;
 
-        ThreatManager& threatMgr = unit->GetThreatMgr();
+        ThreatManager& threatMgr = unit->GetThreatManager();
         strategy->CheckAttacker(unit, &threatMgr);
     }
 
@@ -145,7 +146,7 @@ Unit* FindTargetValue::Calculate()
     {
         return nullptr;
     }
-    for (auto const& [guid, ref] : bot->GetThreatMgr().GetThreatenedByMeList())
+    for (auto const& [guid, ref] : bot->GetThreatManager().GetThreatenedByMeList())
     {
         Unit* unit = ref->GetOwner();
         if (!unit)

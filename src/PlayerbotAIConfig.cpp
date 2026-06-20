@@ -17,6 +17,10 @@
 #include "RandomPlayerbotMgr.h"
 #include "Talentspec.h"
 #include "TravelMgr.h"
+#include "DBCStores.h"
+#include "Log.h"
+#include "World.h"
+#include <cstdarg>
 
 template <class T>
 void LoadList(std::string const value, T& list)
@@ -935,14 +939,14 @@ std::vector<std::vector<uint32>> PlayerbotAIConfig::ParseTempTalentsOrder(uint32
         if (!talentInfo)
             continue;
 
-        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TalentTab);
+        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TabID);
         if (!talentTabInfo)
             continue;
 
         if ((classMask & talentTabInfo->ClassMask) == 0)
             continue;
 
-        spells[talentTabInfo->tabpage].push_back(talentInfo);
+        spells[talentTabInfo->OrderIndex].push_back(talentInfo);
     }
     for (int tab = 0; tab < 3; tab++)
     {
@@ -952,7 +956,7 @@ std::vector<std::vector<uint32>> PlayerbotAIConfig::ParseTempTalentsOrder(uint32
         }
         std::sort(spells[tab].begin(), spells[tab].end(),
                   [&](TalentEntry const* lhs, TalentEntry const* rhs)
-                  { return lhs->Row != rhs->Row ? lhs->Row < rhs->Row : lhs->Col < rhs->Col; });
+                  { return lhs->TierID != rhs->TierID ? lhs->TierID < rhs->TierID : lhs->ColumnIndex < rhs->ColumnIndex; });
         for (int i = 0; i < tab_links[tab].size(); i++)
         {
             if (i >= spells[tab].size())
@@ -962,7 +966,7 @@ std::vector<std::vector<uint32>> PlayerbotAIConfig::ParseTempTalentsOrder(uint32
             int lvl = tab_links[tab][i] - '0';
             if (lvl == 0)
                 continue;
-            orders[tab].push_back({(uint32)tab, spells[tab][i]->Row, spells[tab][i]->Col, (uint32)lvl});
+            orders[tab].push_back({(uint32)tab, spells[tab][i]->TierID, spells[tab][i]->ColumnIndex, (uint32)lvl});
         }
     }
     // sort by talent tab size
@@ -986,22 +990,22 @@ std::vector<std::vector<uint32>> PlayerbotAIConfig::ParseTempPetTalentsOrder(uin
         if (!talentInfo)
             continue;
 
-        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TalentTab);
+        TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TabID);
         if (!talentTabInfo)
             continue;
 
-        if (!((1 << spec) & talentTabInfo->petTalentMask))
+        if (!((1 << spec) & talentTabInfo->CategoryEnumID))
             continue;
         // skip some duplicate spells like dash/dive
-        if (talentInfo->TalentID == 2201 || talentInfo->TalentID == 2208 || talentInfo->TalentID == 2219 ||
-            talentInfo->TalentID == 2203)
+        if (talentInfo->ID == 2201 || talentInfo->ID == 2208 || talentInfo->ID == 2219 ||
+            talentInfo->ID == 2203)
             continue;
 
         spells.push_back(talentInfo);
     }
     std::sort(spells.begin(), spells.end(),
               [&](TalentEntry const* lhs, TalentEntry const* rhs)
-              { return lhs->Row != rhs->Row ? lhs->Row < rhs->Row : lhs->Col < rhs->Col; });
+              { return lhs->TierID != rhs->TierID ? lhs->TierID < rhs->TierID : lhs->ColumnIndex < rhs->ColumnIndex; });
     for (int i = 0; i < tab_link.size(); i++)
     {
         if (i >= spells.size())
@@ -1011,7 +1015,7 @@ std::vector<std::vector<uint32>> PlayerbotAIConfig::ParseTempPetTalentsOrder(uin
         int lvl = tab_link[i] - '0';
         if (lvl == 0)
             continue;
-        orders.push_back({spells[i]->Row, spells[i]->Col, (uint32)lvl});
+        orders.push_back({spells[i]->TierID, spells[i]->ColumnIndex, (uint32)lvl});
     }
     // sort by talent tab size
     std::sort(orders.begin(), orders.end(), [&](auto& lhs, auto& rhs) { return lhs.size() > rhs.size(); });

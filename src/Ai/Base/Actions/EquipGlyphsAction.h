@@ -7,6 +7,9 @@
 #define _PLAYERBOT_EQUIPGLYPHSACTION_H
 
 #include "Action.h"
+#include "DBCStructure.h"
+
+struct ItemTemplate;
 
 // 1 = major, 2 = minor dans GlyphProperties.dbc
 enum class GlyphKind : uint32 { MAJOR = 1, MINOR = 2 };

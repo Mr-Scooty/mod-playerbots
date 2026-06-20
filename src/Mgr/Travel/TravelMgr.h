@@ -15,6 +15,7 @@
 #include "GameObject.h"
 #include "GridDefines.h"
 #include "PlayerbotAIConfig.h"
+#include "DBCStructure.h"
 
 class Creature;
 class GuidPosition;
@@ -246,7 +247,7 @@ public:
 
     std::set<Transport*> getTransports(uint32 entry = 0);
 
-    CellCoord getCellCoord() { return Acore::ComputeCellCoord(GetPositionX(), GetPositionY()); }
+    CellCoord getCellCoord() { return Trinity::ComputeCellCoord(GetPositionX(), GetPositionY()); }
     GridCoord getGridCoord()
     {
         CellCoord cellCoord = getCellCoord();

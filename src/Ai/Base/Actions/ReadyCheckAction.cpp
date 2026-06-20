@@ -10,6 +10,7 @@
 #include "ReadyCheckAction.h"
 #include "Event.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
 
 std::string const formatPercent(std::string const name, uint8 value, float percent)
 {
@@ -95,7 +96,7 @@ public:
         Player* bot = botAI->GetBot();
         if (bot->getClass() == CLASS_HUNTER)
         {
-            if (!bot->GetUInt32Value(PLAYER_AMMO_ID))
+            if (!uint32(0) /* 4.3.4: ammo removed */)
             {
                 botAI->TellError("Out of ammo!");
                 return false;
@@ -107,7 +108,7 @@ public:
                 return false;
             }
 
-            if (bot->GetPet()->GetHappinessState() == UNHAPPY)
+            if (false) // 4.3.4: pet happiness removed
             {
                 botAI->TellError("Pet is unhappy!");
                 return false;

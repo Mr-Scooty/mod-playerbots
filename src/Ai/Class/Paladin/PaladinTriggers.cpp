@@ -13,11 +13,23 @@
 
 bool SealTrigger::IsActive()
 {
+    // ShatterCore (4.3.4): Cataclysm seal set is Truth / Righteousness / Insight / Justice (the WotLK
+    // Command/Vengeance/Corruption/Wisdom/Light seals were removed). Fire when no current seal is up.
     Unit* target = GetTarget();
-    return !botAI->HasAura("seal of justice", target) && !botAI->HasAura("seal of command", target) &&
-           !botAI->HasAura("seal of vengeance", target) && !botAI->HasAura("seal of corruption", target) &&
-           !botAI->HasAura("seal of righteousness", target) && !botAI->HasAura("seal of light", target) &&
-           (!botAI->HasAura("seal of wisdom", target) || AI_VALUE2(uint8, "mana", "self target") > 70);
+    return !botAI->HasAura("seal of truth", target) && !botAI->HasAura("seal of righteousness", target) &&
+           !botAI->HasAura("seal of insight", target) && !botAI->HasAura("seal of justice", target);
+}
+
+bool HolyPowerAvailableTrigger::IsActive()
+{
+    return AI_VALUE2(uint8, "holy power", "self target") >= amount;
+}
+
+bool InquisitionTrigger::IsActive()
+{
+    // Only (re)cast Inquisition when there is Holy Power to spend, so the bot doesn't waste a failed cast
+    // attempt every tick at 0 Holy Power; BuffTrigger::IsActive() handles the "buff missing/expiring" check.
+    return AI_VALUE2(uint8, "holy power", "self target") >= 1 && BuffTrigger::IsActive();
 }
 
 bool CrusaderAuraTrigger::IsActive()

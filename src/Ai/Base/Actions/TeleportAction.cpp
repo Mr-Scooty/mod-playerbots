@@ -11,6 +11,7 @@
 #include "PlayerbotAI.h"
 #include "SpellMgr.h"
 #include "Spell.h"
+#include "WorldSession.h"
 
 bool TeleportAction::Execute(Event /*event*/)
 {
@@ -76,7 +77,7 @@ bool TeleportAction::Execute(Event /*event*/)
         if (goInfo->type != GAMEOBJECT_TYPE_SPELLCASTER && goInfo->type != GAMEOBJECT_TYPE_GOOBER)
             continue;
 
-        uint32 spellId = goInfo->spellcaster.spellId;
+        uint32 spellId = goInfo->spellcaster.spell;
         SpellInfo const* spellInfo = SpellMgr::instance()->GetSpellInfo(spellId);
         if (!spellInfo || !spellInfo->HasEffect(SPELL_EFFECT_TELEPORT_UNITS))
             continue;
@@ -90,7 +91,7 @@ bool TeleportAction::Execute(Event /*event*/)
         Spell* spell = new Spell(bot, spellInfo, TRIGGERED_NONE);
         SpellCastTargets targets;
         targets.SetUnitTarget(bot);
-        spell->prepare(&targets, nullptr);
+        spell->prepare(targets);
         spell->cast(true);
         return true;
     }

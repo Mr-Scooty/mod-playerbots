@@ -321,7 +321,7 @@ public:
             return true;
 
         // Fallback to name for custom spell data.
-        return info->SpellName[LOCALE_enUS] && botAI->EqualLowercaseName(info->SpellName[LOCALE_enUS], "decimate");
+        return info->SpellName && botAI->EqualLowercaseName(info->SpellName, "decimate");
     }
     bool JustStartCombat() const { return _combat_start_ms != 0 && getMSTime() - _combat_start_ms < 10000; }
     bool IsZombieChow(Unit* unit) const { return unit && botAI->EqualLowercaseName(unit->GetName(), "zombie chow"); }

@@ -1731,10 +1731,10 @@ bool KaelthasSunstriderUseLegendaryWeaponsAction::UseEquippedItemWithPacket(Item
 
     for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
     {
-        if (item->GetTemplate()->Spells[i].SpellId > 0 &&
-            item->GetTemplate()->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
+        if (item->GetTemplate()->GetEffect(i).SpellID > 0 &&
+            item->GetTemplate()->GetEffect(i).Trigger == ITEM_SPELLTRIGGER_ON_USE)
         {
-            spellId = item->GetTemplate()->Spells[i].SpellId;
+            spellId = item->GetTemplate()->GetEffect(i).SpellID;
             break;
         }
     }

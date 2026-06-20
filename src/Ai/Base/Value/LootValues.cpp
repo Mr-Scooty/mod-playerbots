@@ -44,13 +44,13 @@ LootTemplateAccess const* DropMapValue::GetLootTemplate(ObjectGuid guid, LootTyp
         if (proto)
         {
             if (type == LOOT_CORPSE)
-                lTemplate = LootTemplates_Item.GetLootFor(proto->ItemId);
+                lTemplate = LootTemplates_Item.GetLootFor(proto->GetId());
             else if (type == LOOT_DISENCHANTING && proto->DisenchantID)
                 lTemplate = LootTemplates_Disenchant.GetLootFor(proto->DisenchantID);
             if (type == LOOT_MILLING)
-                lTemplate = LootTemplates_Milling.GetLootFor(proto->ItemId);
+                lTemplate = LootTemplates_Milling.GetLootFor(proto->GetId());
             if (type == LOOT_PROSPECTING)
-                lTemplate = LootTemplates_Prospecting.GetLootFor(proto->ItemId);
+                lTemplate = LootTemplates_Prospecting.GetLootFor(proto->GetId());
         }
     }
 

@@ -58,19 +58,42 @@ public:
 class CastMangleBearAction : public CastMeleeSpellAction
 {
 public:
-    CastMangleBearAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "mangle (bear)") {}
+    CastMangleBearAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "mangle") {}
 };
 
 class CastSwipeBearAction : public CastMeleeSpellAction
 {
 public:
-    CastSwipeBearAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "swipe (bear)") {}
+    CastSwipeBearAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "swipe") {}
 };
 
 class CastLacerateAction : public CastMeleeSpellAction
 {
 public:
     CastLacerateAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "lacerate") {}
+};
+
+// ShatterCore (4.3.4 Bear): Thrash -- baseline AoE bleed on a short CD; apply on cooldown and for AoE threat.
+class CastThrashAction : public CastMeleeSpellAction
+{
+public:
+    CastThrashAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "thrash") {}
+    ActionThreatType getThreatType() override { return ActionThreatType::Aoe; }
+};
+
+// ShatterCore (4.3.4 Bear): Pulverize -- consumes Lacerate stacks for a crit buff (Pulverize). Cast when 3
+// Lacerate stacks are up (the trigger gates this) to refresh the crit buff.
+class CastPulverizeAction : public CastMeleeSpellAction
+{
+public:
+    CastPulverizeAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "pulverize") {}
+};
+
+// ShatterCore (4.3.4): Skull Bash (Bear) -- baseline interrupt + charge replacing the old reliance on Bash.
+class CastSkullBashBearAction : public CastSpellAction
+{
+public:
+    CastSkullBashBearAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "skull bash") {}
 };
 
 class CastBashOnEnemyHealerAction : public CastSpellOnEnemyHealerAction

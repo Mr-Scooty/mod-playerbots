@@ -7,6 +7,7 @@
 
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
 
 GuidVector GroupMembersValue::Calculate()
 {

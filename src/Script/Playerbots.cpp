@@ -33,6 +33,8 @@
 #include "PlayerbotCommandScript.h"
 #include "cmath"
 #include "BattleGroundTactics.h"
+#include "WorldSession.h"
+#include "ObjectAccessor.h"
 
 class PlayerbotsDatabaseScript : public DatabaseScript
 {
@@ -41,7 +43,8 @@ public:
 
     bool OnDatabasesLoading() override
     {
-        DatabaseLoader playerbotLoader("server.playerbots");
+        // ShatterCore: DatabaseLoader ctor now requires a default update mask (TrinityCore signature).
+        DatabaseLoader playerbotLoader("server.playerbots", DatabaseLoader::DATABASE_NONE);
         playerbotLoader.SetUpdateFlags(sConfigMgr->GetOption<bool>("Playerbots.Updates.EnableDatabases", true)
                                            ? DatabaseLoader::DATABASE_PLAYERBOTS
                                            : 0);
@@ -54,7 +57,9 @@ public:
 
     void OnDatabasesClosing() override { PlayerbotsDatabase.Close(); }
 
-    void OnDatabaseWarnAboutSyncQueries(bool apply) override { PlayerbotsDatabase.WarnAboutSyncQueries(apply); }
+    // ShatterCore: DatabaseWorkerPool has no WarnAboutSyncQueries (AzerothCore extension absent in TrinityCore).
+    // The sync-query warning subsystem does not exist here, so this hook is a no-op.
+    void OnDatabaseWarnAboutSyncQueries(bool /*apply*/) override { }
 
     void OnDatabaseSelectIndexLogout(Player* player, uint32& statementIndex, uint32& statementParam) override
     {
@@ -114,8 +119,9 @@ public:
             {
                 std::string maxAllowedBotCount = std::to_string(sRandomPlayerbotMgr.GetMaxAllowedBotCount());
 
+                // ShatterCore: SendSysMessage takes char const* (no std::string overload) - pass c_str().
                 ChatHandler(player->GetSession()).SendSysMessage(
-                    "|cff00ff00Playerbots:|r The server is configured with " + maxAllowedBotCount + " bots.");
+                    ("|cff00ff00Playerbots:|r The server is configured with " + maxAllowedBotCount + " bots.").c_str());
             }
         }
     }
@@ -267,7 +273,7 @@ public:
     bool OnPlayerBeforeAchievementComplete(Player* player, AchievementEntry const* achievement) override
     {
         if ((sRandomPlayerbotMgr.IsRandomBot(player) || sRandomPlayerbotMgr.IsAddclassBot(player)) &&
-            (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH | ACHIEVEMENT_FLAG_REALM_FIRST_KILL)))
+            (achievement->Flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH | ACHIEVEMENT_FLAG_REALM_FIRST_KILL)))
         {
             return false;
         }
@@ -388,11 +394,11 @@ class PlayerbotsScript : public PlayerbotScript
 public:
     PlayerbotsScript() : PlayerbotScript("PlayerbotsScript") {}
 
-    bool OnPlayerbotCheckLFGQueue(lfg::Lfg5Guids const& guidsList) override
+    bool OnPlayerbotCheckLFGQueue(GuidList const& guidsList) override
     {
         bool nonBotFound = false;
 
-        for (ObjectGuid const& guid : guidsList.guids)
+        for (ObjectGuid const& guid : guidsList)
         {
             Player* player = ObjectAccessor::FindPlayer(guid);
 
@@ -479,16 +485,16 @@ public:
     }
 };
 
-class PlayerBotsBGScript : public BGScript
+class PlayerBotsBGScript : public AllBattlegroundScript
 {
 public:
-    PlayerBotsBGScript() : BGScript("PlayerBotsBGScript") {}
+    PlayerBotsBGScript() : AllBattlegroundScript("PlayerBotsBGScript") {}
 
     void OnBattlegroundStart(Battleground* bg) override
     {
         BGStrategyData data;
 
-        switch (bg->GetBgTypeID())
+        switch (bg->GetTypeID())
         {
             case BATTLEGROUND_WS:
                 data.allianceStrategy = urand(0, WS_STRATEGY_MAX - 1);
@@ -513,7 +519,7 @@ public:
         bgStrategies[bg->GetInstanceID()] = data;
     }
 
-    void OnBattlegroundEnd(Battleground* bg, TeamId /*winnerTeam*/) override { bgStrategies.erase(bg->GetInstanceID()); }
+    void OnBattlegroundEnd(Battleground* bg, uint32 /*winnerTeam*/) override { bgStrategies.erase(bg->GetInstanceID()); }
 };
 
 // Workaround for missing InitEnabledHooksIfNeeded for new BattlefieldScript in ScriptMgr
@@ -521,13 +527,14 @@ class PlayerbotsBattlefieldScript : public BattlefieldScript
 {
 public:
     PlayerbotsBattlefieldScript() : BattlefieldScript("PlayerbotsBattlefieldScript") { }
+
+    // ShatterCore: TrinityCore BattlefieldScript has a pure virtual GetBattlefield(Map*).
+    // This script is only a registration marker (the bots do not provide a battlefield),
+    // so return nullptr to satisfy the interface without changing behavior.
+    Battlefield* GetBattlefield(Map* /*map*/) const override { return nullptr; }
 };
 
 void AddPlayerbotsSecureLoginScripts();
-
-void AddSC_TempestKeepBotScripts();
-void AddSC_IcecrownBotScripts();
-void AddSC_HyjalSummitBotScripts();
 
 void AddPlayerbotsScripts()
 {
@@ -542,7 +549,6 @@ void AddPlayerbotsScripts()
     AddPlayerbotsSecureLoginScripts();
     AddPlayerbotsCommandscripts();
     PlayerBotsGuildValidationScript();
-    AddSC_TempestKeepBotScripts();
-    AddSC_IcecrownBotScripts();
-    AddSC_HyjalSummitBotScripts();
+    // WotLK raid tactic packs (TempestKeep/Icecrown/HyjalSummit bot scripts) are
+    // excluded from the 4.3.4 build - see mod-playerbots.cmake
 }

@@ -2,64 +2,44 @@
 #include "TriggerContext.h"
 #include "ChatTriggerContext.h"
 #include "WorldPacketTriggerContext.h"
-#include "Aq20TriggerContext.h"
-#include "MCTriggerContext.h"
-#include "BWLTriggerContext.h"
-#include "KaraTriggerContext.h"
-#include "GruulTriggerContext.h"
-#include "MagTriggerContext.h"
-#include "NaxxTriggerContext.h"
-#include "SSCTriggerContext.h"
-#include "TKTriggerContext.h"
-#include "HyjalTriggerContext.h"
-#include "BTTriggerContext.h"
-#include "ZATriggerContext.h"
-#include "OSTriggerContext.h"
-#include "EoETriggerContext.h"
-#include "VoATriggerContext.h"
-#include "UldTriggerContext.h"
-#include "OnyTriggerContext.h"
-#include "ICCTriggerContext.h"
-#include "Ai/Dungeon/TbcDungeonTriggerContext.h"
-#include "Ai/Dungeon/WotlkDungeonTriggerContext.h"
 
 void AiObjectContext::BuildSharedTriggerContexts(SharedNamedObjectContextList<Trigger>& triggerContexts)
 {
     triggerContexts.Add(new TriggerContext());
     triggerContexts.Add(new ChatTriggerContext());
     triggerContexts.Add(new WorldPacketTriggerContext());
-    triggerContexts.Add(new RaidAq20TriggerContext());
-    triggerContexts.Add(new RaidMcTriggerContext());
-    triggerContexts.Add(new RaidBwlTriggerContext());
-    triggerContexts.Add(new RaidKarazhanTriggerContext());
-    triggerContexts.Add(new RaidGruulsLairTriggerContext());
-    triggerContexts.Add(new RaidMagtheridonTriggerContext());
-    triggerContexts.Add(new RaidNaxxTriggerContext());
-    triggerContexts.Add(new RaidSSCTriggerContext());
-    triggerContexts.Add(new RaidTempestKeepTriggerContext());
-    triggerContexts.Add(new RaidHyjalSummitTriggerContext());
-    triggerContexts.Add(new RaidBlackTempleTriggerContext());
-    triggerContexts.Add(new RaidZulAmanTriggerContext());
-    triggerContexts.Add(new RaidOsTriggerContext());
-    triggerContexts.Add(new RaidEoETriggerContext());
-    triggerContexts.Add(new RaidVoATriggerContext());
-    triggerContexts.Add(new RaidUlduarTriggerContext());
-    triggerContexts.Add(new RaidOnyxiaTriggerContext());
-    triggerContexts.Add(new RaidIccTriggerContext());
-    triggerContexts.Add(new TbcDungeonAuchenaiCryptsTriggerContext());
-    triggerContexts.Add(new WotlkDungeonUKTriggerContext());
-    triggerContexts.Add(new WotlkDungeonNexTriggerContext());
-    triggerContexts.Add(new WotlkDungeonANTriggerContext());
-    triggerContexts.Add(new WotlkDungeonOKTriggerContext());
-    triggerContexts.Add(new WotlkDungeonDTKTriggerContext());
-    triggerContexts.Add(new WotlkDungeonVHTriggerContext());
-    triggerContexts.Add(new WotlkDungeonGDTriggerContext());
-    triggerContexts.Add(new WotlkDungeonHoSTriggerContext());
-    triggerContexts.Add(new WotlkDungeonHoLTriggerContext());
-    triggerContexts.Add(new WotlkDungeonOccTriggerContext());
-    triggerContexts.Add(new WotlkDungeonUPTriggerContext());
-    triggerContexts.Add(new WotlkDungeonCoSTriggerContext());
-    triggerContexts.Add(new WotlkDungeonFoSTriggerContext());
-    triggerContexts.Add(new WotlkDungeonPoSTriggerContext());
-    triggerContexts.Add(new WotlkDungeonToCTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidAq20TriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidMcTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidBwlTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidKarazhanTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidGruulsLairTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidMagtheridonTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidNaxxTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidSSCTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidTempestKeepTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidHyjalSummitTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidBlackTempleTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidZulAmanTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidOsTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidEoETriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidVoATriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidUlduarTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidOnyxiaTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new RaidIccTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new TbcDungeonAuchenaiCryptsTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonUKTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonNexTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonANTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonOKTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonDTKTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonVHTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonGDTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonHoSTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonHoLTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonOccTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonUPTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonCoSTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonFoSTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonPoSTriggerContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - triggerContexts.Add(new WotlkDungeonToCTriggerContext());
 }

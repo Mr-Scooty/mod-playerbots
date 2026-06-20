@@ -73,6 +73,14 @@ public:
         CastBuffSpellAction(botAI, "aspect of the viper") {}
 };
 
+// Cataclysm 4.3.4: Aspect of the Fox lets Steady/Cobra Shot be cast while moving.
+class CastAspectOfTheFoxAction : public CastBuffSpellAction
+{
+public:
+    CastAspectOfTheFoxAction(PlayerbotAI* botAI) :
+        CastBuffSpellAction(botAI, "aspect of the fox") {}
+};
+
 // Cooldown Spells
 
 class CastRapidFireAction : public CastBuffSpellAction
@@ -151,6 +159,8 @@ public:
         CastSnareSpellAction(botAI, "concussive shot") {}
 };
 
+// Intimidation (19577) is a self-cast ability (the pet performs the stun on its victim); it applies the
+// "Intimidation" buff to the hunter. Cast on self so it matches IntimidationTrigger's self-aura check.
 class CastIntimidationAction : public CastBuffSpellAction
 {
 public:
@@ -158,7 +168,7 @@ public:
         CastBuffSpellAction(botAI, "intimidation", false, 5000) {}
     std::string const GetTargetName() override
     {
-        return "pet target";
+        return "self target";
     }
 };
 
@@ -217,6 +227,10 @@ public:
         CastBuffSpellAction(botAI, "revive pet") {}
 };
 
+// Cataclysm 4.3.4: Kill Command (34026) is cast by the PLAYER on the ENEMY target; the spell script then
+// makes the pet attack the pet's current victim (see spell_hun_kill_command in spell_hunter.cpp). It is NOT a
+// self/pet buff (that was the WotLK behaviour). Targeting "pet target" makes core CheckCast fail with bad
+// targets so it would never fire; CastBuffSpellAction defaults to "self target", so we override to the enemy.
 class CastKillCommandAction : public CastBuffSpellAction
 {
 public:
@@ -224,10 +238,12 @@ public:
         CastBuffSpellAction(botAI, "kill command", false, 5000) {}
     std::string const GetTargetName() override
     {
-        return "pet target";
+        return "current target";
     }
 };
 
+// Cataclysm 4.3.4: Bestial Wrath (19574) is a self-cast buff on the hunter (Beast Within extends it to the pet
+// automatically); it is not cast on the pet. Use "self target" so the buff aura is checked on / cast by the bot.
 class CastBestialWrathAction : public CastBuffSpellAction
 {
 public:
@@ -235,8 +251,24 @@ public:
         CastBuffSpellAction(botAI, "bestial wrath", false, 5000) {}
     std::string const GetTargetName() override
     {
-        return "pet target";
+        return "self target";
     }
+};
+
+// Cataclysm 4.3.4 BM: converts pet's 5-stack Frenzy into a ranged-haste buff (self-buff).
+class CastFocusFireAction : public CastBuffSpellAction
+{
+public:
+    CastFocusFireAction(PlayerbotAI* botAI) :
+        CastBuffSpellAction(botAI, "focus fire") {}
+};
+
+// Cataclysm 4.3.4 BM: instant 50 focus (Fervor talent).
+class CastFervorAction : public CastBuffSpellAction
+{
+public:
+    CastFervorAction(PlayerbotAI* botAI) :
+        CastBuffSpellAction(botAI, "fervor") {}
 };
 
 // Direct Damage Spells
@@ -277,6 +309,14 @@ class CastSteadyShotAction : public CastSpellAction
 {
 public:
     CastSteadyShotAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "steady shot") {}
+};
+
+// Cataclysm 4.3.4: Cobra Shot -- BM/SV focus builder (replaces Steady Shot for those specs); also extends
+// Serpent Sting. Castable while moving with Aspect of the Fox.
+class CastCobraShotAction : public CastSpellAction
+{
+public:
+    CastCobraShotAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "cobra shot") {}
 };
 
 class CastKillShotAction : public CastSpellAction

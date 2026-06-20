@@ -7,6 +7,7 @@
 
 #include "Playerbots.h"
 #include "ThreatManager.h"
+#include "MotionMaster.h"
 
 uint8 ThreatValue::Calculate()
 {
@@ -44,7 +45,7 @@ uint8 ThreatValue::Calculate(Unit* target)
     if (!group)
         return 0;
 
-    float botThreat = target->GetThreatMgr().GetThreat(bot);
+    float botThreat = target->GetThreatManager().GetThreat(bot);
     float maxThreat = -1.0f;
     bool hasTank = false;
 
@@ -57,7 +58,7 @@ uint8 ThreatValue::Calculate(Unit* target)
         if (botAI->IsTank(player))
         {
             hasTank = true;
-            float threat = target->GetThreatMgr().GetThreat(player);
+            float threat = target->GetThreatManager().GetThreat(player);
             if (maxThreat < threat)
                 maxThreat = threat;
         }

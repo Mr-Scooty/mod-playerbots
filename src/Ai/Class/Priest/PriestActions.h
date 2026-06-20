@@ -116,6 +116,22 @@ public:
 // BUFF_ACTION(CastShadowfiendAction, "shadowfiend");
 SPELL_ACTION(CastShadowWordDeathAction, "shadow word: death");
 
+// ShatterCore 4.3.4 Shadow: Shadow Word: Death is the execute (only cast under 25% target health -- it deals
+// self-damage otherwise). Gate a dedicated execute variant on the current target's health.
+class CastShadowWordDeathExecuteAction : public CastSpellAction
+{
+public:
+    CastShadowWordDeathExecuteAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "shadow word: death") {}
+
+    bool isUseful() override { return AI_VALUE2(uint8, "health", "current target") < 25; }
+};
+
+// ShatterCore 4.3.4 Shadow filler / Empowered Shadow refresher.
+SPELL_ACTION(CastMindSpikeAction, "mind spike");
+
+// ShatterCore 4.3.4 Shadow: Archangel consumes Dark Evangelism stacks for a damage buff (talent layer).
+BUFF_ACTION(CastArchangelAction, "archangel");
+
 // shadow
 DEBUFF_CHECKISOWNER_ACTION(CastPowerWordPainAction, "shadow word: pain");
 DEBUFF_ENEMY_ACTION(CastPowerWordPainOnAttackerAction, "shadow word: pain");
@@ -252,5 +268,30 @@ public:
     {
     }
 };
+
+// ShatterCore 4.3.4 Holy: Holy Word spells. The active Holy Word depends on Chakra state -- Serenity (single-target
+// instant heal) in Chakra: Serenity, Sanctuary (ground AoE heal) in Chakra: Sanctuary. Cast-by-name resolves to
+// whichever the bot currently knows; if the wrong one is up it simply won't be castable that tick.
+class CastHolyWordSerenityOnPartyAction : public HealPartyMemberAction
+{
+public:
+    CastHolyWordSerenityOnPartyAction(PlayerbotAI* ai)
+        : HealPartyMemberAction(ai, "holy word: serenity", 40.0f, HealingManaEfficiency::HIGH)
+    {
+    }
+};
+
+class CastHolyWordSanctuaryAction : public HealPartyMemberAction
+{
+public:
+    CastHolyWordSanctuaryAction(PlayerbotAI* ai)
+        : HealPartyMemberAction(ai, "holy word: sanctuary", 15.0f, HealingManaEfficiency::HIGH)
+    {
+    }
+};
+
+// ShatterCore 4.3.4 Discipline: offensive Penance (a damage channel on the current target -- also used to keep
+// Evangelism/DPS pressure). Heal-side Penance stays as CastPenanceOnPartyAction.
+SPELL_ACTION(CastPenanceAction, "penance");
 
 #endif

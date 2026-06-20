@@ -10,6 +10,7 @@
 #include "Event.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "DBCStores.h"
 
 std::map<uint32, SkillLineAbilityEntry const*> SetCraftAction::skillSpells;
 
@@ -62,7 +63,7 @@ bool SetCraftAction::Execute(Event event)
     {
         uint32 spellId = itr->first;
 
-        if (itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+        if (itr->second.state == PLAYERSPELL_REMOVED || !itr->second.active)
             continue;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
@@ -162,6 +163,6 @@ uint32 SetCraftAction::GetCraftFee(CraftData& data)
     if (!proto)
         return 0;
 
-    uint32 level = std::max(proto->ItemLevel, proto->RequiredLevel);
+    uint32 level = std::max<uint32>(proto->GetBaseItemLevel(), uint32(proto->GetRequiredLevel()));
     return level * level / 40;
 }

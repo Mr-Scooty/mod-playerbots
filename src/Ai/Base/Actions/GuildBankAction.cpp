@@ -8,6 +8,7 @@
 #include "GuildMgr.h"
 #include "PlayerbotAI.h"
 #include "AiObjectContext.h"
+#include "Guild.h"
 
 bool GuildBankAction::Execute(Event event)
 {

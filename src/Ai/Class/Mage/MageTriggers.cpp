@@ -7,6 +7,7 @@
 #include "Playerbots.h"
 #include "Player.h"
 #include "Spell.h"
+#include "SpellHistory.h"  // ShatterCore: GetSpellHistory()->HasCooldown for Flame Orb / Frostfire Orb gating
 #include "DynamicObject.h"
 #include "Value.h"
 #include "SpellAuraEffects.h"
@@ -166,6 +167,18 @@ const std::unordered_set<uint32> BlizzardChannelCheckTrigger::BLIZZARD_SPELL_IDS
     42938,  // Blizzard Rank 8
     42939   // Blizzard Rank 9
 };
+
+bool FlameOrbOffCdTrigger::IsActive()
+{
+    // Prefer Flame Orb; frost mages who took the talent have it replaced by Frostfire Orb.
+    uint32 spellId = AI_VALUE2(uint32, "spell id", "flame orb");
+    if (!spellId)
+        spellId = AI_VALUE2(uint32, "spell id", "frostfire orb");
+    if (!spellId)
+        return false;
+
+    return !bot->GetSpellHistory()->HasCooldown(spellId);
+}
 
 bool BlizzardChannelCheckTrigger::IsActive()
 {

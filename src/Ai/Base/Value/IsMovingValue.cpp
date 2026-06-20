@@ -6,6 +6,7 @@
 #include "IsMovingValue.h"
 
 #include "Playerbots.h"
+#include "MapDefines.h"
 
 bool IsMovingValue::Calculate()
 {
@@ -24,7 +25,7 @@ bool IsSwimmingValue::Calculate()
     if (!target)
         return false;
 
-    int8 targetInLiquidState = target->GetLiquidData().Status;
+    int8 targetInLiquidState = target->GetLiquidStatus();
 
     return targetInLiquidState == LIQUID_MAP_UNDER_WATER || (targetInLiquidState == LIQUID_MAP_IN_WATER && target->CanSwim());
 }

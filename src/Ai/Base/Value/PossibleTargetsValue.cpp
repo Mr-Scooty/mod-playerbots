@@ -16,7 +16,16 @@
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "Unit.h"
-#include "AreaDefines.h"
+
+// Capital city zone ids (AzerothCore AreaDefines.h)
+constexpr uint32 AREA_STORMWIND_CITY  = 1519;
+constexpr uint32 AREA_IRONFORGE       = 1537;
+constexpr uint32 AREA_DARNASSUS       = 1657;
+constexpr uint32 AREA_THE_EXODAR      = 3557;
+constexpr uint32 AREA_ORGRIMMAR       = 1637;
+constexpr uint32 AREA_THUNDER_BLUFF   = 1638;
+constexpr uint32 AREA_UNDERCITY       = 1497;
+constexpr uint32 AREA_SILVERMOON_CITY = 3487;
 
 // Level difference thresholds for attack probability
 constexpr int32 EXTREME_LEVEL_DIFF = 5;  // Don't attack if enemy is this much higher
@@ -33,9 +42,9 @@ constexpr uint64_t FNV_PRIME = 1099511628211ULL;
 
 void PossibleTargetsValue::FindUnits(std::list<Unit*>& targets)
 {
-    Acore::AnyUnfriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool PossibleTargetsValue::AcceptUnit(Unit* unit)
@@ -69,7 +78,7 @@ bool PossibleTargetsValue::AcceptUnit(Unit* unit)
             return true;
 
         // Skip restrictions if in duel with this player
-        if (bot->duel && bot->duel->Opponent == unit)
+        if (bot->duel && bot->duel->opponent == unit)
             return true;
 
         // Capital cities - no restrictions
@@ -87,7 +96,7 @@ bool PossibleTargetsValue::AcceptUnit(Unit* unit)
             return true;
 
         // Level difference check
-        int32 levelDifference = unit->GetLevel() - bot->GetLevel();
+        int32 levelDifference = unit->getLevel() - bot->getLevel();
         int32 absLevelDifference = std::abs(levelDifference);
 
         // Extreme difference - do not attack
@@ -138,14 +147,14 @@ bool PossibleTargetsValue::AcceptUnit(Unit* unit)
 
 void PossibleTriggersValue::FindUnits(std::list<Unit*>& targets)
 {
-    Acore::AnyUnfriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool PossibleTriggersValue::AcceptUnit(Unit* unit)
 {
-    if (!unit->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
+    if (!unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
         return false;
 
     Unit::AuraEffectList const& aurasPeriodicTriggerSpell =

@@ -15,6 +15,7 @@
 #include "ServerFacade.h"
 #include "TravelMgr.h"
 #include "WaitForAttackStrategy.h"
+#include "IVMapManager.h"
 
 namespace
 {

@@ -8,6 +8,9 @@
 #include "ArenaTeamMgr.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
 
 bool ArenaTeamAcceptAction::Execute(Event event)
 {

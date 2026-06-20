@@ -9,6 +9,8 @@
 #include "Event.h"
 #include "Mail.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "Bag.h"
 
 std::map<std::string, MailProcessor*> MailAction::processors;
 
@@ -145,7 +147,7 @@ private:
             if (Bag const* pBag = (Bag*)bot->GetItemByPos(INVENTORY_SLOT_BAG_0, bag))
             {
                 ItemTemplate const* pBagProto = pBag->GetTemplate();
-                if (pBagProto->Class == ITEM_CLASS_CONTAINER && pBagProto->SubClass == ITEM_SUBCLASS_CONTAINER)
+                if (pBagProto->GetClass() == ITEM_CLASS_CONTAINER && pBagProto->GetSubClass() == ITEM_SUBCLASS_CONTAINER)
                     totalfree += pBag->GetFreeSlots();
             }
         }

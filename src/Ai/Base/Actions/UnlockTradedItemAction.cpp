@@ -2,6 +2,7 @@
 #include "PlayerbotAI.h"
 #include "TradeData.h"
 #include "SpellInfo.h"
+#include "DBCStores.h"
 
 inline constexpr uint32_t PICK_LOCK_SPELL_ID = 1804;
 
@@ -46,11 +47,11 @@ bool UnlockTradedItemAction::CanUnlockItem(Item* item)
         return false;
 
     // Ensure the item is actually locked
-    if (itemTemplate->LockID == 0 || !item->IsLocked())
+    if (itemTemplate->GetLockID() == 0 || !item->IsLocked())
         return false;
 
     // Check if the bot's Lockpicking skill is high enough
-    uint32 lockId = itemTemplate->LockID;
+    uint32 lockId = itemTemplate->GetLockID();
     LockEntry const* lockInfo = sLockStore.LookupEntry(lockId);
     if (!lockInfo)
         return false;
@@ -67,7 +68,7 @@ bool UnlockTradedItemAction::CanUnlockItem(Item* item)
             {
                 std::ostringstream out;
                 out << "Lockpicking skill too low (" << botSkill << "/" << requiredSkill << ") to unlock: "
-                    << item->GetTemplate()->Name1;
+                    << item->GetTemplate()->GetName(DEFAULT_LOCALE);
                 botAI->TellMaster(out.str());
             }
         }
@@ -88,7 +89,7 @@ void UnlockTradedItemAction::UnlockItem(Item* item)
     if (botAI->CastSpell(PICK_LOCK_SPELL_ID, bot->GetTrader(), item)) // Unit target is trader
     {
         std::ostringstream out;
-        out << "Picking Lock on traded item: " << item->GetTemplate()->Name1;
+        out << "Picking Lock on traded item: " << item->GetTemplate()->GetName(DEFAULT_LOCALE);
         botAI->TellMaster(out.str());
     }
     else

@@ -18,6 +18,8 @@
 #include "PlayerbotTextMgr.h"
 #include "SpellMgr.h"
 #include "WorldSession.h"
+#include "Map.h"
+#include "DBCStores.h"
 
 bool IsExoticPet(const CreatureTemplate* creature)
 {
@@ -65,7 +67,7 @@ bool TameAction::Execute(Event event)
             if (!familyEntry)
                 continue;
 
-            std::string familyName = familyEntry->Name[0];
+            std::string familyName = familyEntry->Name;
             if (familyName.empty())
                 continue;
 
@@ -154,7 +156,7 @@ bool TameAction::Execute(Event event)
     if (mode != "rename")
     {
         Player* bot = botAI->GetBot();
-        PlayerbotFactory factory(bot, bot->GetLevel());
+        PlayerbotFactory factory(bot, bot->getLevel());
         factory.InitPet();
         factory.InitPetTalents();
 
@@ -307,7 +309,7 @@ bool TameAction::SetPetByFamily(const std::string& family)
             continue;
 
         // Compare the family name in a case-insensitive way
-        std::string familyName = familyEntry->Name[0];
+        std::string familyName = familyEntry->Name;
         std::transform(familyName.begin(), familyName.end(), familyName.begin(), ::tolower);
 
         if (familyName != lowerFamily)
@@ -409,7 +411,7 @@ bool TameAction::RenamePet(const std::string& newName)
 
     // Set the pet's name and save it to the database
     pet->SetName(normalized);
-    pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+    pet->SavePetToDB(PET_SAVE_CURRENT_STATE);
     bot->GetSession()->SendPetNameQuery(pet->GetGUID(), pet->GetEntry());
 
     // Notify the master about the rename and give a tip to update the client name display
@@ -421,7 +423,7 @@ bool TameAction::RenamePet(const std::string& newName)
         {}));
 
     // Remove the current pet and (re-)cast Call Pet spell if the bot is a hunter
-    bot->RemovePet(nullptr, PET_SAVE_AS_CURRENT, true);
+    bot->RemovePet(nullptr, PET_SAVE_CURRENT_STATE, true);
     if (bot->getClass() == CLASS_HUNTER && bot->HasSpell(883))
     {
         bot->CastSpell(bot, 883, true);
@@ -434,7 +436,7 @@ bool TameAction::CreateAndSetPet(uint32 creatureEntry)
 {
     Player* bot = botAI->GetBot();
     // Ensure the player is a hunter and at least level 10 (required for pets)
-    if (bot->getClass() != CLASS_HUNTER || bot->GetLevel() < 10)
+    if (bot->getClass() != CLASS_HUNTER || bot->getLevel() < 10)
     {
         botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "tame_only_hunters_level_10", "Only level 10+ hunters can have pets.", {}));
@@ -450,18 +452,10 @@ bool TameAction::CreateAndSetPet(uint32 creatureEntry)
         return false;
     }
 
-    // If the bot already has a current pet or an unslotted pet, remove them to avoid conflicts
-    if (bot->GetPetStable() && bot->GetPetStable()->CurrentPet)
-    {
-        bot->RemovePet(nullptr, PET_SAVE_AS_CURRENT);
-        bot->RemovePet(nullptr, PET_SAVE_NOT_IN_SLOT);
-    }
-    if (bot->GetPetStable() && bot->GetPetStable()->GetUnslottedHunterPet())
-    {
-        bot->GetPetStable()->UnslottedPets.clear();
-        bot->RemovePet(nullptr, PET_SAVE_AS_CURRENT);
-        bot->RemovePet(nullptr, PET_SAVE_NOT_IN_SLOT);
-    }
+    // If the bot already has a current pet, remove it to avoid conflicts
+    // (ShatterCore 4.3.4 uses PlayerPetData instead of AC's PetStable)
+    if (bot->GetPet() || bot->GetPlayerPetDataCurrent())
+        bot->RemovePet(bot->GetPet(), PET_SAVE_DISMISS);
 
     // Create the new tamed pet from the specified creature entry
     Pet* pet = bot->CreateTamedPetFrom(creatureEntry, 0);
@@ -473,23 +467,23 @@ bool TameAction::CreateAndSetPet(uint32 creatureEntry)
     }
 
     // Set the pet's level to one below the bot's current level, then add to the map and set to full level
-    pet->SetUInt32Value(UNIT_FIELD_LEVEL, bot->GetLevel() - 1);
+    pet->SetUInt32Value(UNIT_FIELD_LEVEL, bot->getLevel() - 1);
     pet->GetMap()->AddToMap(pet->ToCreature());
-    pet->SetUInt32Value(UNIT_FIELD_LEVEL, bot->GetLevel());
+    pet->SetUInt32Value(UNIT_FIELD_LEVEL, bot->getLevel());
     // Set the pet as the bot's active minion
     bot->SetMinion(pet, true);
     // Initialize talents appropriate for the pet's level
     pet->InitTalentForLevel();
     // Save pet to the database as the current pet
-    pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+    pet->SavePetToDB(PET_SAVE_CURRENT_STATE);
     // Initialize available pet spells
     bot->PetSpellInitialize();
 
     // Further initialize pet stats to match the bot's level
-    pet->InitStatsForLevel(bot->GetLevel());
-    pet->SetLevel(bot->GetLevel());
+    pet->InitStatsForLevel(bot->getLevel());
+    pet->SetLevel(bot->getLevel());
     // Set happiness and health of the pet to maximum values
-    pet->SetPower(POWER_HAPPINESS, pet->GetMaxPower(Powers(POWER_HAPPINESS)));
+    // 4.3.4: pet happiness was removed
     pet->SetHealth(pet->GetMaxHealth());
 
     // Enable autocast for all active (not removed) non-passive spells the pet knows

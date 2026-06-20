@@ -71,6 +71,7 @@ public:
         creators["shield block"] = &WarriorTriggerFactoryInternal::shield_block;
         creators["sunder armor"] = &WarriorTriggerFactoryInternal::sunder_armor;
         creators["revenge"] = &WarriorTriggerFactoryInternal::revenge;
+        creators["shield slam"] = &WarriorTriggerFactoryInternal::shield_slam;
         creators["overpower"] = &WarriorTriggerFactoryInternal::overpower;
         creators["mocking blow"] = &WarriorTriggerFactoryInternal::mocking_blow;
         creators["rampage"] = &WarriorTriggerFactoryInternal::rampage;
@@ -93,6 +94,10 @@ public:
         creators["shockwave"] = &WarriorTriggerFactoryInternal::shockwave;
         creators["shockwave on snare target"] = &WarriorTriggerFactoryInternal::shockwave_on_snare_target;
         creators["taste for blood"] = &WarriorTriggerFactoryInternal::taste_for_blood;
+        creators["enrage"] = &WarriorTriggerFactoryInternal::enrage;
+        creators["bloodsurge"] = &WarriorTriggerFactoryInternal::bloodsurge;
+        creators["colossus smash"] = &WarriorTriggerFactoryInternal::colossus_smash;
+        creators["raging blow"] = &WarriorTriggerFactoryInternal::raging_blow;
 
         creators["thunder clap and rage"] = &WarriorTriggerFactoryInternal::thunderclap_and_rage;
         creators["intercept can cast"] = &WarriorTriggerFactoryInternal::intercept_can_cast;
@@ -143,6 +148,10 @@ private:
     static Trigger* intercept_on_snare_target(PlayerbotAI* botAI) { return new InterceptSnareTrigger(botAI); }
     static Trigger* spell_reflection(PlayerbotAI* botAI) { return new SpellReflectionTrigger(botAI); }
     static Trigger* taste_for_blood(PlayerbotAI* botAI) { return new TasteForBloodTrigger(botAI); }
+    static Trigger* enrage(PlayerbotAI* botAI) { return new EnrageTrigger(botAI); }
+    static Trigger* bloodsurge(PlayerbotAI* botAI) { return new BloodsurgeTrigger(botAI); }
+    static Trigger* colossus_smash(PlayerbotAI* botAI) { return new ColossusSmashAvailableTrigger(botAI); }
+    static Trigger* raging_blow(PlayerbotAI* botAI) { return new RagingBlowAvailableTrigger(botAI); }
     static Trigger* shockwave_on_snare_target(PlayerbotAI* botAI) { return new ShockwaveSnareTrigger(botAI); }
     static Trigger* shockwave(PlayerbotAI* botAI) { return new ShockwaveTrigger(botAI); }
     static Trigger* instant_slam(PlayerbotAI* botAI) { return new SlamInstantTrigger(botAI); }
@@ -169,6 +178,7 @@ private:
     static Trigger* mocking_blow(PlayerbotAI* botAI) { return new MockingBlowTrigger(botAI); }
     static Trigger* overpower(PlayerbotAI* botAI) { return new OverpowerAvailableTrigger(botAI); }
     static Trigger* revenge(PlayerbotAI* botAI) { return new RevengeAvailableTrigger(botAI); }
+    static Trigger* shield_slam(PlayerbotAI* botAI) { return new ShieldSlamAvailableTrigger(botAI); }
     static Trigger* sunder_armor(PlayerbotAI* botAI) { return new SunderArmorDebuffTrigger(botAI); }
     // static Trigger* slam(PlayerbotAI* ai) { return new SlamTrigger(ai); }
 
@@ -245,6 +255,10 @@ public:
         creators["shattering throw"] = &WarriorAiObjectContextInternal::shattering_throw;
         creators["vigilance"] = &WarriorAiObjectContextInternal::vigilance;
         creators["enraged regeneration"] = &WarriorAiObjectContextInternal::enraged_regeneration;
+        creators["colossus smash"] = &WarriorAiObjectContextInternal::colossus_smash;
+        creators["raging blow"] = &WarriorAiObjectContextInternal::raging_blow;
+        creators["heroic leap"] = &WarriorAiObjectContextInternal::heroic_leap;
+        creators["inner rage"] = &WarriorAiObjectContextInternal::inner_rage;
     }
 
 private:
@@ -316,6 +330,10 @@ private:
     static Action* bladestorm(PlayerbotAI* botAI) { return new CastBladestormAction(botAI); }
     static Action* vigilance(PlayerbotAI* botAI) { return new CastVigilanceAction(botAI); }
     static Action* enraged_regeneration(PlayerbotAI* botAI) { return new CastEnragedRegenerationAction(botAI); }
+    static Action* colossus_smash(PlayerbotAI* botAI) { return new CastColossusSmashAction(botAI); }
+    static Action* raging_blow(PlayerbotAI* botAI) { return new CastRagingBlowAction(botAI); }
+    static Action* heroic_leap(PlayerbotAI* botAI) { return new CastHeroicLeapAction(botAI); }
+    static Action* inner_rage(PlayerbotAI* botAI) { return new CastInnerRageAction(botAI); }
 };
 
 SharedNamedObjectContextList<Strategy> WarriorAiObjectContext::sharedStrategyContexts;

@@ -13,6 +13,7 @@
 #include "ServerFacade.h"
 #include "Unit.h"
 #include "Vehicle.h"
+#include "WorldSession.h"
 
 // TODO methods to enter/exit vehicle should be added to BGTactics or MovementAction (so that we can better control
 // whether bot is in vehicle, eg: get out of vehicle to cap flag, if we're down to final boss, etc),
@@ -46,7 +47,7 @@ bool EnterVehicleAction::Execute(Event event)
         if (!vehicleBase)
             continue;
 
-        if (vehicleBase->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
+        if (vehicleBase->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
             continue;
 
         // dont let them get in the cannons as they'll stay forever and do nothing useful

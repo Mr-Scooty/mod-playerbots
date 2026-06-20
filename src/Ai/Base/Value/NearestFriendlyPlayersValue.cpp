@@ -12,9 +12,9 @@
 
 void NearestFriendlyPlayersValue::FindUnits(std::list<Unit*>& targets)
 {
-    Acore::AnyFriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
-    Acore::UnitListSearcher<Acore::AnyFriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyFriendlyUnitInObjectRangeCheck u_check(bot, bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> searcher(bot, targets, u_check);
+    Cell::VisitAllObjects(bot, searcher, range);
 }
 
 bool NearestFriendlyPlayersValue::AcceptUnit(Unit* unit)

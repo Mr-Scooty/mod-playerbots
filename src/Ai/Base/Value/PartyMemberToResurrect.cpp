@@ -32,7 +32,7 @@ public:
     bool Check(Unit* unit) override
     {
         Player* player = unit->ToPlayer();
-        return player && !player->isResurrectRequested() && player->getDeathState() == DeathState::Corpse &&
+        return player && !player->IsResurrectRequested() && player->getDeathState() == CORPSE &&
                !value->IsTargetOfSpellCast(player, predicate);
     }
 

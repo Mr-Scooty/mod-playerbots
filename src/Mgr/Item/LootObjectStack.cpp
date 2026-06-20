@@ -10,6 +10,7 @@
 #include "ObjectAccessor.h"
 #include "Playerbots.h"
 #include "Unit.h"
+#include "DBCStores.h"
 
 #define MAX_LOOT_OBJECT_COUNT 200
 
@@ -63,7 +64,7 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
         return;
     }
     Creature* creature = botAI->GetCreature(lootGUID);
-    if (creature && creature->getDeathState() == DeathState::Corpse)
+    if (creature && creature->getDeathState() == CORPSE)
     {
         if (creature->HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE))
             guid = lootGUID;
@@ -71,7 +72,7 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
         if (creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE))
         {
             skillId = creature->GetCreatureTemplate()->GetRequiredLootSkill();
-            uint32 targetLevel = creature->GetLevel();
+            uint32 targetLevel = creature->getLevel();
             reqSkillValue = targetLevel < 10 ? 1 : targetLevel < 20 ? (targetLevel - 10) * 10 : targetLevel * 5;
             if (botAI->HasSkill((SkillType)skillId) && bot->GetSkillValue(skillId) >= reqSkillValue)
                 guid = lootGUID;
@@ -86,7 +87,8 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
         bool onlyHasQuestItems = true;
         bool hasAnyQuestItems = false;
 
-        GameObjectQuestItemList const* items = sObjectMgr->GetGameObjectQuestItemList(go->GetEntry());
+        // ShatterCore: GetGameObjectQuestItemList returns std::vector<uint32> const* (no GameObjectQuestItemList typedef).
+        std::vector<uint32> const* items = sObjectMgr->GetGameObjectQuestItemList(go->GetEntry());
         for (size_t i = 0; i < MAX_GAMEOBJECT_QUEST_ITEMS; i++)
         {
             if (!items || i >= items->size())
@@ -108,7 +110,7 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
             if (!proto)
                 continue;
 
-            if (proto->Class != ITEM_CLASS_QUEST)
+            if (proto->GetClass() != ITEM_CLASS_QUEST)
             {
                 onlyHasQuestItems = false;
             }
@@ -135,7 +137,7 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
                 if (!proto)
                     continue;
 
-                if (proto->Class != ITEM_CLASS_QUEST)
+                if (proto->GetClass() != ITEM_CLASS_QUEST)
                 {
                     onlyHasQuestItems = false;
                     break;
@@ -157,7 +159,7 @@ void LootObject::Refresh(Player* bot, ObjectGuid lootGUID)
                         if (!refProto)
                             continue;
 
-                        if (refProto->Class != ITEM_CLASS_QUEST)
+                        if (refProto->GetClass() != ITEM_CLASS_QUEST)
                         {
                             onlyHasQuestItems = false;
                             break;
@@ -254,7 +256,7 @@ WorldObject* LootObject::GetWorldObject(Player* bot)
         return nullptr;
     }
     Creature* creature = botAI->GetCreature(guid);
-    if (creature && creature->getDeathState() == DeathState::Corpse && creature->IsInWorld())
+    if (creature && creature->getDeathState() == CORPSE && creature->IsInWorld())
         return creature;
 
     GameObject* go = botAI->GetGameObject(guid);
@@ -293,7 +295,7 @@ bool LootObject::IsLootPossible(Player* bot)
         return false;
 
     Creature* creature = botAI->GetCreature(guid);
-    if (creature && creature->getDeathState() == DeathState::Corpse)
+    if (creature && creature->getDeathState() == CORPSE)
     {
         if (!bot->isAllowedToLoot(creature) && skillId != SKILL_SKINNING)
             return false;

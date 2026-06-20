@@ -60,7 +60,10 @@ AssassinationRogueStrategy::AssassinationRogueStrategy(PlayerbotAI* ai) : MeleeC
 
 std::vector<NextAction> AssassinationRogueStrategy::getDefaultActions()
 {
+    // 4.3.4 Assassination single-target filler: Mutilate is the dagger combo builder (Backstab takes over below 35%
+    // via the action node fallback). Maintenance (Slice and Dice / Rupture) and Envenom come from InitTriggers.
     return {
+        NextAction("mutilate", ACTION_DEFAULT + 0.1f),
         NextAction("melee", ACTION_DEFAULT)
     };
 }
@@ -69,6 +72,15 @@ void AssassinationRogueStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
 {
     MeleeCombatStrategy::InitTriggers(triggers);
 
+    // ShatterCore 4.3.4 Assassination rotation (class reference doc section 6.1). Hunger for Blood and Cold Blood
+    // were removed in Cataclysm, so they are gone here. Priority order:
+    //   1. Slice and Dice (apply once at low CP; Cut to the Chase keeps it refreshed via Envenom).
+    //   2. Rupture at 4-5 CP -- the Venomous Wounds energy engine; keep it up always on a poisoned target.
+    //   3. Envenom at 4-5 CP (refreshes Slice and Dice; main damage finisher).
+    //   4. Builder: Mutilate (target > 35%) / Backstab (target < 35%, behind) from getDefaultActions/action node.
+    // Cooldown: Vendetta (single-target damage amp).
+
+    // Stealth opener.
     triggers.push_back(
         new TriggerNode(
             "high energy available",
@@ -79,24 +91,7 @@ void AssassinationRogueStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
         )
     );
 
-    triggers.push_back(
-        new TriggerNode(
-            "high energy available",
-            {
-                NextAction("mutilate", ACTION_NORMAL + 3)
-            }
-        )
-    );
-
-    triggers.push_back(
-        new TriggerNode(
-            "hunger for blood",
-            {
-                NextAction("hunger for blood", ACTION_HIGH + 6),
-            }
-        )
-    );
-
+    // Maintain Slice and Dice (applied early at low CP; kept up by Envenom's Cut to the Chase).
     triggers.push_back(
         new TriggerNode(
             "slice and dice",
@@ -106,21 +101,42 @@ void AssassinationRogueStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
         )
     );
 
+    // Rupture -- the Venomous Wounds energy engine. Keep it rolling at 4-5 CP before spending on Envenom.
     triggers.push_back(
         new TriggerNode(
-            "combo points 4 available",
+            "rupture",
             {
-                NextAction("cold blood", ACTION_HIGH + 6),
-                NextAction("envenom", ACTION_HIGH + 5)
+                NextAction("rupture", ACTION_HIGH + 4),
             }
         )
     );
 
+    // Vendetta damage-amp cooldown on the current target.
+    triggers.push_back(
+        new TriggerNode(
+            "vendetta",
+            {
+                NextAction("vendetta", ACTION_HIGH + 4),
+            }
+        )
+    );
+
+    // Spend combo points with Envenom at 4-5 CP (also refreshes Slice and Dice).
+    triggers.push_back(
+        new TriggerNode(
+            "combo points 4 available",
+            {
+                NextAction("envenom", ACTION_HIGH + 3)
+            }
+        )
+    );
+
+    // Dump combo points on a target about to die.
     triggers.push_back(
         new TriggerNode(
             "target with combo points almost dead",
             {
-                NextAction("envenom", ACTION_HIGH + 4)
+                NextAction("envenom", ACTION_HIGH + 6)
             }
         )
     );
@@ -129,7 +145,7 @@ void AssassinationRogueStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
         new TriggerNode(
             "expose armor",
             {
-                NextAction("expose armor", ACTION_HIGH + 3),
+                NextAction("expose armor", ACTION_HIGH + 2),
             }
         )
     );

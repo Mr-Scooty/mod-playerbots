@@ -21,7 +21,7 @@
 
 namespace
 {
-    Transport* GetTransportForPosTolerant(Map* map, WorldObject* ref, uint32 phaseMask, float x, float y, float z)
+    Transport* GetTransportForPosTolerant(Map* map, WorldObject* ref, PhaseShift const& phaseMask, float x, float y, float z)
     {
         if (!map || !ref)
             return nullptr;
@@ -47,7 +47,7 @@ namespace
         if (!map || !expectedTransport || !ref)
             return false;
 
-        uint32 const phaseMask = ref->GetPhaseMask();
+        PhaseShift const& phaseMask = ref->GetPhaseShift();
 
         // Ensure master is actually detected on that transport (tolerant).
         if (GetTransportForPosTolerant(map, ref, phaseMask, masterX, masterY, masterZ) != expectedTransport)
@@ -66,7 +66,7 @@ namespace
         float const dy = (botY - masterY) / static_cast<float>(steps);
 
         // Master must actually be on the expected transport for this to work.
-        if (map->GetTransportForPos(ref->GetPhaseMask(), masterX, masterY, probeZ, ref) != expectedTransport)
+        if (map->GetTransportForPos(ref->GetPhaseShift(), masterX, masterY, probeZ, ref) != expectedTransport)
             return false;
 
         float lastX = masterX;
@@ -113,30 +113,30 @@ bool FollowAction::Execute(Event /*event*/)
 
         if (master->GetTransport())
         {
-            transport = master->GetTransport();
+            transport = dynamic_cast<Transport*>(master->GetTransport());
             masterOnTransport = true;
         }
         else if (map)
         {
-            transport = GetTransportForPosTolerant(map, master, master->GetPhaseMask(),
+            transport = GetTransportForPosTolerant(map, master, master->GetPhaseShift(),
                 master->GetPositionX(), master->GetPositionY(), master->GetPositionZ());
             masterOnTransport = (transport != nullptr);
         }
 
         // Ignore static transports (elevators/trams): only keep boats/zeppelins here.
-        if (transport && transport->IsStaticTransport())
+        if (transport && (transport->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT))
             transport = nullptr;
 
         if (transport && map && bot->GetTransport() != transport)
         {
             float const botProbeZ = std::max(bot->GetPositionZ(), transport->GetPositionZ());
-            Transport* botSurfaceTransport = GetTransportForPosTolerant(map, bot, bot->GetPhaseMask(),
+            Transport* botSurfaceTransport = GetTransportForPosTolerant(map, bot, bot->GetPhaseShift(),
                 bot->GetPositionX(), bot->GetPositionY(), botProbeZ);
 
             if (botSurfaceTransport == transport)
             {
-                transport->AddPassenger(bot, true);
-                bot->StopMovingOnCurrentPos();
+                transport->AddPassenger(bot);
+                bot->StopMoving();
                 return true;
             }
 
@@ -188,11 +188,8 @@ bool FollowAction::Execute(Event /*event*/)
                         mm->MovePoint(
                             /*id*/ 0,
                             /*coords*/ destX, destY, destZ,
-                            /*forcedMovement*/ FORCED_MOVEMENT_NONE,
-                            /*speed*/ 0.0f,
-                            /*orientation*/ 0.0f,
                             /*generatePath*/ false,
-                            /*forceDestination*/ false);
+                            /*speed*/ 0.0f);
                     }
                     else
                         return false;

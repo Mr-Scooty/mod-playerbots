@@ -8,6 +8,7 @@
 #include "ChatHelper.h"
 #include "Event.h"
 #include "Playerbots.h"
+#include "GossipDef.h"
 
 bool RewardAction::Execute(Event event)
 {
@@ -61,12 +62,12 @@ bool RewardAction::Reward(uint32 itemId, Object* questGiver)
             for (uint8 rewardIdx = 0; rewardIdx < pQuest->GetRewChoiceItemsCount(); ++rewardIdx)
             {
                 ItemTemplate const* pRewardItem = sObjectMgr->GetItemTemplate(pQuest->RewardChoiceItemId[rewardIdx]);
-                if (itemId == pRewardItem->ItemId)
+                if (itemId == pRewardItem->GetId())
                 {
                     bot->RewardQuest(pQuest, rewardIdx, questGiver, false);
 
                     std::string const questTitle = pQuest->GetTitle();
-                    std::string const itemName = pRewardItem->Name1;
+                    std::string const itemName = pRewardItem->GetName(DEFAULT_LOCALE);
 
                     std::ostringstream out;
                     out << chat->FormatItem(pRewardItem) << " rewarded";

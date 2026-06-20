@@ -11,7 +11,7 @@
 
 #define ITEM_SUBCLASS_MASK_SINGLE_HAND                                                                        \
     ((1 << ITEM_SUBCLASS_WEAPON_AXE) | (1 << ITEM_SUBCLASS_WEAPON_MACE) | (1 << ITEM_SUBCLASS_WEAPON_SWORD) | \
-     (1 << ITEM_SUBCLASS_WEAPON_DAGGER) | (1 << ITEM_SUBCLASS_WEAPON_FIST))
+     (1 << ITEM_SUBCLASS_WEAPON_DAGGER) | (1 << ITEM_SUBCLASS_WEAPON_FIST_WEAPON))
 
 enum StatsOverflowThreshold
 {

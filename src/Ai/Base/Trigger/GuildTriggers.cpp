@@ -7,6 +7,9 @@
 
 #include "GuildMgr.h"
 #include "Playerbots.h"
+#include "Guild.h"
+#include "ObjectAccessor.h"
+#include "World.h"
 
 bool PetitionTurnInTrigger::IsActive()
 {
@@ -47,7 +50,7 @@ bool LeaveLargeGuildTrigger::IsActive()
     if (type == GuilderType::SOLO && guild->GetLeaderGUID() != bot->GetGUID())
         return true;
 
-    uint32 members = guild->GetMemberSize();
+    uint32 members = guild->GetMembersCount();
     uint32 maxMembers = uint8(type);
 
     return members > maxMembers;

@@ -20,38 +20,43 @@
 #include "PlayerbotMgr.h"
 #include "RandomPlayerbotMgr.h"
 #include "ScriptMgr.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "RBAC.h"
 
-using namespace Acore::ChatCommands;
-
+// ShatterCore (TrinityCore 4.3.4) command tables use rbac permissions instead of
+// AzerothCore security levels. Until dedicated playerbots rbac permissions exist,
+// player commands ride on COMMAND_HELP (granted to every player role) and GM
+// commands on COMMAND_GM.
 class playerbots_commandscript : public CommandScript
 {
 public:
     playerbots_commandscript() : CommandScript("playerbots_commandscript") {}
 
-    ChatCommandTable GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommandTable playerbotsDebugCommandTable = {
-            {"bg", HandleDebugBGCommand, SEC_GAMEMASTER, Console::Yes},
+        static std::vector<ChatCommand> playerbotsDebugCommandTable = {
+            { "bg", rbac::RBAC_PERM_COMMAND_GM, true, &HandleDebugBGCommand, "" },
         };
 
-        static ChatCommandTable playerbotsAccountCommandTable = {
-            {"setKey", HandleSetSecurityKeyCommand, SEC_PLAYER, Console::No},
-            {"link", HandleLinkAccountCommand, SEC_PLAYER, Console::No},
-            {"linkedAccounts", HandleViewLinkedAccountsCommand, SEC_PLAYER, Console::No},
-            {"unlink", HandleUnlinkAccountCommand, SEC_PLAYER, Console::No},
+        static std::vector<ChatCommand> playerbotsAccountCommandTable = {
+            { "setKey", rbac::RBAC_PERM_COMMAND_HELP, false, &HandleSetSecurityKeyCommand, "" },
+            { "link", rbac::RBAC_PERM_COMMAND_HELP, false, &HandleLinkAccountCommand, "" },
+            { "linkedAccounts", rbac::RBAC_PERM_COMMAND_HELP, false, &HandleViewLinkedAccountsCommand, "" },
+            { "unlink", rbac::RBAC_PERM_COMMAND_HELP, false, &HandleUnlinkAccountCommand, "" },
         };
 
-        static ChatCommandTable playerbotsCommandTable = {
-            {"bot", HandlePlayerbotCommand, SEC_PLAYER, Console::No},
-            {"gtask", HandleGuildTaskCommand, SEC_GAMEMASTER, Console::Yes},
-            {"pmon", HandlePerfMonCommand, SEC_GAMEMASTER, Console::Yes},
-            {"rndbot", HandleRandomPlayerbotCommand, SEC_GAMEMASTER, Console::Yes},
-            {"debug", playerbotsDebugCommandTable},
-            {"account", playerbotsAccountCommandTable},
+        static std::vector<ChatCommand> playerbotsCommandTable = {
+            { "bot", rbac::RBAC_PERM_COMMAND_HELP, false, &HandlePlayerbotCommand, "" },
+            { "gtask", rbac::RBAC_PERM_COMMAND_GM, true, &HandleGuildTaskCommand, "" },
+            { "pmon", rbac::RBAC_PERM_COMMAND_GM, true, &HandlePerfMonCommand, "" },
+            { "rndbot", rbac::RBAC_PERM_COMMAND_GM, true, &HandleRandomPlayerbotCommand, "" },
+            { "debug", rbac::RBAC_PERM_COMMAND_GM, true, nullptr, "", playerbotsDebugCommandTable },
+            { "account", rbac::RBAC_PERM_COMMAND_HELP, false, nullptr, "", playerbotsAccountCommandTable },
         };
 
-        static ChatCommandTable commandTable = {
-            {"playerbots", playerbotsCommandTable},
+        static std::vector<ChatCommand> commandTable = {
+            { "playerbots", rbac::RBAC_PERM_COMMAND_HELP, true, nullptr, "", playerbotsCommandTable },
         };
 
         return commandTable;

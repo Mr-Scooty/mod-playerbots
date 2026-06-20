@@ -7,8 +7,11 @@
 #define _PLAYERBOT_PRIESTTRIGGERS_H
 
 #include "CureTriggers.h"
+#include "GenericTriggers.h"
+#include "NamedObjectContext.h"  // ShatterCore: for Qualified (base of the in-header ShadowOrbsValue)
 #include "SharedDefines.h"
 #include "Trigger.h"
+#include "Value.h"
 #include <set>
 
 class PlayerbotAI;
@@ -109,6 +112,53 @@ public:
 protected:
     uint32 minEnemies;
     static const std::set<uint32> MIND_SEAR_SPELL_IDS;
+};
+
+// ShatterCore 4.3.4 Shadow: Shadow Orbs are NOT a POWER type in 4.3.4 -- they are tracked as stacks of the
+// "shadow orb" buff (0..3). This value reads the current stack count so triggers/actions can spend them.
+class ShadowOrbsValue : public Uint8CalculatedValue, public Qualified
+{
+public:
+    ShadowOrbsValue(PlayerbotAI* botAI, std::string const name = "shadow orbs")
+        : Uint8CalculatedValue(botAI, name) {}
+
+    uint8 Calculate() override;
+};
+
+// Shadow Orbs >= amount (default 3 = empower Mind Blast for max benefit; bots may also dump at any count).
+class ShadowOrbsAvailableTrigger : public StatAvailable
+{
+public:
+    ShadowOrbsAvailableTrigger(PlayerbotAI* botAI, int32 amount = 3)
+        : StatAvailable(botAI, amount, "shadow orbs available") {}
+
+    bool IsActive() override;
+};
+
+// Shadow Word: Death execute window (current target below 25% health).
+class ShadowWordDeathExecuteTrigger : public Trigger
+{
+public:
+    ShadowWordDeathExecuteTrigger(PlayerbotAI* botAI) : Trigger(botAI, "shadow word: death execute") {}
+
+    bool IsActive() override;
+};
+
+// ShatterCore 4.3.4 Holy: Chakra-state maintenance. Serenity is the single-target stance, Sanctuary the AoE stance.
+class ChakraSerenityTrigger : public HasAuraTrigger
+{
+public:
+    ChakraSerenityTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "chakra: serenity") {}
+
+    bool IsActive() override;
+};
+
+class ChakraSanctuaryTrigger : public HasAuraTrigger
+{
+public:
+    ChakraSanctuaryTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "chakra: sanctuary") {}
+
+    bool IsActive() override;
 };
 
 #endif

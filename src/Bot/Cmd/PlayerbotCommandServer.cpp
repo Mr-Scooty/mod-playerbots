@@ -13,6 +13,7 @@
 #include "RandomPlayerbotMgr.h"
 
 #include "IoContext.h"
+#include "Log.h"
 
 using boost::asio::ip::tcp;
 typedef boost::shared_ptr<tcp::socket> socket_ptr;
@@ -58,7 +59,7 @@ void session(socket_ptr sock)
     }
 }
 
-void server(Acore::Asio::IoContext& io_service, short port)
+void server(Trinity::Asio::IoContext& io_service, short port)
 {
     tcp::acceptor a(io_service, tcp::endpoint(tcp::v4(), port));
     for (;;)
@@ -82,7 +83,7 @@ void Run()
 
     try
     {
-        Acore::Asio::IoContext io_service;
+        Trinity::Asio::IoContext io_service;
         server(io_service, sPlayerbotAIConfig.commandServerPort);
     }
 

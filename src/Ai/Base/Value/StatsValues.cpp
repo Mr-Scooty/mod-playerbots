@@ -10,6 +10,10 @@
 #include "PlayerbotAIConfig.h"
 #include "ServerFacade.h"
 #include "Player.h"
+#include "Bag.h"
+#include "Item.h"
+#include "DatabaseEnv.h"
+#include "ObjectAccessor.h"
 
 Unit* HealthValue::GetTarget()
 {
@@ -38,12 +42,12 @@ bool IsDeadValue::Calculate()
     if (!target)
         return false;
 
-    return target->getDeathState() != DeathState::Alive;
+    return target->getDeathState() != ALIVE;
 }
 
 bool PetIsDeadValue::Calculate()
 {
-    if ((bot->GetLevel() < 10 && bot->getClass() == CLASS_HUNTER) || bot->IsMounted())
+    if ((bot->getLevel() < 10 && bot->getClass() == CLASS_HUNTER) || bot->IsMounted())
     {
         return false;
     }
@@ -61,10 +65,10 @@ bool PetIsDeadValue::Calculate()
     if (bot->GetPetGUID() && !bot->GetPet())
         return true;
 
-    return bot->GetPet() && bot->GetPet()->getDeathState() != DeathState::Alive;
+    return bot->GetPet() && bot->GetPet()->getDeathState() != ALIVE;
 }
 
-bool PetIsHappyValue::Calculate() { return !bot->GetPet() || bot->GetPet()->GetHappinessState() == HAPPY; }
+bool PetIsHappyValue::Calculate() { return true; /* 4.3.4: pet happiness was removed */ }
 
 Unit* RageValue::GetTarget()
 {
@@ -94,6 +98,67 @@ uint8 EnergyValue::Calculate()
         return 0;
 
     return (static_cast<float>(target->GetPower(POWER_ENERGY)));
+}
+
+Unit* HolyPowerValue::GetTarget()
+{
+    AiObjectContext* ctx = AiObject::context;
+    return ctx->GetValue<Unit*>(qualifier)->Get();
+}
+
+uint8 HolyPowerValue::Calculate()
+{
+    Unit* target = GetTarget();
+    if (!target)
+        return 0;
+
+    return static_cast<uint8>(target->GetPower(POWER_HOLY_POWER));
+}
+
+// ShatterCore (4.3.4) Cataclysm resources.
+Unit* FocusValue::GetTarget()
+{
+    AiObjectContext* ctx = AiObject::context;
+    return ctx->GetValue<Unit*>(qualifier)->Get();
+}
+
+uint8 FocusValue::Calculate()
+{
+    Unit* target = GetTarget();
+    if (!target)
+        return 0;
+
+    return static_cast<uint8>(target->GetPower(POWER_FOCUS));
+}
+
+Unit* SoulShardsValue::GetTarget()
+{
+    AiObjectContext* ctx = AiObject::context;
+    return ctx->GetValue<Unit*>(qualifier)->Get();
+}
+
+uint8 SoulShardsValue::Calculate()
+{
+    Unit* target = GetTarget();
+    if (!target)
+        return 0;
+
+    return static_cast<uint8>(target->GetPower(POWER_SOUL_SHARDS));
+}
+
+Unit* RunicPowerValue::GetTarget()
+{
+    AiObjectContext* ctx = AiObject::context;
+    return ctx->GetValue<Unit*>(qualifier)->Get();
+}
+
+uint8 RunicPowerValue::Calculate()
+{
+    Unit* target = GetTarget();
+    if (!target)
+        return 0;
+
+    return static_cast<uint8>(target->GetPower(POWER_RUNIC_POWER));
 }
 
 Unit* ManaValue::GetTarget()
@@ -139,7 +204,7 @@ Unit* ComboPointsValue::GetTarget()
 uint8 ComboPointsValue::Calculate()
 {
     Unit* target = GetTarget();
-    if (!target || target->GetGUID() != bot->GetComboTargetGUID())
+    if (!target || target->GetGUID() != bot->GetComboTarget())
         return 0;
 
     return bot->GetComboPoints();
@@ -214,7 +279,7 @@ uint8 BagSpaceValue::Calculate()
         if (pBag)
         {
             ItemTemplate const* pBagProto = pBag->GetTemplate();
-            if (pBagProto->Class == ITEM_CLASS_CONTAINER && pBagProto->SubClass == ITEM_SUBCLASS_CONTAINER)
+            if (pBagProto->GetClass() == ITEM_CLASS_CONTAINER && pBagProto->GetSubClass() == ITEM_SUBCLASS_CONTAINER)
             {
                 total += pBag->GetBagSize();
                 totalused += pBag->GetBagSize() - pBag->GetFreeSlots();

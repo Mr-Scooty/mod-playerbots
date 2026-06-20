@@ -10,6 +10,7 @@
 #include "Event.h"
 #include "LastMovementValue.h"
 #include "Playerbots.h"
+#include "Map.h"
 
 bool MoveToRpgTargetAction::Execute(Event /*event*/)
 {

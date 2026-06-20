@@ -8,6 +8,7 @@
 #include "Strategy.h"
 #include "Timer.h"
 #include "TravelMgr.h"
+#include <cfloat>
 
 using NewRpgStatusTransitionProb = std::vector<std::vector<int>>;
 

@@ -89,7 +89,7 @@ std::string PullStrategy::GetSpellName() const
     if (!itemTemplate)
         return spellName;
 
-    switch (itemTemplate->SubClass)
+    switch (itemTemplate->GetSubClass())
     {
         case ITEM_SUBCLASS_WEAPON_THROWN:
             return "throw";

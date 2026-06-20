@@ -96,6 +96,14 @@ public:
         creators["silencing shot"] = &HunterTriggerFactoryInternal::silencing_shot;
         creators["intimidation"] = &HunterTriggerFactoryInternal::intimidation;
         creators["volley channel check"] = &HunterTriggerFactoryInternal::volley_channel_check;
+        creators["focus for arcane shot"] = &HunterTriggerFactoryInternal::focus_for_arcane_shot;
+        creators["focus low"] = &HunterTriggerFactoryInternal::focus_low;
+        creators["focus fire"] = &HunterTriggerFactoryInternal::focus_fire;
+        creators["fire proc"] = &HunterTriggerFactoryInternal::fire_proc;
+        creators["careful aim"] = &HunterTriggerFactoryInternal::careful_aim;
+        creators["fervor"] = &HunterTriggerFactoryInternal::fervor;
+        creators["bestial wrath"] = &HunterTriggerFactoryInternal::bestial_wrath;
+        creators["chimera shot"] = &HunterTriggerFactoryInternal::chimera_shot;
     }
 
 private:
@@ -134,6 +142,14 @@ private:
     static Trigger* silencing_shot(PlayerbotAI* botAI) { return new SilencingShotTrigger(botAI); }
     static Trigger* intimidation(PlayerbotAI* botAI) { return new IntimidationTrigger(botAI); }
     static Trigger* volley_channel_check(PlayerbotAI* botAI) { return new VolleyChannelCheckTrigger(botAI); }
+    static Trigger* focus_for_arcane_shot(PlayerbotAI* botAI) { return new FocusForArcaneShotTrigger(botAI); }
+    static Trigger* focus_low(PlayerbotAI* botAI) { return new FocusLowTrigger(botAI); }
+    static Trigger* focus_fire(PlayerbotAI* botAI) { return new FocusFireTrigger(botAI); }
+    static Trigger* fire_proc(PlayerbotAI* botAI) { return new FireProcTrigger(botAI); }
+    static Trigger* careful_aim(PlayerbotAI* botAI) { return new CarefulAimTrigger(botAI); }
+    static Trigger* fervor(PlayerbotAI* botAI) { return new FervorTrigger(botAI); }
+    static Trigger* bestial_wrath(PlayerbotAI* botAI) { return new BestialWrathTrigger(botAI); }
+    static Trigger* chimera_shot(PlayerbotAI* botAI) { return new ChimeraShotTrigger(botAI); }
 };
 
 class HunterAiObjectContextInternal : public NamedObjectContext<Action>
@@ -196,6 +212,10 @@ public:
         creators["explosive shot rank 2"] = &HunterAiObjectContextInternal::explosive_shot_rank_2;
         creators["explosive shot rank 1"] = &HunterAiObjectContextInternal::explosive_shot_rank_1;
         creators["intimidation"] = &HunterAiObjectContextInternal::intimidation;
+        creators["cobra shot"] = &HunterAiObjectContextInternal::cobra_shot;
+        creators["focus fire"] = &HunterAiObjectContextInternal::focus_fire;
+        creators["fervor"] = &HunterAiObjectContextInternal::fervor;
+        creators["aspect of the fox"] = &HunterAiObjectContextInternal::aspect_of_the_fox;
     }
 
 private:
@@ -253,6 +273,10 @@ private:
     static Action* explosive_shot_rank_2(PlayerbotAI* botAI) { return new CastExplosiveShotRank2Action(botAI); }
     static Action* explosive_shot_rank_1(PlayerbotAI* botAI) { return new CastExplosiveShotRank1Action(botAI); }
     static Action* intimidation(PlayerbotAI* botAI) { return new CastIntimidationAction(botAI); }
+    static Action* cobra_shot(PlayerbotAI* botAI) { return new CastCobraShotAction(botAI); }
+    static Action* focus_fire(PlayerbotAI* botAI) { return new CastFocusFireAction(botAI); }
+    static Action* fervor(PlayerbotAI* botAI) { return new CastFervorAction(botAI); }
+    static Action* aspect_of_the_fox(PlayerbotAI* botAI) { return new CastAspectOfTheFoxAction(botAI); }
 };
 
 SharedNamedObjectContextList<Strategy> HunterAiObjectContext::sharedStrategyContexts;

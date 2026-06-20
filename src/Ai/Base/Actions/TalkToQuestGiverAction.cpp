@@ -14,6 +14,8 @@
 #include "StatsWeightCalculator.h"
 #include "WorldPacket.h"
 #include "BroadcastHelper.h"
+#include "Log.h"
+#include "ObjectAccessor.h"
 
 bool TalkToQuestGiverAction::ProcessQuest(Quest const* quest, Object* questGiver)
 {

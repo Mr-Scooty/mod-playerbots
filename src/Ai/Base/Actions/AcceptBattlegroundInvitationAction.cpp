@@ -7,6 +7,7 @@
 
 #include "Event.h"
 #include "PlayerbotAI.h"
+#include "WorldSession.h"
 
 bool AcceptBgInvitationAction::Execute(Event /*event*/)
 {

@@ -8,6 +8,9 @@
 #include "Event.h"
 #include "GossipDef.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "Log.h"
+#include "NPCPackets.h"
 
 bool GossipHelloAction::Execute(Event event)
 {
@@ -122,9 +125,9 @@ bool GossipHelloAction::Execute(ObjectGuid guid, int32 menuToSelect, bool silent
 
     if (menuToSelect == -1)
     {
-        WorldPacket p1;
-        p1 << guid;
-        bot->GetSession()->HandleGossipHelloOpcode(p1);
+        WorldPackets::NPC::Hello helloPacket{WorldPacket(CMSG_GOSSIP_HELLO)};
+        helloPacket.Unit = guid;
+        bot->GetSession()->HandleGossipHelloOpcode(helloPacket);
         bot->SetFacingToObject(pCreature);
 
         if (!silent)

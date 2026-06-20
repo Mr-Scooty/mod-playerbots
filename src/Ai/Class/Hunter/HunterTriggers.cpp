@@ -19,6 +19,44 @@ bool KillCommandTrigger::IsActive()
     return !botAI->HasAura("kill command", GetTarget());
 }
 
+// ===== Cataclysm 4.3.4 Focus resource triggers =====
+bool FocusAvailableTrigger::IsActive()
+{
+    return AI_VALUE2(uint8, "focus", "self target") >= amount;
+}
+
+bool FocusLowTrigger::IsActive()
+{
+    // builder is worth casting whenever focus is below this soft cap
+    return AI_VALUE2(uint8, "focus", "self target") < amount;
+}
+
+bool FocusFireTrigger::IsActive()
+{
+    // BM: pet must have the 5-stack Frenzy aura before Focus Fire is worth converting it.
+    Unit* pet = AI_VALUE(Unit*, "pet target");
+    if (!pet)
+        return false;
+
+    // The aura applied to the pet by the Frenzy talent (and consumed by Focus Fire, spell 82692) is
+    // spell 19615 whose SpellName is "Frenzy Effect" -- NOT "Frenzy". GetAura matches on SpellName, so the
+    // name must be "frenzy effect" or this trigger never fires. (See spell_hun_focus_fire in spell_hunter.cpp.)
+    Aura* aura = botAI->GetAura("frenzy effect", pet);
+    return aura && aura->GetStackAmount() >= 5;
+}
+
+bool CarefulAimTrigger::IsActive()
+{
+    Unit* target = AI_VALUE(Unit*, "current target");
+    return target && AI_VALUE2(uint8, "health", "current target") > 80;
+}
+
+bool FervorTrigger::IsActive()
+{
+    // BM focus-regen cooldown: only worth using when focus-starved.
+    return AI_VALUE2(uint8, "focus", "self target") < amount;
+}
+
 bool BlackArrowTrigger::IsActive()
 {
     if (botAI->HasStrategy("trap weave", BOT_STATE_COMBAT))

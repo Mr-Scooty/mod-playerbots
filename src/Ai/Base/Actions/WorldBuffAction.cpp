@@ -7,6 +7,7 @@
 #include "AiFactory.h"
 #include "Event.h"
 #include "Playerbots.h"
+#include "DBCStores.h"
 
 bool WorldBuffAction::Execute(Event event)
 {
@@ -37,7 +38,7 @@ std::vector<uint32> WorldBuffAction::NeedWorldBuffs(Unit* unit)
         return retVec;
 
     uint8 botClass = bot->getClass();
-    uint8 botLevel = bot->GetLevel();
+    uint8 botLevel = bot->getLevel();
 
     uint8 tab = AiFactory::GetPlayerSpecTab(bot);
 

@@ -76,3 +76,40 @@ bool DeathAndDecayCooldownTrigger::IsActive()
 
     return bot->GetSpellCooldownDelay(spellId) >= 2000;
 }
+
+bool OutbreakTrigger::IsActive()
+{
+    // Outbreak must be off cooldown.
+    uint32 spellId = AI_VALUE2(uint32, "spell id", "outbreak");
+    if (!spellId)
+        return false;
+    if (bot->GetSpellCooldownDelay(spellId))
+        return false;
+
+    Unit* target = GetTarget();
+    if (!target)
+        return false;
+
+    Aura* bloodPlague = botAI->GetAura("blood plague", target, true, true);
+    Aura* frostFever = botAI->GetAura("frost fever", target, true, true);
+    // Apply when a disease is missing or about to fall off (<= 3s).
+    bool bloodMissing = !bloodPlague || bloodPlague->GetDuration() <= 3000;
+    bool frostMissing = !frostFever || frostFever->GetDuration() <= 3000;
+    return bloodMissing || frostMissing;
+}
+
+bool DarkTransformationTrigger::IsActive()
+{
+    Pet* pet = bot->GetPet();
+    if (!pet)
+        return false;
+    // Dark Transformation requires 5 stacks of Shadow Infusion on the ghoul.
+    Aura* infusion = pet->GetAura(91342);  // Shadow Infusion
+    if (!infusion || infusion->GetStackAmount() < 5)
+        return false;
+    // Must be off cooldown / castable.
+    uint32 spellId = AI_VALUE2(uint32, "spell id", "dark transformation");
+    if (!spellId)
+        return false;
+    return !bot->GetSpellCooldownDelay(spellId);
+}

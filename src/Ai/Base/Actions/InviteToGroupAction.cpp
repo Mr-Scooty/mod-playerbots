@@ -12,6 +12,8 @@
 #include "Playerbots.h"
 #include "PlayerbotWorldThreadProcessor.h"
 #include "ServerFacade.h"
+#include "Guild.h"
+#include "PartyPackets.h"
 
 bool InviteToGroupAction::Invite(Player* inviter, Player* player)
 {
@@ -34,11 +36,10 @@ bool InviteToGroupAction::Invite(Player* inviter, Player* player)
             }
     }
 
-    WorldPacket p;
-    uint32 roles_mask = 0;
-    p << player->GetName();
-    p << roles_mask;
-    inviter->GetSession()->HandleGroupInviteOpcode(p);
+    // 4.3.4: group invites go through the typed PartyInviteClient handler
+    WorldPackets::Party::PartyInviteClient invite{WorldPacket(CMSG_PARTY_INVITE)};
+    invite.TargetName = player->GetName();
+    inviter->GetSession()->HandlePartyInviteOpcode(invite);
 
     return true;
 }
@@ -84,7 +85,7 @@ bool InviteNearbyToGroupAction::Execute(Event /*event*/)
                 continue;
         }
 
-        if (abs(int32(player->GetLevel() - bot->GetLevel())) > 2)
+        if (abs(int32(player->getLevel() - bot->getLevel())) > 2)
             continue;
 
         if (ServerFacade::instance().GetDistance2d(bot, player) > PlayerbotAIConfig::instance().sightDistance)
@@ -189,10 +190,10 @@ bool InviteGuildToGroupAction::Execute(Event /*event*/)
         if (player->IsBeingTeleported())
             continue;
 
-        if (player->GetMapId() != bot->GetMapId() && player->GetLevel() < 30)
+        if (player->GetMapId() != bot->GetMapId() && player->getLevel() < 30)
             continue;
 
-        if (WorldPosition(player).distance(bot) > 1000 && player->GetLevel() < 15)
+        if (WorldPosition(player).distance(bot) > 1000 && player->getLevel() < 15)
             continue;
 
         PlayerbotAI* playerAi = GET_PLAYERBOT_AI(player);
@@ -206,16 +207,16 @@ bool InviteGuildToGroupAction::Execute(Event /*event*/)
             if (playerAi->HasActivePlayerMaster())  // Do not invite alts of active players.
                 continue;
 
-            if (player->GetLevel() >
-                bot->GetLevel() + 5)  // Invite higher levels that need money so they can grind money and help out.
+            if (player->getLevel() >
+                bot->getLevel() + 5)  // Invite higher levels that need money so they can grind money and help out.
             {
                 if (!PAI_VALUE(bool, "should get money"))
                     continue;
             }
         }
 
-        if (bot->GetLevel() >
-            player->GetLevel() + 5)  // Do not invite members that too low level or risk dragging them to deadly places.
+        if (bot->getLevel() >
+            player->getLevel() + 5)  // Do not invite members that too low level or risk dragging them to deadly places.
             continue;
 
         if (!playerAi && ServerFacade::instance().GetDistance2d(bot, player) > PlayerbotAIConfig::instance().sightDistance)
@@ -288,10 +289,10 @@ bool LfgAction::Execute(Event event)
     if (!botAI->IsSafe(requester))
         return false;
 
-    if (requester->GetLevel() == DEFAULT_MAX_LEVEL && bot->GetLevel() != DEFAULT_MAX_LEVEL)
+    if (requester->getLevel() == DEFAULT_MAX_LEVEL && bot->getLevel() != DEFAULT_MAX_LEVEL)
         return false;
 
-    if (requester->GetLevel() > bot->GetLevel() + 4 || bot->GetLevel() > requester->GetLevel() + 4)
+    if (requester->getLevel() > bot->getLevel() + 4 || bot->getLevel() > requester->getLevel() + 4)
         return false;
 
     std::string param = event.getParam();

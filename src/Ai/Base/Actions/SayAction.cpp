@@ -12,6 +12,10 @@
 #include "Event.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "Map.h"
+#include "DBCStores.h"
+#include "ObjectAccessor.h"
+#include "World.h"
 
 static const std::unordered_set<std::string> noReplyMsgs = {
     "join",
@@ -70,7 +74,7 @@ bool SayAction::Execute(Event /*event*/)
     {
         if (Item* const pItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED))
         {
-            switch (pItem->GetTemplate()->SubClass)
+            switch (pItem->GetTemplate()->GetSubClass())
             {
                 case ITEM_SUBCLASS_WEAPON_GUN:
                     placeholders["<ammo>"] = "bullets";
@@ -85,8 +89,8 @@ bool SayAction::Execute(Event /*event*/)
 
     if (bot->GetMap())
     {
-        if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetMap()->GetZoneId(bot->GetPhaseMask(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ())))
-            placeholders["<subzone>"] = zone->area_name[sWorld->GetDefaultDbcLocale()];
+        if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetMap()->GetZoneId(bot->GetPhaseShift(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ())))
+            placeholders["<subzone>"] = zone->AreaName[sWorld->GetDefaultDbcLocale()];
     }
 
     // set delay before next say
@@ -287,7 +291,7 @@ bool ChatReplyAction::HandleToxicLinksReply(Player* bot, ChatChannelSource chatC
     placeholders["%zone_name"] = current_zone ? GET_PLAYERBOT_AI(bot)->GetLocalizedAreaName(current_zone) : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
     placeholders["%my_class"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatClass(bot->getClass());
     placeholders["%my_race"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatRace(bot->getRace());
-    placeholders["%my_level"] = std::to_string(bot->GetLevel());
+    placeholders["%my_level"] = std::to_string(bot->getLevel());
 
     switch (chatChannelSource)
     {
@@ -343,7 +347,7 @@ bool ChatReplyAction::HandleWTBItemsReply(Player* bot, ChatChannelSource chatCha
         placeholders["%zone_name"] = current_zone ? GET_PLAYERBOT_AI(bot)->GetLocalizedAreaName(current_zone) : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
         placeholders["%my_class"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatClass(bot->getClass());
         placeholders["%my_race"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatRace(bot->getRace());
-        placeholders["%my_level"] = std::to_string(bot->GetLevel());
+        placeholders["%my_level"] = std::to_string(bot->getLevel());
         placeholders["%my_role"] = ChatHelper::FormatClass(bot, AiFactory::GetPlayerSpecTab(bot));
         placeholders["%formatted_item_links"] = "";
 
@@ -438,7 +442,7 @@ bool ChatReplyAction::HandleLFGQuestsReply(Player* bot, ChatChannelSource chatCh
         placeholders["%zone_name"] = current_zone ? GET_PLAYERBOT_AI(bot)->GetLocalizedAreaName(current_zone) : PlayerbotTextMgr::instance().GetBotText("string_unknown_area");
         placeholders["%my_class"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatClass(bot->getClass());
         placeholders["%my_race"] = GET_PLAYERBOT_AI(bot)->GetChatHelper()->FormatRace(bot->getRace());
-        placeholders["%my_level"] = std::to_string(bot->GetLevel());
+        placeholders["%my_level"] = std::to_string(bot->getLevel());
         placeholders["%my_role"] = ChatHelper::FormatClass(bot, AiFactory::GetPlayerSpecTab(bot));
         placeholders["%quest_links"] = "";
         for (auto matchingQuestId : matchingQuestIds)

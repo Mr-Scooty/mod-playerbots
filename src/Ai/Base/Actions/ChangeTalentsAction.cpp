@@ -13,6 +13,7 @@
 #include "AiObjectContext.h"
 #include "Log.h"
 #include "RandomPlayerbotMgr.h"
+#include "World.h"
 
 bool ChangeTalentsAction::Execute(Event event)
 {
@@ -43,10 +44,10 @@ bool ChangeTalentsAction::Execute(Event event)
             }
             else if (param.find("switch 2") != std::string::npos)
             {
-                if (bot->GetSpecsCount() == 1 && bot->GetLevel() >= sWorld->getIntConfig(CONFIG_MIN_DUALSPEC_LEVEL))
+                if (bot->GetSpecsCount() == 1 && bot->getLevel() >= sWorld->getIntConfig(CONFIG_MIN_DUALSPEC_LEVEL))
                 {
-                    bot->CastSpell(bot, 63680, true, nullptr, nullptr, bot->GetGUID());
-                    bot->CastSpell(bot, 63624, true, nullptr, nullptr, bot->GetGUID());
+                    bot->CastSpell(bot, 63680, true);
+                    bot->CastSpell(bot, 63624, true);
                 }
                 bot->ActivateSpec(1);
                 out << "Active second talent";
@@ -55,7 +56,7 @@ bool ChangeTalentsAction::Execute(Event event)
         }
         else if (param.find("autopick") != std::string::npos)
         {
-            PlayerbotFactory factory(bot, bot->GetLevel());
+            PlayerbotFactory factory(bot, bot->getLevel());
             factory.InitTalentsTree(true);
             out << "Auto pick talents";
             botAI->ResetStrategies();
@@ -116,7 +117,7 @@ std::string ChangeTalentsAction::SpecList()
         }
         specFound++;
         std::ostringstream out;
-        std::vector<std::vector<uint32>> parsed = sPlayerbotAIConfig.parsedSpecLinkOrder[cls][specNo][80];
+        std::vector<std::vector<uint32>> parsed = sPlayerbotAIConfig.parsedSpecLinkOrder[cls][specNo][85];  // ShatterCore: Cata max level 85
         std::unordered_map<int, int> tabCount;
         tabCount[0] = tabCount[1] = tabCount[2] = 0;
         for (auto& item : parsed)
@@ -145,7 +146,7 @@ std::string ChangeTalentsAction::SpecPick(std::string param)
         {
             PlayerbotFactory::InitTalentsBySpecNo(bot, specNo, true);
 
-            PlayerbotFactory factory(bot, bot->GetLevel());
+            PlayerbotFactory factory(bot, bot->getLevel());
             factory.InitGlyphs(false);
 
             std::ostringstream out;
@@ -194,7 +195,7 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
 //     // for (auto& path : sPlayerbotAIConfig.classSpecs[bot->getClass()].talentPath)
 //     // {
 //     //     TalentSpec newSpec = *GetBestPremadeSpec(path.id);
-//     //     newSpec.CropTalents(bot->GetLevel());
+//     //     newSpec.CropTalents(bot->getLevel());
 //     //     if (oldSpec->isEarlierVersionOf(newSpec))
 //     //     {
 //     //         ret.push_back(&path);
@@ -264,7 +265,7 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
 // bool ChangeTalentsAction::AutoSelectTalents(std::ostringstream* out)
 // {
 //     // Does the bot have talentpoints?
-//     if (bot->GetLevel() < 10)
+//     if (bot->getLevel() < 10)
 //     {
 //         *out << "No free talent points.";
 //         return false;
@@ -278,7 +279,7 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
 //     if (specNo > 0)
 //     {
 //         TalentSpec newSpec = *GetBestPremadeSpec(specId);
-//         newSpec.CropTalents(bot->GetLevel());
+//         newSpec.CropTalents(bot->getLevel());
 //         newSpec.ApplyTalents(bot, out);
 //         if (newSpec.GetTalentPoints() > 0)
 //         {
@@ -289,7 +290,7 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
 //     else if (!specLink.empty())
 //     {
 //         TalentSpec newSpec(bot, specLink);
-//         newSpec.CropTalents(bot->GetLevel());
+//         newSpec.CropTalents(bot->getLevel());
 //         newSpec.ApplyTalents(bot, out);
 //         if (newSpec.GetTalentPoints() > 0)
 //         {
@@ -330,7 +331,7 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
 //             specId = PickPremadePath(paths, sRandomPlayerbotMgr.IsRandomBot(bot))->id;
 //             TalentSpec newSpec = *GetBestPremadeSpec(specId);
 //             specLink = newSpec.GetTalentLink();
-//             newSpec.CropTalents(bot->GetLevel());
+//             newSpec.CropTalents(bot->getLevel());
 //             newSpec.ApplyTalents(bot, out);
 
 //             if (paths.size() > 1)
@@ -378,7 +379,7 @@ bool AutoSetTalentsAction::Execute(Event /*event*/)
     if (bot->GetFreeTalentPoints() <= 0)
         return false;
 
-    PlayerbotFactory factory(bot, bot->GetLevel());
+    PlayerbotFactory factory(bot, bot->getLevel());
     factory.InitTalentsTree(true, true, true);
     factory.InitPetTalents();
     botAI->TellMaster(out);

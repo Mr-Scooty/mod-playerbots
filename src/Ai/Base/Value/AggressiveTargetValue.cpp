@@ -38,7 +38,7 @@ Unit* AggressiveTargetValue::Calculate()
             bot->GetReactionTo(unit) >= REP_NEUTRAL)
             continue;
 
-        if (!bot->IsHostileTo(unit) && unit->GetNpcFlags() != UNIT_NPC_FLAG_NONE)
+        if (!bot->IsHostileTo(unit) && unit->GetUInt32Value(UNIT_NPC_FLAGS) != UNIT_NPC_FLAG_NONE)
             continue;
 
         if (abs(bot->GetPositionZ() - unit->GetPositionZ()) > INTERACTION_DISTANCE)

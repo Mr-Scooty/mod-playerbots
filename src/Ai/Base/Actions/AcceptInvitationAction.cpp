@@ -12,6 +12,8 @@
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
 #include "WorldPacket.h"
+#include "WorldSession.h"
+#include "PartyPackets.h"
 
 bool AcceptInvitationAction::Execute(Event event)
 {
@@ -39,10 +41,10 @@ bool AcceptInvitationAction::Execute(Event event)
     if (bot->isAFK())
         bot->ToggleAFK();
 
-    WorldPacket p;
-    uint32 roles_mask = 0;
-    p << roles_mask;
-    bot->GetSession()->HandleGroupAcceptOpcode(p);
+    // 4.3.4: group invites are answered through the typed PartyInviteResponse handler
+    WorldPackets::Party::PartyInviteResponse response{WorldPacket(CMSG_PARTY_INVITE_RESPONSE)};
+    response.Accept = true;
+    bot->GetSession()->HandlePartyInviteResponseOpcode(response);
 
     if (!bot->GetGroup() || !bot->GetGroup()->IsMember(inviter->GetGUID()))
         return false;

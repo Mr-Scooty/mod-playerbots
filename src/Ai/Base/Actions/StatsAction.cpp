@@ -8,6 +8,9 @@
 #include "ChatHelper.h"
 #include "Event.h"
 #include "PlayerbotAI.h"
+#include "Bag.h"
+#include "Log.h"
+#include "DBCStores.h"
 
 bool StatsAction::Execute(Event /*event*/)
 {
@@ -54,7 +57,7 @@ void StatsAction::ListBagSlots(std::ostringstream& out)
         if (Bag const* pBag = (Bag*)bot->GetItemByPos(INVENTORY_SLOT_BAG_0, bag))
         {
             ItemTemplate const* pBagProto = pBag->GetTemplate();
-            if (pBagProto->Class == ITEM_CLASS_CONTAINER && pBagProto->SubClass == ITEM_SUBCLASS_CONTAINER)
+            if (pBagProto->GetClass() == ITEM_CLASS_CONTAINER && pBagProto->GetSubClass() == ITEM_SUBCLASS_CONTAINER)
             {
                 total += pBag->GetBagSize();
                 totalfree += pBag->GetFreeSlots();
@@ -138,14 +141,14 @@ uint32 StatsAction::EstRepair(uint16 pos)
     {
         ItemTemplate const* ditemProto = item->GetTemplate();
 
-        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->ItemLevel);
+        DurabilityCostsEntry const* dcost = sDurabilityCostsStore.LookupEntry(ditemProto->GetBaseItemLevel());
         if (!dcost)
         {
-            LOG_ERROR("playerbots", "RepairDurability: Wrong item lvl {}", ditemProto->ItemLevel);
+            LOG_ERROR("playerbots", "RepairDurability: Wrong item lvl {}", ditemProto->GetBaseItemLevel());
             return TotalCost;
         }
 
-        uint32 dQualitymodEntryId = (ditemProto->Quality + 1) * 2;
+        uint32 dQualitymodEntryId = (ditemProto->GetQuality() + 1) * 2;
         DurabilityQualityEntry const* dQualitymodEntry = sDurabilityQualityStore.LookupEntry(dQualitymodEntryId);
         if (!dQualitymodEntry)
         {
@@ -154,8 +157,8 @@ uint32 StatsAction::EstRepair(uint16 pos)
         }
 
         uint32 dmultiplier =
-            dcost->multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->Class, ditemProto->SubClass)];
-        uint32 costs = uint32(LostDurability * dmultiplier * double(dQualitymodEntry->quality_mod));
+            dcost->Multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->GetClass(), ditemProto->GetSubClass())];
+        uint32 costs = uint32(LostDurability * dmultiplier * double(dQualitymodEntry->Data));
 
         if (!costs)  // fix for ITEM_QUALITY_ARTIFACT
             costs = 1;

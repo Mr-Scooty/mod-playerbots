@@ -17,7 +17,7 @@ bool CanFishValue::Calculate()
     if (SkillFishing == 0)
         return false;
 
-    if (bot->isSwimming())
+    if (bot->HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
         return false;
 
     if (bot->IsInCombat())

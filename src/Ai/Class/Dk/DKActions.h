@@ -212,6 +212,34 @@ public:
     CastScourgeStrikeAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "scourge strike") {}
 };
 
+// 4.3.4: Outbreak - applies both diseases (Frost Fever + Blood Plague), no rune cost, 1 min CD. Ideal opener/refresh.
+class CastOutbreakAction : public CastSpellAction
+{
+public:
+    CastOutbreakAction(PlayerbotAI* botAI) : CastSpellAction(botAI, "outbreak") {}
+};
+
+// 4.3.4 Unholy: Festering Strike (Blood+Frost runes) - extends disease durations, big weapon hit.
+class CastFesteringStrikeAction : public CastMeleeSpellAction
+{
+public:
+    CastFesteringStrikeAction(PlayerbotAI* botAI) : CastMeleeSpellAction(botAI, "festering strike") {}
+};
+
+// 4.3.4 Frost: Pillar of Frost - Strength burst cooldown.
+class CastPillarOfFrostAction : public CastBuffSpellAction
+{
+public:
+    CastPillarOfFrostAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "pillar of frost") {}
+};
+
+// 4.3.4 Unholy: Dark Transformation - empowers ghoul once 5 Shadow Infusion stacks reached. Pet target.
+class CastDarkTransformationAction : public CastBuffSpellAction
+{
+public:
+    CastDarkTransformationAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "dark transformation") {}
+};
+
 class CastDeathCoilAction : public CastSpellAction
 {
 public:

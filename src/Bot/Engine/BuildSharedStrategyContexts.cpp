@@ -1,7 +1,5 @@
 #include "AiObjectContext.h"
 #include "StrategyContext.h"
-#include "Ai/Dungeon/DungeonStrategyContext.h"
-#include "Ai/Raid/RaidStrategyContext.h"
 
 void AiObjectContext::BuildSharedStrategyContexts(SharedNamedObjectContextList<Strategy>& strategyContexts)
 {
@@ -9,6 +7,6 @@ void AiObjectContext::BuildSharedStrategyContexts(SharedNamedObjectContextList<S
     strategyContexts.Add(new MovementStrategyContext());
     strategyContexts.Add(new AssistStrategyContext());
     strategyContexts.Add(new QuestStrategyContext());
-    strategyContexts.Add(new DungeonStrategyContext());
-    strategyContexts.Add(new RaidStrategyContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - strategyContexts.Add(new DungeonStrategyContext());
+    // 4.3.4 stage 1: WotLK raid/dungeon packs excluded - strategyContexts.Add(new RaidStrategyContext());
 }

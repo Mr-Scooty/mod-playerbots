@@ -17,6 +17,8 @@
 #include "ServerFacade.h"
 #include "GuildMgr.h"
 #include "BroadcastHelper.h"
+#include "WorldSession.h"
+#include "DBCStores.h"
 
 bool LootAction::Execute(Event /*event*/)
 {
@@ -175,7 +177,7 @@ uint32 OpenLootAction::GetOpeningSpell(LootObject& lootObject, GameObject* go)
     {
         uint32 spellId = itr->first;
 
-        if (itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+        if (itr->second.state == PLAYERSPELL_REMOVED || !itr->second.active)
             continue;
 
         if (spellId == MINING || spellId == HERB_GATHERING)
@@ -281,7 +283,7 @@ bool StoreLootAction::AuctionItem(uint32 itemId)
     if (!proto)
         return false;
 
-    if (!proto || proto->Bonding == BIND_WHEN_PICKED_UP || proto->Bonding == BIND_QUEST_ITEM)
+    if (!proto || proto->GetBonding() == BIND_ON_ACQUIRE || proto->GetBonding() == BIND_QUEST)
         return false;
 
     Item* oldItem = bot->GetItemByEntry(itemId);
@@ -294,7 +296,7 @@ bool StoreLootAction::AuctionItem(uint32 itemId)
 
     AuctionHouseObject* auctionHouse = sAuctionMgr->GetAuctionsMap(ahEntry);
 
-    uint32 price = oldItem->GetCount() * proto->BuyPrice * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
+    uint32 price = oldItem->GetCount() * proto->GetBuyPrice() * sRandomPlayerbotMgr.GetBuyMultiplier(bot);
 
 uint32 stackCount = urand(1, proto->GetMaxStackSize());
     if (!price || !stackCount)
@@ -309,7 +311,7 @@ uint32 stackCount = urand(1, proto->GetMaxStackSize());
     uint32 bidPrice = RoundPrice(stackCount * price);
     uint32 buyoutPrice = RoundPrice(stackCount * urand(price, 4 * price / 3));
 
-    Item* item = Item::CreateItem(proto->ItemId, stackCount);
+    Item* item = Item::CreateItem(proto->GetId(), stackCount);
     if (!item)
         return false;
 
@@ -339,7 +341,7 @@ uint32 stackCount = urand(1, proto->GetMaxStackSize());
     auctionEntry->SaveToDB();
 
     LOG_ERROR("playerbots", "AhBot {} added {} of {} to auction {} for {}..{}", bot->GetName().c_str(), stackCount,
-proto->Name1.c_str(), 1, bidPrice, buyoutPrice);
+proto->GetName(DEFAULT_LOCALE), 1, bidPrice, buyoutPrice);
 
     if (oldItem->GetCount() > stackCount)
         oldItem->SetCount(oldItem->GetCount() - stackCount);
@@ -428,7 +430,7 @@ bool StoreLootAction::Execute(Event event)
         Player* master = botAI->GetMaster();
         if (sRandomPlayerbotMgr.IsRandomBot(bot) && master)
         {
-            uint32 price = itemcount * proto->BuyPrice * sRandomPlayerbotMgr.GetBuyMultiplier(bot) + gold;
+            uint32 price = itemcount * proto->GetBuyPrice() * sRandomPlayerbotMgr.GetBuyMultiplier(bot) + gold;
             if (price)
                 sRandomPlayerbotMgr.AddTradeDiscount(bot, master, price);
 
@@ -444,10 +446,10 @@ bool StoreLootAction::Execute(Event event)
         // bot->GetSession()->HandleAutostoreLootItemOpcode(packet);
         botAI->SetNextCheckDelay(sPlayerbotAIConfig.lootDelay);
 
-        if (proto->Quality > ITEM_QUALITY_NORMAL && !urand(0, 50) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
+        if (proto->GetQuality() > ITEM_QUALITY_NORMAL && !urand(0, 50) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
             botAI->PlayEmote(TEXT_EMOTE_CHEER);
 
-        if (proto->Quality >= ITEM_QUALITY_RARE && !urand(0, 1) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
+        if (proto->GetQuality() >= ITEM_QUALITY_RARE && !urand(0, 1) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
             botAI->PlayEmote(TEXT_EMOTE_CHEER);
 
         BroadcastHelper::BroadcastLootingItem(botAI, bot, proto);
@@ -476,11 +478,11 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
     if (lootItems.find(itemid) != lootItems.end())
         return true;
 
-    uint32 max = proto->MaxCount;
+    uint32 max = proto->GetMaxCount();
     if (max > 0 && botAI->GetBot()->HasItemCount(itemid, max, true))
         return false;
 
-    if (proto->StartQuest)
+    if (proto->GetStartQuest())
     {
         return true;
     }
@@ -496,7 +498,7 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         {
             if (quest->RequiredItemId[i] == itemid)
             {
-                // if (AI_VALUE2(uint32, "item count", proto->Name1) < quest->RequiredItemCount[i])
+                // if (AI_VALUE2(uint32, "item count", proto->GetName(DEFAULT_LOCALE)) < quest->RequiredItemCount[i])
                 // {
                 //     if (botAI->GetMaster() && sPlayerbotAIConfig.syncQuestWithPlayer)
                 //         return false; //Quest is autocomplete for the bot so no item needed.
@@ -507,13 +509,13 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         }
     }
 
-    // if (proto->Bonding == BIND_QUEST_ITEM ||  //Still testing if it works ok without these lines.
-    //     proto->Bonding == BIND_QUEST_ITEM1 || //Eventually this has to be removed.
-    //     proto->Class == ITEM_CLASS_QUEST)
+    // if (proto->GetBonding() == BIND_QUEST ||  //Still testing if it works ok without these lines.
+    //     proto->GetBonding() == BIND_QUEST_ITEM1 || //Eventually this has to be removed.
+    //     proto->GetClass() == ITEM_CLASS_QUEST)
     //{
 
     bool canLoot = lootStrategy->CanLoot(proto, context);
-    // if (canLoot && proto->Bonding == BIND_WHEN_PICKED_UP && botAI->HasActivePlayerMaster())
+    // if (canLoot && proto->GetBonding() == BIND_ON_ACQUIRE && botAI->HasActivePlayerMaster())
     // canLoot = sPlayerbotAIConfig.IsInRandomAccountList(botAI->GetBot()->GetSession()->GetAccountId());
 
     return canLoot;

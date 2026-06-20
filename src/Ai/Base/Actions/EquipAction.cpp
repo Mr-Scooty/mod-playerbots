@@ -13,6 +13,8 @@
 #include "Playerbots.h"
 #include "StatsWeightCalculator.h"
 #include "ItemPackets.h"
+#include "WorldSession.h"
+#include "Bag.h"
 
 bool EquipAction::Execute(Event event)
 {
@@ -67,13 +69,13 @@ void EquipAction::EquipItem(Item* item)
     uint8 bagIndex = item->GetBagSlot();
     uint8 slot = item->GetSlot();
     const ItemTemplate* itemProto = item->GetTemplate();
-    uint32 itemId = itemProto->ItemId;
-    uint8 invType = itemProto->InventoryType;
+    uint32 itemId = itemProto->GetId();
+    uint8 invType = itemProto->GetInventoryType();
 
     // Handle ammunition separately
     if (invType == INVTYPE_AMMO)
     {
-        bot->SetAmmo(itemId);
+        // 4.3.4: ammo removed
         std::ostringstream out;
         out << "equipping " << chat->FormatItem(itemProto);
         botAI->TellMaster(out);
@@ -82,7 +84,7 @@ void EquipAction::EquipItem(Item* item)
 
     // Handle bags first
     bool equippedBag = false;
-    if (itemProto->Class == ITEM_CLASS_CONTAINER)
+    if (itemProto->GetClass() == ITEM_CLASS_CONTAINER)
     {
         // Attempt to equip as a bag
         uint8 newBagSlot = GetSmallestBagSlot();
@@ -107,9 +109,7 @@ void EquipAction::EquipItem(Item* item)
             ObjectGuid itemguid = item->GetGUID();
             packet << itemguid << uint8(EQUIPMENT_SLOT_RANGED);
 
-            WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(packet));
-            nicePacket.Read();
-            bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+            bot->GetSession()->HandleAutoEquipItemSlotOpcode(packet);
 
             std::ostringstream out;
             out << "Equipping " << chat->FormatItem(itemProto) << " in ranged slot";
@@ -120,7 +120,7 @@ void EquipAction::EquipItem(Item* item)
         uint8 dstSlot = botAI->FindEquipSlot(itemProto, NULL_SLOT, true);
 
         // Check if the item is a weapon and whether the bot can dual wield or use Titan Grip
-        bool isWeapon = (itemProto->Class == ITEM_CLASS_WEAPON);
+        bool isWeapon = (itemProto->GetClass() == ITEM_CLASS_WEAPON);
         bool canTitanGrip = bot->CanTitanGrip();
         bool canDualWield = bot->CanDualWield();
 
@@ -129,14 +129,14 @@ void EquipAction::EquipItem(Item* item)
         if (canTitanGrip && isTwoHander)
         {
             // Titan Grip-valid 2H weapon subclasses: Axe2, Mace2, Sword2
-            isValidTGWeapon = (itemProto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
-                               itemProto->SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
-                               itemProto->SubClass == ITEM_SUBCLASS_WEAPON_SWORD2);
+            isValidTGWeapon = (itemProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_AXE2 ||
+                               itemProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_MACE2 ||
+                               itemProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_SWORD2);
         }
 
         // Check if the main hand currently has a 2H weapon equipped
         Item* currentMHItem = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-        bool have2HWeaponEquipped = (currentMHItem && currentMHItem->GetTemplate()->InventoryType == INVTYPE_2HWEAPON);
+        bool have2HWeaponEquipped = (currentMHItem && currentMHItem->GetTemplate()->GetInventoryType() == INVTYPE_2HWEAPON);
 
         // bool canDualWieldOrTG = (canDualWield || (canTitanGrip && isTwoHander));
         bool canDualWieldOrTG = (canDualWield || isTwoHander);
@@ -156,9 +156,9 @@ void EquipAction::EquipItem(Item* item)
             // Calculate item scores once and store them
             float newItemScore = calculator.CalculateItem(itemId, item->GetItemRandomPropertyId());
             float mainHandScore = mainHandItem
-                ? calculator.CalculateItem(mainHandItem->GetTemplate()->ItemId, mainHandItem->GetItemRandomPropertyId()) : 0.0f;
+                ? calculator.CalculateItem(mainHandItem->GetTemplate()->GetId(), mainHandItem->GetItemRandomPropertyId()) : 0.0f;
             float offHandScore = offHandItem
-                ? calculator.CalculateItem(offHandItem->GetTemplate()->ItemId, offHandItem->GetItemRandomPropertyId()) : 0.0f;
+                ? calculator.CalculateItem(offHandItem->GetTemplate()->GetId(), offHandItem->GetItemRandomPropertyId()) : 0.0f;
 
             // Determine where this weapon can go
             bool canGoMain = (invType == INVTYPE_WEAPON ||
@@ -179,16 +179,16 @@ void EquipAction::EquipItem(Item* item)
             {
                 const ItemTemplate* mhProto = mainHandItem->GetTemplate();
                 bool mhIsValidTG = false;
-                if (canTitanGrip && mhProto->InventoryType == INVTYPE_2HWEAPON)
+                if (canTitanGrip && mhProto->GetInventoryType() == INVTYPE_2HWEAPON)
                 {
-                    mhIsValidTG = (mhProto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
-                                   mhProto->SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
-                                   mhProto->SubClass == ITEM_SUBCLASS_WEAPON_SWORD2);
+                    mhIsValidTG = (mhProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_AXE2 ||
+                                   mhProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_MACE2 ||
+                                   mhProto->GetSubClass() == ITEM_SUBCLASS_WEAPON_SWORD2);
                 }
 
-                mainHandCanGoOff = (mhProto->InventoryType == INVTYPE_WEAPON ||
-                                    mhProto->InventoryType == INVTYPE_WEAPONOFFHAND ||
-                                    (mhProto->InventoryType == INVTYPE_2HWEAPON && mhIsValidTG));
+                mainHandCanGoOff = (mhProto->GetInventoryType() == INVTYPE_WEAPON ||
+                                    mhProto->GetInventoryType() == INVTYPE_WEAPONOFFHAND ||
+                                    (mhProto->GetInventoryType() == INVTYPE_2HWEAPON && mhIsValidTG));
             }
 
             // Priority 1: Replace main hand if the new weapon is strictly better
@@ -206,9 +206,7 @@ void EquipAction::EquipItem(Item* item)
                     WorldPacket eqPacket(CMSG_AUTOEQUIP_ITEM_SLOT, 2);
                     ObjectGuid newItemGuid = item->GetGUID();
                     eqPacket << newItemGuid << uint8(EQUIPMENT_SLOT_MAINHAND);
-                    WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(eqPacket));
-                    nicePacket.Read();
-                    bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+                    bot->GetSession()->HandleAutoEquipItemSlotOpcode(eqPacket);
                 }
 
                 // Try moving old main hand weapon to offhand if beneficial
@@ -219,9 +217,7 @@ void EquipAction::EquipItem(Item* item)
                     WorldPacket offhandPacket(CMSG_AUTOEQUIP_ITEM_SLOT, 2);
                     ObjectGuid oldMHGuid = mainHandItem->GetGUID();
                     offhandPacket << oldMHGuid << uint8(EQUIPMENT_SLOT_OFFHAND);
-                    WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(offhandPacket));
-                    nicePacket.Read();
-                    bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+                    bot->GetSession()->HandleAutoEquipItemSlotOpcode(offhandPacket);
 
                     std::ostringstream moveMsg;
                     moveMsg << "Main hand upgrade found. Moving " << chat->FormatItem(oldMHProto) << " to offhand";
@@ -241,9 +237,7 @@ void EquipAction::EquipItem(Item* item)
                 WorldPacket eqPacket(CMSG_AUTOEQUIP_ITEM_SLOT, 2);
                 ObjectGuid newItemGuid = item->GetGUID();
                 eqPacket << newItemGuid << uint8(EQUIPMENT_SLOT_OFFHAND);
-                WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(eqPacket));
-                nicePacket.Read();
-                bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+                bot->GetSession()->HandleAutoEquipItemSlotOpcode(eqPacket);
 
                 std::ostringstream out;
                 out << "Equipping " << chat->FormatItem(itemProto) << " in offhand";
@@ -285,8 +279,8 @@ void EquipAction::EquipItem(Item* item)
                     // Calculate equipped items scores with random properties
                     int32 firstRandomProp = equippedItems[0]->GetItemRandomPropertyId();
                     int32 secondRandomProp = equippedItems[1]->GetItemRandomPropertyId();
-                    float firstItemScore = calc.CalculateItem(equippedItems[0]->GetTemplate()->ItemId, firstRandomProp);
-                    float secondItemScore = calc.CalculateItem(equippedItems[1]->GetTemplate()->ItemId, secondRandomProp);
+                    float firstItemScore = calc.CalculateItem(equippedItems[0]->GetTemplate()->GetId(), firstRandomProp);
+                    float secondItemScore = calc.CalculateItem(equippedItems[1]->GetTemplate()->GetId(), secondRandomProp);
 
                     // Determine which slot (if any) should be replaced
                     bool betterThanFirst = newItemScore > firstItemScore;
@@ -319,9 +313,7 @@ void EquipAction::EquipItem(Item* item)
             WorldPacket packet(CMSG_AUTOEQUIP_ITEM_SLOT, 2);
             ObjectGuid itemguid = item->GetGUID();
             packet << itemguid << dstSlot;
-            WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(packet));
-            nicePacket.Read();
-            bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+            bot->GetSession()->HandleAutoEquipItemSlotOpcode(packet);
         }
     }
 
@@ -348,11 +340,11 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
 
         //TODO Expand to Glyphs and Gems, that can be placed in equipment
         //Pre-filter non-equipable items
-        if (itemTemplate->InventoryType == INVTYPE_NON_EQUIP)
+        if (itemTemplate->GetInventoryType() == INVTYPE_NON_EQUIP)
             continue;
 
         int32 randomProperty = item->GetItemRandomPropertyId();
-        uint32 itemId = item->GetTemplate()->ItemId;
+        uint32 itemId = item->GetTemplate()->GetId();
         std::string itemUsageParam;
         if (randomProperty != 0)
             itemUsageParam = std::to_string(itemId) + "," + std::to_string(randomProperty);
@@ -399,7 +391,7 @@ bool EquipUpgradesPacketAction::Execute(Event event)
         p >> itemId;
 
         ItemTemplate const* item = sObjectMgr->GetItemTemplate(itemId);
-        if (item->InventoryType == INVTYPE_NON_EQUIP)
+        if (item->GetInventoryType() == INVTYPE_NON_EQUIP)
             return false;
     }
 

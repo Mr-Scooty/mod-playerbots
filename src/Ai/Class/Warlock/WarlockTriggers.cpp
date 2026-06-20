@@ -87,6 +87,28 @@ bool DecimationTrigger::IsActive()
     return aura && aura->GetDuration() > 3000;
 }
 
+// 4.3.4 soul-shard UI resource (POWER_SOUL_SHARDS): at least one shard available for Soulburn.
+bool SoulShardAvailableTrigger::IsActive()
+{
+    return AI_VALUE2(uint8, "soul shards", "self target") >= 1;
+}
+
+// Affliction execute window: target below 25% HP -> switch filler to Drain Soul.
+bool TargetLowHealth25Trigger::IsActive()
+{
+    Unit* target = GetTarget();
+    if (!target || !target->IsAlive())
+        return false;
+
+    return AI_VALUE2(uint8, "health", "current target") < 25;
+}
+
+// Dark Intent: keep the buff up on self (bots may also assign it to a caster/healer ally).
+bool DarkIntentTrigger::IsActive()
+{
+    return !botAI->HasAura("dark intent", bot);
+}
+
 // Checks if the bot's mana is below 85% and health is above a low health threshold
 bool LifeTapTrigger::IsActive()
 {

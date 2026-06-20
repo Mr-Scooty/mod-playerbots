@@ -11,7 +11,6 @@
 #include "PlayerbotTextMgr.h"
 #include "CreatureAI.h"
 #include "Playerbots.h"
-#include "CharmInfo.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
 #include <vector>
@@ -167,7 +166,7 @@ bool SetPetStanceAction::Execute(Event /*event*/)
         targets.push_back(pet);
 
     // Loop through all units controlled by the bot (could be pets, guardians, etc.)
-    for (Unit::ControlSet::const_iterator itr = bot->m_Controlled.begin(); itr != bot->m_Controlled.end(); ++itr)
+    for (Unit::ControlList::const_iterator itr = bot->m_Controlled.begin(); itr != bot->m_Controlled.end(); ++itr)
     {
         // Only add creatures (skip players, vehicles, etc.)
         Creature* creature = dynamic_cast<Creature*>(*itr);
@@ -217,10 +216,7 @@ bool SetPetStanceAction::Execute(Event /*event*/)
     for (Creature* target : targets)
     {
         target->SetReactState(react);
-        CharmInfo* charmInfo = target->GetCharmInfo();
-        // If the creature has a CharmInfo, set the player-visible stance as well
-        if (charmInfo)
-            charmInfo->SetPlayerReactState(react);
+        // 4.3.4: CharmInfo has no separate player-visible react state
     }
 
     // If debug is enabled in config, inform the master of the new stance

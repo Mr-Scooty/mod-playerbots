@@ -5,6 +5,7 @@
 
 #include "WarriorTriggers.h"
 #include "Playerbots.h"
+#include "SpellHistory.h"
 
 bool BloodrageBuffTrigger::IsActive()
 {
@@ -64,7 +65,7 @@ bool VigilanceTrigger::IsActive()
 
 bool ShatteringThrowTrigger::IsActive()
 {
-    if (!bot->HasSpell(64382) || bot->HasSpellCooldown(64382))
+    if (!bot->HasSpell(64382) || bot->GetSpellHistory()->HasCooldown(64382))
         return false;
 
     GuidVector enemies = AI_VALUE(GuidVector, "possible targets");

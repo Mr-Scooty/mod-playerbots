@@ -12,6 +12,7 @@
 #include "PlayerbotAI.h"
 #include "QuestDef.h"
 #include "TravelMgr.h"
+#include <G3D/Vector2.h>
 
 struct POIInfo
 {

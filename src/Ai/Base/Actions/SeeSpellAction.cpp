@@ -12,6 +12,7 @@
 #include "RtscAction.h"
 #include "PositionValue.h"
 #include "ByteBuffer.h"
+#include "Log.h"
 
 std::set<uint32> const FISHING_SPELLS = {7620, 7731, 7732, 18248, 33095, 51294};
 
@@ -100,9 +101,9 @@ bool SeeSpellAction::Execute(Event event)
     if (nextAction.empty())
     {
         if (!inRange && selected)
-            master->SendPlaySpellVisual(bot->GetGUID(), 6372);
+            bot->SendPlaySpellVisualKit(6372, 0, 0);
         else if (inRange && !selected)
-            master->SendPlaySpellVisual(bot->GetGUID(), 5036);
+            bot->SendPlaySpellVisualKit(5036, 0, 0);
 
         SET_AI_VALUE(bool, "RTSC selected", inRange);
 
@@ -150,7 +151,7 @@ bool SeeSpellAction::SelectSpell(WorldPosition& spellPosition)
     if (spellPosition.distance(bot) <= 5 || AI_VALUE(bool, "RTSC selected"))
     {
         SET_AI_VALUE(bool, "RTSC selected", true);
-        master->SendPlaySpellVisual(bot->GetGUID(), 5036);
+        bot->SendPlaySpellVisualKit(5036, 0, 0);
     }
 
     return true;

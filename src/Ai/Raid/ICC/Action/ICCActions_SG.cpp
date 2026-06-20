@@ -430,7 +430,7 @@ bool IccSindragosaFrostBeaconAction::TryDropTombFlares(Unit const* boss)
     uint8 const bagIndex = flare->GetBagSlot();
     uint8 const slot = flare->GetSlot();
     uint8 const castCount = 1;
-    uint32 const spellId = flare->GetTemplate()->Spells[0].SpellId;
+    uint32 const spellId = flare->GetTemplate()->GetEffect(0).SpellID;
     ObjectGuid const itemGuid = flare->GetGUID();
     uint32 const glyphIndex = 0;
     uint8 const castFlags = 0;
@@ -1206,9 +1206,9 @@ bool IccSindragosaFrostBombAction::CollectContext(FrostBombContext& ctx) const
 
     std::list<Unit*> units;
     float const range = 200.0f;
-    Acore::AnyUnitInObjectRangeCheck check(bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(bot, units, check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnitInObjectRangeCheck check(bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(bot, units, check);
+    Cell::VisitAllObjects(bot, searcher, range);
 
     for (Unit* unit : units)
     {
@@ -1299,9 +1299,9 @@ void IccSindragosaFrostBombAction::PinGroupToCurrentZone()
 
     std::list<Unit*> units;
     float const range = 15.0f;
-    Acore::AnyUnitInObjectRangeCheck check(bot, range);
-    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> searcher(bot, units, check);
-    Cell::VisitObjects(bot, searcher, range);
+    Trinity::AnyUnitInObjectRangeCheck check(bot, range);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(bot, units, check);
+    Cell::VisitAllObjects(bot, searcher, range);
 
     Unit* myTomb = nullptr;
     float minDist = std::numeric_limits<float>::max();

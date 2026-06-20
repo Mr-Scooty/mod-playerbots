@@ -10,6 +10,8 @@
 #include "PlayerbotSecurity.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "ObjectAccessor.h"
 
 bool GuildAcceptAction::Execute(Event event)
 {
@@ -48,12 +50,12 @@ bool GuildAcceptAction::Execute(Event event)
 
     if (accept)
     {
-        WorldPackets::Guild::AcceptGuildInvite data = WorldPacket(CMSG_GUILD_ACCEPT);
+        WorldPacket data(CMSG_GUILD_ACCEPT, 0);
         bot->GetSession()->HandleGuildAcceptOpcode(data);
     }
     else
     {
-        WorldPackets::Guild::GuildDeclineInvitation data = WorldPacket(CMSG_GUILD_DECLINE);
+        WorldPacket data(CMSG_GUILD_DECLINE, 0);
         bot->GetSession()->HandleGuildDeclineOpcode(data);
     }
 

@@ -1,6 +1,8 @@
 #include "QuestConfirmAcceptAction.h"
 
 #include "WorldPacket.h"
+#include "WorldSession.h"
+#include "QuestPackets.h"
 
 bool QuestConfirmAcceptAction::Execute(Event event)
 {
@@ -18,6 +20,8 @@ bool QuestConfirmAcceptAction::Execute(Event event)
     std::ostringstream out;
     out << "Quest: " << chat->FormatQuest(quest) << " confirm accept";
     botAI->TellMaster(out);
-    bot->GetSession()->HandleQuestConfirmAccept(sendPacket);
+    WorldPackets::Quest::QuestConfirmAccept confirmPacket{WorldPacket(CMSG_QUEST_CONFIRM_ACCEPT)};
+    confirmPacket.QuestID = questId;
+    bot->GetSession()->HandleQuestConfirmAccept(confirmPacket);
     return true;
 }

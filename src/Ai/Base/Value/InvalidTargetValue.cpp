@@ -18,10 +18,10 @@ bool InvalidTargetValue::Calculate()
 
     if (target && qualifier == "current target")
     {
-        return target->GetMapId() != bot->GetMapId() || target->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE) ||
-               target->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE) || target->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2) ||
+        return target->GetMapId() != bot->GetMapId() || target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) ||
+               target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE) || target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_ATTACKABLE_2) ||
                !target->IsVisible() || !target->IsAlive() || target->IsPolymorphed() || target->IsCharmed() ||
-               target->HasFearAura() || target->HasUnitState(UNIT_STATE_ISOLATED) || target->IsFriendlyTo(bot) ||
+               target->HasAuraType(SPELL_AURA_MOD_FEAR) || target->HasUnitState(UNIT_STATE_ISOLATED) || target->IsFriendlyTo(bot) ||
                !AttackersValue::IsValidTarget(target, bot);
     }
 

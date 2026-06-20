@@ -8,6 +8,8 @@
 #include "Player.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "SpellHistory.h"
+#include "MapDefines.h"
 
 bool MarkOfTheWildTrigger::IsActive()
 {
@@ -35,7 +37,7 @@ bool CatFormTrigger::IsActive() { return !botAI->HasAura("cat form", bot); }
 bool AquaticFormTrigger::IsActive()
 {
     return !bot->IsInCombat() && !botAI->HasAura("aquatic form", bot) &&
-           bot->GetLiquidData().Status == LIQUID_MAP_UNDER_WATER;
+           bot->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER;
 }
 
 bool ProwlTrigger::IsActive()
@@ -44,7 +46,7 @@ bool ProwlTrigger::IsActive()
         return false;
 
     uint32 prowlId = botAI->GetAiObjectContext()->GetValue<uint32>("spell id", "prowl")->Get();
-    if (!prowlId || !bot->HasSpell(prowlId) || bot->HasSpellCooldown(prowlId))
+    if (!prowlId || !bot->HasSpell(prowlId) || bot->GetSpellHistory()->HasCooldown(prowlId))
         return false;
 
     float distance = 30.f;

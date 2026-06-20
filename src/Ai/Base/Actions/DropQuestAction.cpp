@@ -9,6 +9,8 @@
 #include "Event.h"
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
+#include "Log.h"
+#include "World.h"
 
 bool DropQuestAction::Execute(Event event)
 {
@@ -80,7 +82,7 @@ bool CleanQuestLogAction::Execute(Event event)
             "Clean Quest Log command received, removing grey/trivial quests...",
             {}));
 
-    uint8 botLevel = bot->GetLevel();  // Get bot's level
+    uint8 botLevel = bot->getLevel();  // Get bot's level
 
     for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
     {
@@ -179,7 +181,7 @@ void CleanQuestLogAction::DropQuestType(uint8& numQuest, uint8 wantNum, bool isG
             continue;
 
         // Do not drop class quest, may be not rewarding gold but important spells
-        if (quest->GetRequiredClasses())
+        if (quest->GetAllowableClasses())
             continue;
 
         if (wantNum == 100)
@@ -187,9 +189,9 @@ void CleanQuestLogAction::DropQuestType(uint8& numQuest, uint8 wantNum, bool isG
 
         int32 lowLevelDiff = sWorld->getIntConfig(CONFIG_QUEST_LOW_LEVEL_HIDE_DIFF);
         if (lowLevelDiff < 0 ||
-            bot->GetLevel() <= bot->GetQuestLevel(quest) + uint32(lowLevelDiff))  // Quest is not gray
+            bot->getLevel() <= bot->GetQuestLevel(quest) + uint32(lowLevelDiff))  // Quest is not gray
         {
-            if (bot->GetLevel() + 5 > bot->GetQuestLevel(quest))  // Quest is not red
+            if (bot->getLevel() + 5 > bot->GetQuestLevel(quest))  // Quest is not red
             {
                 if (!isGreen)
                     continue;

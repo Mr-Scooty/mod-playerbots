@@ -6,6 +6,7 @@
 #include "PerfMonitor.h"
 
 #include "Playerbots.h"
+#include "Log.h"
 
 PerfMonitorOperation* PerfMonitor::start(PerformanceMetric metric, std::string const name,
                                                        PerformanceStack* stack)

@@ -11,6 +11,7 @@
 #include "PlayerbotRepository.h"
 #include "Playerbots.h"
 #include "ItemPackets.h"
+#include "WorldSession.h"
 
 bool OutfitAction::Execute(Event event)
 {
@@ -81,9 +82,7 @@ bool OutfitAction::Execute(Event event)
 
                 WorldPacket packet(CMSG_AUTOSTORE_BAG_ITEM, 3);
                 packet << bagIndex << slot << dstBag;
-                WorldPackets::Item::AutoStoreBagItem nicePacket(std::move(packet));
-                nicePacket.Read();
-                bot->GetSession()->HandleAutoStoreBagItemOpcode(nicePacket);
+                                bot->GetSession()->HandleAutoStoreBagItemOpcode(packet);
             }
 
             EquipItems(outfit);

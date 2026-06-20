@@ -101,6 +101,13 @@ public:
         creators["death and decay cooldown"] = &DeathKnightTriggerFactoryInternal::death_and_decay_cooldown;
         creators["army of the dead"] = &DeathKnightTriggerFactoryInternal::army_of_the_dead;
         creators["hysteria no cd"] = &DeathKnightTriggerFactoryInternal::hysteria_no_cd;
+        creators["outbreak"] = &DeathKnightTriggerFactoryInternal::outbreak;
+        creators["pillar of frost"] = &DeathKnightTriggerFactoryInternal::pillar_of_frost;
+        creators["dark transformation"] = &DeathKnightTriggerFactoryInternal::dark_transformation;
+        creators["sudden doom"] = &DeathKnightTriggerFactoryInternal::sudden_doom;
+        creators["festering strike"] = &DeathKnightTriggerFactoryInternal::festering_strike;
+        creators["rune strike"] = &DeathKnightTriggerFactoryInternal::rune_strike;
+        creators["killing machine"] = &DeathKnightTriggerFactoryInternal::killing_machine;
     }
 
 private:
@@ -154,6 +161,13 @@ private:
     static Trigger* death_and_decay_cooldown(PlayerbotAI* botAI) { return new DeathAndDecayCooldownTrigger(botAI); }
     static Trigger* army_of_the_dead(PlayerbotAI* botAI) { return new ArmyOfTheDeadTrigger(botAI); }
     static Trigger* hysteria_no_cd(PlayerbotAI* botAI) { return new HysteriaNoCooldownTrigger(botAI); }
+    static Trigger* outbreak(PlayerbotAI* botAI) { return new OutbreakTrigger(botAI); }
+    static Trigger* pillar_of_frost(PlayerbotAI* botAI) { return new PillarOfFrostTrigger(botAI); }
+    static Trigger* dark_transformation(PlayerbotAI* botAI) { return new DarkTransformationTrigger(botAI); }
+    static Trigger* sudden_doom(PlayerbotAI* botAI) { return new SuddenDoomTrigger(botAI); }
+    static Trigger* festering_strike(PlayerbotAI* botAI) { return new FesteringStrikeTrigger(botAI); }
+    static Trigger* rune_strike(PlayerbotAI* botAI) { return new RuneStrikeTrigger(botAI); }
+    static Trigger* killing_machine(PlayerbotAI* botAI) { return new KillingMachineTrigger(botAI); }
 };
 
 class DeathKnightAiObjectContextInternal : public NamedObjectContext<Action>
@@ -214,6 +228,11 @@ public:
         creators["hysteria"] = &DeathKnightAiObjectContextInternal::hysteria;
         creators["dancing rune weapon"] = &DeathKnightAiObjectContextInternal::dancing_rune_weapon;
         creators["dark command"] = &DeathKnightAiObjectContextInternal::dark_command;
+        // 4.3.4 additions
+        creators["outbreak"] = &DeathKnightAiObjectContextInternal::outbreak;
+        creators["festering strike"] = &DeathKnightAiObjectContextInternal::festering_strike;
+        creators["pillar of frost"] = &DeathKnightAiObjectContextInternal::pillar_of_frost;
+        creators["dark transformation"] = &DeathKnightAiObjectContextInternal::dark_transformation;
     }
 
 private:
@@ -274,6 +293,11 @@ private:
     {
         return new CastMindFreezeOnEnemyHealerAction(botAI);
     }
+    // 4.3.4 additions
+    static Action* outbreak(PlayerbotAI* botAI) { return new CastOutbreakAction(botAI); }
+    static Action* festering_strike(PlayerbotAI* botAI) { return new CastFesteringStrikeAction(botAI); }
+    static Action* pillar_of_frost(PlayerbotAI* botAI) { return new CastPillarOfFrostAction(botAI); }
+    static Action* dark_transformation(PlayerbotAI* botAI) { return new CastDarkTransformationAction(botAI); }
 };
 
 SharedNamedObjectContextList<Strategy> DKAiObjectContext::sharedStrategyContexts;

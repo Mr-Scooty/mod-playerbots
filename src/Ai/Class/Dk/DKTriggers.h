@@ -172,10 +172,13 @@ public:
     bool IsActive() override;
 };
 
+// 4.3.4: the Rime proc aura was renamed from "Freezing Fog" (WotLK) to "Rime" in Cataclysm.
+// (Howling Blast still has a filler fallback in getDefaultActions, so this only restores the
+//  free-instant-cast priority; it does not gate the ability.)
 class FreezingFogTrigger : public HasAuraTrigger
 {
 public:
-    FreezingFogTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "freezing fog") {}
+    FreezingFogTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "rime") {}
 };
 
 class DesolationTrigger : public BuffTrigger
@@ -202,6 +205,44 @@ class HysteriaNoCooldownTrigger : public SpellNoCooldownTrigger
 {
 public:
     HysteriaNoCooldownTrigger(PlayerbotAI* botAI) : SpellNoCooldownTrigger(botAI, "hysteria") {}
+};
+
+// 4.3.4: Outbreak fires when it is off cooldown AND at least one disease is missing/near expiry on the target.
+class OutbreakTrigger : public SpellCooldownTrigger
+{
+public:
+    OutbreakTrigger(PlayerbotAI* botAI) : SpellCooldownTrigger(botAI, "outbreak") {}
+    std::string const GetTargetName() override { return "current target"; }
+    bool IsActive() override;
+};
+
+// 4.3.4 Frost cooldown: Pillar of Frost.
+class PillarOfFrostTrigger : public BoostTrigger
+{
+public:
+    PillarOfFrostTrigger(PlayerbotAI* botAI) : BoostTrigger(botAI, "pillar of frost") {}
+};
+
+// 4.3.4 Unholy: Dark Transformation usable when ghoul has 5 stacks of Shadow Infusion.
+class DarkTransformationTrigger : public Trigger
+{
+public:
+    DarkTransformationTrigger(PlayerbotAI* botAI) : Trigger(botAI, "dark transformation") {}
+    bool IsActive() override;
+};
+
+// 4.3.4 Unholy: Sudden Doom proc -> free Death Coil.
+class SuddenDoomTrigger : public HasAuraTrigger
+{
+public:
+    SuddenDoomTrigger(PlayerbotAI* botAI) : HasAuraTrigger(botAI, "sudden doom") {}
+};
+
+// Festering Strike maintenance: cast when a disease is within its refresh window (extends both diseases).
+class FesteringStrikeTrigger : public DebuffTrigger
+{
+public:
+    FesteringStrikeTrigger(PlayerbotAI* botAI) : DebuffTrigger(botAI, "frost fever", 1, true, .0f, 6000) {}
 };
 
 #endif

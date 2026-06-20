@@ -15,6 +15,7 @@
 #include "SpellMgr.h"
 #include "Unit.h"
 #include "Value.h"
+#include "SpellHistory.h"
 
 namespace ai::buff
 {
@@ -29,7 +30,7 @@ namespace ai::buff
                 return false;
 
             return getMSTimeDiff(
-                player->GetInGameTime(), GameTime::GetGameTimeMS().count()) < POST_LOGIN_BUFF_GRACE_MS;
+                player->GetInGameTime(), GameTime::GetGameTimeMS()) < POST_LOGIN_BUFF_GRACE_MS;
         }
     }
 
@@ -234,7 +235,7 @@ namespace ai::spell
 {
     bool HasSpellOrCategoryCooldown(Player* bot, uint32 spellId)
     {
-        if (bot->HasSpellCooldown(spellId))
+        if (bot->GetSpellHistory()->HasCooldown(spellId))
             return true;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
@@ -245,12 +246,8 @@ namespace ai::spell
         if (!category)
             return false;
 
-        for (auto const& [cooldownSpellId, cooldown] : bot->GetSpellCooldownMap())
-        {
-            if (cooldown.category == category && bot->GetSpellCooldownDelay(cooldownSpellId) > 0)
-                return true;
-        }
-
-        return false;
+        // 4.3.4: SpellHistory tracks category cooldowns internally - HasCooldown
+        // with category checking covers the shared-category case
+        return bot->GetSpellHistory()->HasCooldown(spellInfo, 0, false);
     }
 }

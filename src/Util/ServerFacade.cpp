@@ -6,7 +6,8 @@
 #include "ServerFacade.h"
 #include "Player.h"
 
-#include "TargetedMovementGenerator.h"
+#include "ChaseMovementGenerator.h"
+#include "WorldSession.h"
 
 float ServerFacade::GetDistance2d(Unit* unit, WorldObject* wo)
 {
@@ -52,24 +53,20 @@ void ServerFacade::SetFacingTo(Player* bot, WorldObject* wo, bool /*force*/)
     // {
     bot->SetOrientation(angle);
 
-    if (!bot->IsRooted())
-        // enforce (bool self) true otherwhise when using real-client with self-bot wont
+    if (!bot->HasUnitMovementFlag(MOVEMENTFLAG_ROOT))
+        // enforce (bool force) true otherwhise when using real-client with self-bot wont
         // recieve update; e.g. will not face the target when using (mostly ranged) attack
-        bot->SendMovementFlagUpdate(true);
+        // ShatterCore: 3.3.5a's SendMovementFlagUpdate(true) has no 4.3.4 equivalent; the
+        // core Unit::SetFacingTo(ori, force=true) sets orientation and broadcasts the facing
+        // update through the movement update system, preserving the original intent.
+        bot->SetFacingTo(angle, true);
 }
 
 Unit* ServerFacade::GetChaseTarget(Unit* target)
 {
-    MovementGenerator* movementGen = target->GetMotionMaster()->top();
+    MovementGenerator* movementGen = target->GetMotionMaster()->topOrNull();
     if (movementGen && movementGen->GetMovementGeneratorType() == CHASE_MOTION_TYPE)
-    {
-        if (target->IsPlayer())
-        {
-            return static_cast<ChaseMovementGenerator<Player> const*>(movementGen)->GetTarget();
-        }
-
-        return static_cast<ChaseMovementGenerator<Creature> const*>(movementGen)->GetTarget();
-    }
+        return static_cast<ChaseMovementGenerator const*>(movementGen)->GetTarget();
 
     return nullptr;
 }

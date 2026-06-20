@@ -59,6 +59,12 @@ void RestoDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         "nature's swiftness active",
         { NextAction("healing touch on party", 55.0f) }));
 
+    // ShatterCore 4.3.4 Resto (class reference 12.3): keep Lifebloom rolling at 3 stacks on the tank permanently
+    // (the action enforces stack count + refresh-before-expiry). Free Clearcasting procs refresh it for no mana.
+    // Harmony mastery is kept active implicitly because the heal priorities below weave direct heals (Nourish /
+    // Swiftmend / Healing Touch) regularly.
+    triggers.push_back(new TriggerNode("lifebloom on main tank",
+        { NextAction("lifebloom on main tank", 14.0f) }));
     triggers.push_back(new TriggerNode("clearcasting",
         { NextAction("lifebloom on main tank", 13.0f) }));
 

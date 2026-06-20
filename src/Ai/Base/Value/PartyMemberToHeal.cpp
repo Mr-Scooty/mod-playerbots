@@ -7,6 +7,7 @@
 
 #include "Playerbots.h"
 #include "ServerFacade.h"
+#include "ObjectAccessor.h"
 
 class IsTargetOfHealingSpell : public SpellEntryPredicate
 {
@@ -109,7 +110,7 @@ Unit* PartyMemberToHeal::Calculate()
             }
         }
 
-        Unit* charm = player->GetCharm();
+        Unit* charm = player->GetCharmed();
         if (charm && charm->IsAlive())
         {
             float health = charm->GetHealthPct();
