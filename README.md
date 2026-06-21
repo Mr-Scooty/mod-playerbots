@@ -1,3 +1,5 @@
+## TODO: Update for ShatterCore
+
 <p align="center">
     <a href="https://github.com/mod-playerbots/mod-playerbots/blob/master/README.md">English</a>
     |
