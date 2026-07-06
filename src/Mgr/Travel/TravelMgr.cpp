@@ -25,6 +25,7 @@
 #include "MMapFactory.h"   // ShatterCore: navmesh tile load via MMapManager
 #include "MMapManager.h"
 #include "Map.h"
+#include "TerrainMgr.h"    // ShatterCore: area lookups from terrain files (no live Map at boot)
 #include "Corpse.h"
 #include "CellImpl.h"
 #include "WorldSession.h"
@@ -4661,6 +4662,12 @@ void TravelMgr::PrepareZone2LevelBracket()
     zone2LevelBracket[AREA_SHOLAZAR_BASIN]      = {75, 80};
     zone2LevelBracket[AREA_WINTERGRASP]         = {79, 80};
 
+    // Cataclysm zones (Vashj'ir omitted: underwater hubs strand bots)
+    zone2LevelBracket[616]                      = {80, 82}; // Mount Hyjal
+    zone2LevelBracket[5042]                     = {82, 84}; // Deepholm
+    zone2LevelBracket[5034]                     = {83, 85}; // Uldum
+    zone2LevelBracket[4922]                     = {84, 85}; // Twilight Highlands
+
     // Override with values from config
     for (auto const& [zoneId, bracketPair] : sPlayerbotAIConfig.zoneBrackets)
         zone2LevelBracket[zoneId] = {bracketPair.first, bracketPair.second};
@@ -4677,6 +4684,13 @@ void TravelMgr::PrepareDestinationCache()
     // Temporary map to group creatures by entry and area
     std::map<std::tuple<uint16, int32, int32, int32>, std::vector<CreatureData>> tempLocsCache;
     std::map<uint32, std::map<uint32, std::vector<WorldLocation>>> tempCreatureCache;
+    // ShatterCore: base maps are created lazily on player login, so none exist during
+    // world init — resolve spawn areas from terrain files instead of live Map objects,
+    // holding the handles so TerrainMgr doesn't unload them between lookups
+    std::unordered_map<uint32, std::shared_ptr<TerrainInfo>> terrains;
+    for (uint32 botMapId : sPlayerbotAIConfig.randomBotMaps)
+        if (std::shared_ptr<TerrainInfo> terrain = sTerrainMgr.LoadTerrain(botMapId))
+            terrains[botMapId] = terrain;
     for (auto const& [guid, creatureData] : sObjectMgr->GetAllCreatureData())
     {
         CreatureTemplate const* creatureTemplate = sObjectMgr->GetCreatureTemplate(creatureData.id);
@@ -4694,11 +4708,12 @@ void TravelMgr::PrepareDestinationCache()
         float orient = creatureData.spawnPoint.GetOrientation();
         uint32 templateEntry = creatureData.id;
 
-        Map* map = sMapMgr->FindMap(mapId, 0);
-        if (!map)
+        auto terrainItr = terrains.find(mapId);
+        if (terrainItr == terrains.end())
             continue;
 
-        AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(PhasingHandler::GetEmptyPhaseShift(), x, y, z));
+        AreaTableEntry const* area = sAreaTableStore.LookupEntry(
+            terrainItr->second->GetAreaId(PhasingHandler::GetEmptyPhaseShift(), mapId, x, y, z));
         if (!area)
             continue;
 
@@ -4828,8 +4843,12 @@ void TravelMgr::PrepareDestinationCache()
                 if ((l >=61 && l <=70) && (level < 60 || level > 70))
                     continue;
 
-                // Bots 71+ go to Dalaran bankers (all have minlevel 75)
-                if ((l >=71) && level != 75)
+                // Bots 71-80 go to Dalaran bankers (all have minlevel 75)
+                if ((l >=71 && l <= 80) && level != 75)
+                    continue;
+
+                // Bots 81+ hub in the base game capitals again (Cataclysm)
+                if (l >= 81 && level > 45)
                     continue;
 
                 bankerLocsPerLevelCache[(uint8)l].push_back(bLoc);

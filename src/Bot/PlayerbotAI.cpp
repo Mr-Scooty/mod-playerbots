@@ -799,6 +799,8 @@ void PlayerbotAI::HandleTeleportAck()
      */
     if (bot->IsBeingTeleportedFar())
     {
+        LOG_DEBUG("playerbots", "Bot {} worldport ack -> map {}", bot->GetName().c_str(),
+                  bot->GetTeleportDest().GetMapId());
         bot->GetSession()->HandleMoveWorldportAck();
 
         // after worldport ACK the player should be in a valid map

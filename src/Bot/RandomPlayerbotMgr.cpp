@@ -26,6 +26,7 @@
 #include "GridNotifiers.h"
 #include "LFGMgr.h"
 #include "MapManager.h"
+#include "TerrainMgr.h"  // ShatterCore: terrain-file queries for maps without a live Map instance
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
 #include "ObjectGuid.h"
@@ -1586,11 +1587,36 @@ void RandomPlayerbotMgr::Revive(Player* player)
     RandomTeleportGrindForLevel(player);
 }
 
+// ShatterCore: bots cannot play the phased goblin/worgen intro questlines, but
+// Player::TeleportTo refuses cross-map teleports for non-GMs until the final intro
+// quest is rewarded (see the map 648/654 gates in TeleportTo) — mark it rewarded so
+// random bots can leave Kezan/Gilneas, like death knights do via Death Gate
+static void EnsureIntroQuestRewarded(Player* bot)
+{
+    uint32 questId = 0;
+    if (bot->getRace() == RACE_GOBLIN && bot->GetMapId() == 648)
+        questId = 25265;
+    else if (bot->getRace() == RACE_WORGEN && bot->GetMapId() == 654)
+        questId = 26706;
+
+    if (!questId || bot->GetQuestStatus(questId) == QUEST_STATUS_REWARDED)
+        return;
+
+    if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
+    {
+        bot->AddQuest(quest, nullptr);
+        bot->CompleteQuest(questId);
+        bot->RewardQuest(quest, 0, bot, false);
+    }
+}
+
 void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>& locs, bool hearth)
 {
     // ignore when alrdy teleported or not in the world yet.
     if (bot->IsBeingTeleported() || !bot->IsInWorld())
         return;
+
+    EnsureIntroQuestRewarded(bot);
 
     // no teleport / movement update when rooted.
     if (bot->HasUnitMovementFlag(MOVEMENTFLAG_ROOT))
@@ -1649,6 +1675,11 @@ void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>&
 
     PerfMonitorOperation* pmo = sPerfMonitor.start(PERF_MON_RNDBOT, "RandomTeleportByLocations");
 
+    // ShatterCore: destination maps may have no live Map instance yet (TeleportTo creates
+    // them on demand), so validate candidate locations against terrain files instead of
+    // sMapMgr->FindMap — otherwise unpopulated continents are never eligible
+    std::unordered_map<uint32, std::shared_ptr<TerrainInfo>> terrains;
+
     std::shuffle(std::begin(tlocs), std::end(tlocs), RandomEngine::Instance());
     for (uint32 i = 0; i < tlocs.size(); i++)
     {
@@ -1660,15 +1691,21 @@ void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>&
                                        // sPlayerbotAIConfig.grindDistance / 2 : 0);
         float z = loc.GetPositionZ();
 
-        Map* map = sMapMgr->FindMap(loc.GetMapId(), 0);
-        if (!map)
+        std::shared_ptr<TerrainInfo>& terrain = terrains[loc.GetMapId()];
+        if (!terrain)
+            terrain = sTerrainMgr.LoadTerrain(loc.GetMapId());
+        if (!terrain)
             continue;
 
-        AreaTableEntry const* zone = sAreaTableStore.LookupEntry(map->GetZoneId(bot->GetPhaseShift(), x, y, z));
+        uint32 zoneId = 0;
+        uint32 areaId = 0;
+        terrain->GetZoneAndAreaId(bot->GetPhaseShift(), loc.GetMapId(), zoneId, areaId, x, y, z);
+
+        AreaTableEntry const* zone = sAreaTableStore.LookupEntry(zoneId);
         if (!zone)
             continue;
 
-        AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(bot->GetPhaseShift(), x, y, z));
+        AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId);
         if (!area)
             continue;
 
@@ -1679,10 +1716,10 @@ void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>&
         if (zone->FactionGroupMask == 2 && bot->GetTeamId() == TEAM_HORDE)
             continue;
 
-        if (map->IsInWater(bot->GetPhaseShift(), x, y, z))
+        if (terrain->IsInWater(bot->GetPhaseShift(), loc.GetMapId(), x, y, z))
             continue;
 
-        float ground = map->GetHeight(bot->GetPhaseShift(), x, y, z + 0.5f);
+        float ground = terrain->GetStaticHeight(bot->GetPhaseShift(), loc.GetMapId(), x, y, z + 0.5f);
         if (ground <= INVALID_HEIGHT)
             continue;
 
@@ -1696,7 +1733,8 @@ void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>&
                   "Random teleporting bot {} (level {}) to Map: {} ({}) Zone: {} ({}) Area: {} ({}) ZoneLevel: {} "
                   "AreaLevel: {} {},{},{} ({}/{} "
                   "locations)",
-                  bot->GetName().c_str(), bot->getLevel(), map->GetId(), map->GetMapName(), zone->ID,
+                  bot->GetName().c_str(), bot->getLevel(), loc.GetMapId(),
+                  sMapStore.LookupEntry(loc.GetMapId()) ? sMapStore.LookupEntry(loc.GetMapId())->MapName : "", zone->ID,
                   zone->AreaName, area->ID, area->AreaName, zone->ExplorationLevel, area->ExplorationLevel, x, y,
                   z, i + 1, tlocs.size());
 
