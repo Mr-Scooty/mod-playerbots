@@ -3243,7 +3243,7 @@ void PlayerbotFactory::InitClassSpells()
                 bot->LearnSpell(2458, false);  // Berserker Stance
             break;
         case CLASS_PALADIN:
-            bot->LearnSpell(21084, true);
+            bot->LearnSpell(20154, true);  // Seal of Righteousness (21084 was removed in Cataclysm)
             bot->LearnSpell(635, true);
             if (level >= 12)
                 bot->LearnSpell(7328, false);  // Redemption
@@ -3260,10 +3260,10 @@ void PlayerbotFactory::InitClassSpells()
             bot->LearnSpell(45462, true);
             bot->LearnSpell(45902, true);
             // to leave DK starting area
-            bot->LearnSpell(53428, false);
-            bot->LearnSpell(50977, false);
-            bot->LearnSpell(49142, false);
-            bot->LearnSpell(48778, false);
+            bot->LearnSpell(53428, false);  // Runeforging
+            bot->LearnSpell(50977, false);  // Death Gate
+            bot->LearnSpell(48778, false);  // Acherus Deathcharger
+            // 49142 (Frozen Rune Weapon) was removed in Cataclysm
             break;
         case CLASS_HUNTER:
             bot->LearnSpell(2973, true);
@@ -3283,7 +3283,7 @@ void PlayerbotFactory::InitClassSpells()
             break;
         case CLASS_MAGE:
             bot->LearnSpell(133, true);
-            bot->LearnSpell(168, true);
+            bot->LearnSpell(7302, true);  // Frost Armor (rank 1 id 168 was removed in Cataclysm)
             break;
         case CLASS_WARLOCK:
             bot->LearnSpell(687, true);
