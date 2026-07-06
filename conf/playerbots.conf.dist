@@ -699,7 +699,7 @@ AiPlayerbot.PreQuests = 0
 
 # Enable LFG for randombots
 # Default: 1 (enabled)
-AiPlayerbot.RandomBotJoinLfg = 0
+AiPlayerbot.RandomBotJoinLfg = 1
 
 # Enable/Disable periodic online - offline of randombots to mimic the real-world scenario where not all players are online simultaneously
 # When enabled, randombots are randomly selected to go online or offline periodically from a larger set
@@ -1203,7 +1203,7 @@ AiPlayerbot.ZoneBracket.4197 = 79,80
 
 # Map IDs where bots can be teleported to
 # Defaults: 0 = Eastern Kingdoms, 1 = Kalimdor, 530 = Outland, 571 = Northrend
-AiPlayerbot.RandomBotMaps = 0,1,530,571
+AiPlayerbot.RandomBotMaps = 0,1,530,571,646
 
 # Probability bots teleport to banker (city)
 # Default: 0.25

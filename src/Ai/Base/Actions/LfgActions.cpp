@@ -158,17 +158,17 @@ bool LfgJoinAction::JoinLFG()
     // JoinLfg is not threadsafe, so make packet and queue into session
     // sLFGMgr->JoinLfg(bot, roleMask, list, _gs);
 
+    // ShatterCore: Cataclysm 4.3.4 wire format — mirror WorldPackets::LFG::LFGJoin::Read
     WorldPacket* data = new WorldPacket(CMSG_LFG_JOIN);
     *data << (uint32)roleMask;
-    *data << (bool)false;
-    *data << (bool)false;
-    // Slots
-    *data << (uint8)(list.size());
-    for (uint32 dungeon : list)
-        *data << (uint32)dungeon;
-    // Needs
-    *data << (uint8)3 << (uint8)0 << (uint8)0 << (uint8)0;
-    *data << _gs;
+    for (uint8 i = 0; i < 3; ++i)
+        *data << (uint32)0;             // Needs, count hardcoded to 3 in client
+    data->WriteBits(_gs.length(), 9);   // comment length
+    data->WriteBits(list.size(), 24);   // slot count
+    data->FlushBits();
+    data->WriteString(_gs);
+    for (uint32 dungeonId : list)
+        *data << (uint32)dungeonId;
     bot->GetSession()->QueuePacket(data);
 
     return true;
@@ -184,7 +184,7 @@ bool LfgRoleCheckAction::Execute(Event /*event*/)
         //     return false;
 
         WorldPacket* packet = new WorldPacket(CMSG_LFG_SET_ROLES);
-        *packet << (uint8)newRoles;
+        *packet << (uint32)newRoles;  // ShatterCore: uint32 RolesDesired in Cataclysm (uint8 in WotLK)
         bot->GetSession()->QueuePacket(packet);
         // sLFGMgr->SetRoles(bot->GetGUID(), newRoles);
         // sLFGMgr->UpdateRoleCheck(group->GetGUID(), bot->GetGUID(), newRoles);
@@ -198,6 +198,25 @@ bool LfgRoleCheckAction::Execute(Event /*event*/)
     return false;
 }
 
+// ShatterCore: Cataclysm 4.3.4 wire format — mirror WorldPackets::LFG::LFGProposalResponse::Read.
+// The handler only uses ProposalID and Accepted, so the ride ticket and instance guid stay zeroed.
+static WorldPacket* BuildLfgProposalResponsePacket(uint32 proposalId, bool accept)
+{
+    WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
+    *packet << (uint32)proposalId;
+    *packet << (uint32)0;         // Ticket.Time
+    *packet << (uint32)0;         // Ticket.Type
+    *packet << (uint32)0;         // Ticket.Id
+    for (uint8 i = 0; i < 8; ++i)
+        packet->WriteBit(0);      // Ticket.RequesterGuid bits (empty guid, no byte sequence)
+    packet->WriteBit(0);          // instance guid [7]
+    packet->WriteBit(accept);     // Accepted
+    for (uint8 i = 0; i < 7; ++i)
+        packet->WriteBit(0);      // instance guid [1][3][0][5][4][6][2]
+    packet->FlushBits();
+    return packet;
+}
+
 bool LfgAcceptAction::Execute(Event event)
 {
     uint32 id = AI_VALUE(uint32, "lfg proposal");
@@ -207,18 +226,14 @@ bool LfgAcceptAction::Execute(Event event)
     {
         if (bot->IsInCombat() || bot->isDead())
         {
-            WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
-            *packet << id << false;
-            bot->GetSession()->QueuePacket(packet);
+            bot->GetSession()->QueuePacket(BuildLfgProposalResponsePacket(id, false));
             return true;
         }
 
         botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
         bot->ClearUnitState(UNIT_STATE_ALL_STATE);
 
-        WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
-        *packet << id << true;
-        bot->GetSession()->QueuePacket(packet);
+        bot->GetSession()->QueuePacket(BuildLfgProposalResponsePacket(id, true));
 
         if (RandomPlayerbotMgr::instance().IsRandomBot(bot) && !bot->GetGroup())
         {
@@ -234,9 +249,11 @@ bool LfgAcceptAction::Execute(Event event)
     if (!event.getPacket().empty())
     {
         WorldPacket p(event.getPacket());
-        uint32 dungeonId;
-        uint8 state;
-        p >> dungeonId >> state >> id;
+        p.rpos(0);
+        // ShatterCore: Cataclysm SMSG_LFG_PROPOSAL_UPDATE byte header — see
+        // WorldPackets::LFG::LFGProposalUpdate::Write (ProposalID is the 6th uint32)
+        uint32 ticketTime, completedMask, ticketId, ticketType, slot;
+        p >> ticketTime >> completedMask >> ticketId >> ticketType >> slot >> id;
 
         if (id)
         {
@@ -279,7 +296,31 @@ bool LfgLeaveAction::Execute(Event /*event*/)
     if (sLFGMgr->GetState(bot->GetGUID()) > LFG_STATE_QUEUED)
         return false;
 
+    // ShatterCore: Cataclysm 4.3.4 wire format — mirror WorldPackets::LFG::LFGLeave::Read.
+    // The handler leaves the queue for the guid packed in the ticket, so send the bot's own.
+    ObjectGuid guid = bot->GetGUID();
     WorldPacket* packet = new WorldPacket(CMSG_LFG_LEAVE);
+    *packet << (uint32)0;  // Roles (unused by the handler)
+    *packet << (uint32)0;  // Ticket.Time
+    *packet << (uint32)0;  // Ticket.Type
+    *packet << (uint32)0;  // Ticket.Id
+    packet->WriteBit(guid[4]);
+    packet->WriteBit(guid[5]);
+    packet->WriteBit(guid[0]);
+    packet->WriteBit(guid[6]);
+    packet->WriteBit(guid[2]);
+    packet->WriteBit(guid[7]);
+    packet->WriteBit(guid[1]);
+    packet->WriteBit(guid[3]);
+    packet->FlushBits();
+    packet->WriteByteSeq(guid[7]);
+    packet->WriteByteSeq(guid[4]);
+    packet->WriteByteSeq(guid[3]);
+    packet->WriteByteSeq(guid[2]);
+    packet->WriteByteSeq(guid[6]);
+    packet->WriteByteSeq(guid[0]);
+    packet->WriteByteSeq(guid[1]);
+    packet->WriteByteSeq(guid[5]);
     bot->GetSession()->QueuePacket(packet);
     // sLFGMgr->LeaveLfg(bot->GetGUID());
     return true;
