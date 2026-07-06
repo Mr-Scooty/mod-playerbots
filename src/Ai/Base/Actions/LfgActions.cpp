@@ -259,18 +259,14 @@ bool LfgAcceptAction::Execute(Event event)
         {
             if (bot->IsInCombat() || bot->isDead())
             {
-                WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
-                *packet << id << false;
-                bot->GetSession()->QueuePacket(packet);
+                bot->GetSession()->QueuePacket(BuildLfgProposalResponsePacket(id, false));
                 return true;
             }
 
             botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
             bot->ClearUnitState(UNIT_STATE_ALL_STATE);
 
-            WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
-            *packet << id << true;
-            bot->GetSession()->QueuePacket(packet);
+            bot->GetSession()->QueuePacket(BuildLfgProposalResponsePacket(id, true));
 
             if (RandomPlayerbotMgr::instance().IsRandomBot(bot) && !bot->GetGroup())
             {

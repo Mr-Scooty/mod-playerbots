@@ -277,7 +277,17 @@ void PlayerbotHolder::HandleBotPackets(WorldSession* session)
             delete packet;
             continue;
         }
-        opHandle->Call(session, *packet);
+        // ShatterCore: WorldSession::Update guards real-client packets with this same
+        // handling — without it one malformed bot packet aborts the whole server
+        try
+        {
+            opHandle->Call(session, *packet);
+        }
+        catch (ByteBufferException const&)
+        {
+            LOG_ERROR("playerbots", "Bot session {} sent malformed packet for opcode {}, dropped.",
+                      session->GetAccountId(), static_cast<uint32>(opcode));
+        }
         delete packet;
     }
 }
