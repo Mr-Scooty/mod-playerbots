@@ -25,6 +25,7 @@
 #include "Engine.h"
 #include "EventProcessor.h"
 #include "ExternalEventHelper.h"
+#include "GameClient.h"  // ShatterCore: bots must self-register as their session's active mover
 #include "GameObjectData.h"
 #include "GameTime.h"
 #include "GuildMgr.h"
@@ -840,6 +841,15 @@ void PlayerbotAI::HandleTeleportAck()
     {
         if (!bot->IsInWorld())
             return;
+
+        // ShatterCore: HandleMoveTeleportAck drops the ack unless the session's GameClient
+        // reports the bot as its actively moved unit (set by CMSG_SET_ACTIVE_MOVER, which
+        // bots never send). Player::SetClientControl mirrors that ack for bot sessions;
+        // re-assert it here in case control state was cleared, or the bot stays
+        // IsBeingTeleported() forever and its AI (and all chat commands) freeze.
+        GameClient* client = bot->GetSession()->GetGameClient();
+        if (client && client->GetActivelyMovedUnit() != bot && client->IsAllowedToMove(bot->GetGUID()))
+            client->SetActivelyMovedUnit(bot);
 
         // Socketless bots always move themselves
         // ShatterCore: structured packet requires brace-init (avoids most-vexing-parse)
